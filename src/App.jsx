@@ -1,13 +1,12 @@
 import React from "react"
+import AppRoutes from "./router"
 
 function App() {
 
   return (
-    <>
-      <div className='text-lg text-gray-700'>
-        Hello World
-      </div>
-    </>
+    <div>
+      <AppRoutes />
+    </div>
   )
 }
 
