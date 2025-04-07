@@ -1,26 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../hooks/useUser';
+import { useDispatch } from 'react-redux';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setError(null); // Clear previous errors
 
     try {
-      const response = await loginUser({ email, password });
-      if (response.success) {
-        localStorage.setItem('auth_token', response.token);
-        navigate('/dashboard');
+      const result = await loginUser({ email, password }, dispatch);
+      console.log('Login response:', result);
+
+      if (result.success) {
+        // Token and user are already in Redux via dispatch(setCredentials)
+        navigate('/dashboard/');
       } else {
-        setError(response.message || 'Login failed');
+        setError(result.message || 'Login failed');
       }
     } catch (err) {
-      console.log(err);
+      console.error('Login error:', err);
       setError('An error occurred during login');
     }
   };
