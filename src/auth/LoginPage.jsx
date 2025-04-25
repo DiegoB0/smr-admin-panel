@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { loginUser } from '../hooks/useUser';
+import { login } from '../hooks/useAuth';
 import { useDispatch } from 'react-redux';
+import Swal from 'sweetalert2';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,16 +16,38 @@ function LoginPage() {
     setError(null); // Clear previous errors
 
     try {
-      const result = await loginUser({ email, password }, dispatch);
+      const result = await login({ email, password }, dispatch);
       console.log('Login response:', result);
 
       if (result.success) {
-        // Token and user are already in Redux via dispatch(setCredentials)
-        navigate('/dashboard/');
+        Swal.fire({
+          title: '¡Éxito!',
+          text: 'Inicio de sesión exitoso',
+          icon: 'success',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Continuar',
+        }).then(() => {
+          navigate('/dashboard/');
+        });
       } else {
+        Swal.fire({
+          title: 'Error',
+          text: result.message || 'Fallo al iniciar sesión',
+          icon: 'error',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Intentar de nuevo',
+        });
         setError(result.message || 'Login failed');
       }
     } catch (err) {
+      Swal.fire({
+        title: 'Error',
+        text: err.message || 'Fallo al iniciar sesión',
+        icon: 'error',
+        confirmButtonColor: '#1F2937',
+        confirmButtonText: 'Intentar de nuevo',
+      });
+
       console.error('Login error:', err);
       setError('An error occurred during login');
     }

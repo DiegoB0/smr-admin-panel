@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
+import { FaUserAlt } from "react-icons/fa";
 import { TbWorld } from "react-icons/tb";
 import { HiUsers } from "react-icons/hi2";
 import { Link, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { logoutUser } from '../../hooks/useUser';
+import { logoutUser } from '../../hooks/useAuth';
 import { FaPaperPlane } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
-// import { IoSettingsSharp } from "react-icons/io5";
+import { IoSettingsSharp } from "react-icons/io5";
 import { MdEmail } from "react-icons/md";
 import { MdKeyboardArrowUp } from "react-icons/md";
 import { PiSignOutBold } from "react-icons/pi";
 import { useNavigate } from 'react-router-dom';
 import { hasRole, canAccessResource } from '../../guards/authGuards';
-import { Roles, Permissions } from '../../guards/authEnums';
+import { Roles } from '../../guards/authEnums';
 
 function Sidebar() {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ function Sidebar() {
   };
 
   return (
-    <div className="w-64 bg-gray-900 text-white h-screen flex flex-col overflow-y-auto">
+    <div className="w-[300px] bg-gray-900 text-white h-screen flex flex-col overflow-y-auto">
       <div className='flex justify-center items-center'>
         <h1 className='text-2xl text-gray-200 font-extrabold'>SMR Admin<span className='text-6xl text-red-600'>.</span></h1>
       </div>
@@ -49,6 +50,8 @@ function Sidebar() {
         <nav className="flex-1 px-4 py-6">
           <ul>
             {/* Home link with active indicator */}
+
+
             <li>
               <Link
                 to="/dashboard"
@@ -128,15 +131,6 @@ function Sidebar() {
                           Testimonios
                         </Link>
                       </li>
-                      <li>
-                        <Link
-                          to="/dashboard/projects"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
-                            }`}
-                        >
-                          Proyectos
-                        </Link>
-                      </li>
 
                       <li>
                         <Link
@@ -145,6 +139,16 @@ function Sidebar() {
                             }`}
                         >
                           Servicios
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/dashboard/projects"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Proyectos
                         </Link>
                       </li>
                     </ul>
@@ -190,7 +194,7 @@ function Sidebar() {
                           className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
                             }`}
                         >
-                          Ver Correos
+                          Correos
                         </Link>
                       </li>
 
@@ -212,20 +216,21 @@ function Sidebar() {
 
 
             {/* Settings link with active indicator */}
-            {/* <li> */}
-            {/*   <Link */}
-            {/*     to="/dashboard/settings" */}
-            {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 flex gap-2 ${location.pathname === '/dashboard/settings' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
-            {/*       }`} */}
-            {/*   > */}
-            {/*     <span className='mt-1'> */}
-            {/*       <IoSettingsSharp /> */}
-            {/*     </span> */}
-            {/*     Settings */}
-            {/*   </Link> */}
-            {/* </li> */}
+            <li>
+              <Link
+                to="/dashboard/settings"
+                className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 flex gap-2 ${location.pathname === '/dashboard/settings' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                  }`}
+              >
+                <span className='mt-1'>
+                  <IoSettingsSharp />
+                </span>
+                Configuraciones
+              </Link>
+            </li>
           </ul>
         </nav>
+
         <div className='px-4 py-6 mb-5'>
           <button className='flex gap-2 text-red-400 hover:text-red-300 transition-colors duration-200 ease-in-out'
             onClick={handleLogout}
