@@ -313,9 +313,6 @@ function Sidebar() {
               )
             }
 
-
-
-
             {/* Settings link with active indicator */}
             <li>
               <Link
