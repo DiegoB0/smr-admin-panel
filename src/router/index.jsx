@@ -14,6 +14,7 @@ import ServicesPage from "../dashboard/pages/ServicesPage";
 import NotificationsPage from "../dashboard/pages/NotificationsPage";
 import ClientsPage from "../dashboard/pages/ClientsPage";
 import EmailsPage from "../dashboard/pages/EmailsPage";
+import RequisicionesPage from "../dashboard/pages/RequisicionesPage";
 
 function AppRoutes() {
   return (
@@ -43,6 +44,7 @@ function RouteLoader() {
         <Route path="projects" element={isAuthenticated ? <ProjectsPage /> : <Navigate to="/auth/login" />} />
         <Route path="services" element={isAuthenticated ? <ServicesPage /> : <Navigate to="/auth/login" />} />
         <Route path="settings" element={isAuthenticated ? <SettingsPage /> : <Navigate to="/auth/login" />} />
+        <Route path="requisiciones" element={isAuthenticated ? <RequisicionesPage /> : <Navigate to={"/auth/login"} />}></Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
