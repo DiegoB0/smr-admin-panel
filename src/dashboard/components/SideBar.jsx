@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaUserAlt } from "react-icons/fa";
+import { IoStorefront } from "react-icons/io5";
 import { TbWorld } from "react-icons/tb";
 import { HiUsers } from "react-icons/hi2";
 import { Link, useLocation } from 'react-router-dom';
@@ -17,10 +17,11 @@ import { Roles } from '../../guards/authEnums';
 
 function Sidebar() {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false); // Dropdown state
-  const [isOpenWeb, setIsOpenWeb] = useState(false); // Dropdown state
+  const [isOpen, setIsOpen] = useState(false)
+  const [isOpenWeb, setIsOpenWeb] = useState(false)
+  const [isOpenAlmacen, setIsOpenAlmacen] = useState(false)
   const location = useLocation(); // To detect the current page
-  const state = useSelector((state) => state);
+  const state = useSelector((state) => state)
   const dispatch = useDispatch();
 
   // Function to toggle dropdown
@@ -32,6 +33,10 @@ function Sidebar() {
   const toggleDropdownWeb = () => {
     setIsOpenWeb(!isOpenWeb);
   };
+
+  const toggleDropdownAlmacen = () => {
+    setIsOpenAlmacen(!isOpenAlmacen)
+  }
 
 
   const handleLogout = () => {
@@ -100,6 +105,154 @@ function Sidebar() {
               )
             }
 
+            {
+              hasRole(Roles.ADMIN, state) && (
+                <li>
+                  <button
+                    className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpenAlmacen ? 'border-l-2' : ''}`}
+                    onClick={toggleDropdownAlmacen}
+                  >
+                    <div className='flex gap-2'>
+                      <span className='mt-1'>
+                        <IoStorefront />
+                      </span>
+                      <div className='flex gap-2 justify-between w-3/4'>
+                        Administrar almacen
+                        <span className='mt-1'>
+                          <MdKeyboardArrowUp
+                            className={`transition-transform duration-300 ${isOpenAlmacen ? '-rotate-180' : 'rotate-0'}`}
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                  {isOpenAlmacen && (
+                    <ul className="pl-4">
+                      <li>
+                        <Link
+                          to="/dashboard/clients"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option1' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Requisiciones
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/dashboard/emails"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Entradas
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/dashboard/notifications"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Salidas
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/dashboard/notifications"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Productos
+                        </Link>
+                      </li>
+
+
+                      <li>
+                        <Link
+                          to="/dashboard/notifications"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Obras
+                        </Link>
+                      </li>
+
+
+                      <li>
+                        <Link
+                          to="/dashboard/notifications"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Historial
+                        </Link>
+                      </li>
+                    </ul>
+                  )}
+                </li>
+              )
+            }
+
+
+            {
+              hasRole(Roles.ADMIN, state) && (
+                <li>
+                  <button
+                    className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpen ? 'border-l-2' : ''}`}
+                    onClick={toggleDropdown}
+                  >
+                    <div className='flex gap-2'>
+                      <span className='mt-1'>
+                        <MdEmail />
+                      </span>
+
+                      <div className='flex gap-2 justify-between w-3/4'>
+                        Administrar emails
+                        <span className='mt-1'>
+                          <MdKeyboardArrowUp
+                            className={`transition-transform duration-300 ${isOpen ? '-rotate-180' : 'rotate-0'}`}
+                          />
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <ul className="pl-4">
+                      <li>
+                        <Link
+                          to="/dashboard/clients"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option1' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Clientes
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/dashboard/emails"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Correos
+                        </Link>
+                      </li>
+
+                      <li>
+                        <Link
+                          to="/dashboard/notifications"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
+                            }`}
+                        >
+                          Notificaciones
+                        </Link>
+                      </li>
+                    </ul>
+                  )}
+                </li>
+              )
+            }
+
 
             {
               hasRole([Roles.ADMIN, Roles.ADMIN_WEB], state) && (
@@ -112,12 +265,15 @@ function Sidebar() {
                       <span className='mt-1'>
                         <TbWorld />
                       </span>
-                      Administar web
-                      <span className='mt-1'>
-                        <MdKeyboardArrowUp
-                          className={`transition-transform duration-300 ${isOpenWeb ? '-rotate-180' : 'rotate-0'}`}
-                        />
-                      </span>
+
+                      <div className='flex gap-2 justify-between w-3/4'>
+                        Administrar web
+                        <span className='mt-1'>
+                          <MdKeyboardArrowUp
+                            className={`transition-transform duration-300 ${isOpenWeb ? '-rotate-180' : 'rotate-0'}`}
+                          />
+                        </span>
+                      </div>
                     </div>
                   </button>
                   {isOpenWeb && (
@@ -157,61 +313,6 @@ function Sidebar() {
               )
             }
 
-
-            {
-              hasRole(Roles.ADMIN, state) && (
-                <li>
-                  <button
-                    className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpen ? 'border-l-2' : ''}`}
-                    onClick={toggleDropdown}
-                  >
-                    <div className='flex gap-2'>
-                      <span className='mt-1'>
-                        <MdEmail />
-                      </span>
-                      Administrar emails
-                      <span className='mt-1'>
-                        <MdKeyboardArrowUp
-                          className={`transition-transform duration-300 ${isOpen ? '-rotate-180' : 'rotate-0'}`}
-                        />
-                      </span>
-                    </div>
-                  </button>
-                  {isOpen && (
-                    <ul className="pl-4">
-                      <li>
-                        <Link
-                          to="/dashboard/clients"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option1' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
-                            }`}
-                        >
-                          Clientes
-                        </Link>
-                      </li>
-                      <li>
-                        <Link
-                          to="/dashboard/emails"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
-                            }`}
-                        >
-                          Correos
-                        </Link>
-                      </li>
-
-                      <li>
-                        <Link
-                          to="/dashboard/notifications"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
-                            }`}
-                        >
-                          Notificaciones
-                        </Link>
-                      </li>
-                    </ul>
-                  )}
-                </li>
-              )
-            }
 
 
 
