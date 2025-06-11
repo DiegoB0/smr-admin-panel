@@ -15,10 +15,6 @@ import NotificationsPage from "../dashboard/pages/NotificationsPage";
 import ClientsPage from "../dashboard/pages/ClientsPage";
 import EmailsPage from "../dashboard/pages/EmailsPage";
 import RequisicionesPage from "../dashboard/pages/RequisicionesPage";
-<<<<<<< HEAD
-
-=======
->>>>>>> main
 
 function AppRoutes() {
   return (
