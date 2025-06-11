@@ -1,8 +1,9 @@
-// RequisicionesPage.jsx
-import React from 'react';
+import React from 'react'
 
 function RequisicionesPage() {
-  return <div>Página de Requisiciones</div>;
+  return (
+    <div>RequisicionesPage</div>
+  )
 }
 
-export default RequisicionesPage;
+export default RequisicionesPage
