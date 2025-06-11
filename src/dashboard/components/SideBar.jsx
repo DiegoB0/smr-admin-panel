@@ -209,10 +209,11 @@ function Sidebar() {
                       </li>
                     </ul>
                   )}
+
+                  
                 </li>
               )
-            }
-
+            }    
 
 
             {/* Settings link with active indicator */}
