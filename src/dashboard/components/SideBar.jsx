@@ -56,7 +56,6 @@ function Sidebar() {
           <ul>
             {/* Home link with active indicator */}
 
-
             <li>
               <Link
                 to="/dashboard"
@@ -130,7 +129,7 @@ function Sidebar() {
                     <ul className="pl-4">
                       <li>
                         <Link
-                          to="/dashboard/clients"
+                          to="/dashboard/requisiciones"
                           className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option1' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
                             }`}
                         >
