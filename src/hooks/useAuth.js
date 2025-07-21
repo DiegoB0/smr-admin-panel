@@ -1,9 +1,9 @@
-import api from '../api/api';
+import { api } from '../api/api';
 import { setCredentials, logout } from '../store/authSlice';
 
 export const login = async ({ email, password }, dispatch) => {
   try {
-    const response = await api.post('/api/login', { email, password });
+    const response = await api.post('/auth/login', { email, password });
     const { token, user } = response.data;
 
     // Dispatch to Redux
