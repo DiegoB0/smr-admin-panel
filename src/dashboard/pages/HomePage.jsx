@@ -5,11 +5,10 @@ import { Roles } from '../../guards/authEnums';
 import { useNavigate } from 'react-router-dom';
 
 function HomePage() {
-  // Access the user's data from Redux
-  const user = useSelector((state) => state.auth.user);
-  const isBlogger = hasRole(Roles.BLOGGER, useSelector((state) => state)); // Check if the user is a Blogger
-  const isAdmin = hasRole(Roles.ADMIN, useSelector((state) => state));
-  const isAdminWeb = hasRole(Roles.ADMIN_WEB, useSelector((state) => state))
+  const user = useSelector(state => state?.auth?.user)
+  const isAdmin = useSelector(s => hasRole(s, Roles.ADMIN));
+  const isBlogger = hasRole(s => hasRole(s, Roles.BLOGGER)); 
+  const isAdminWeb = hasRole(s => hasRole(s, Roles.ADMIN_WEB))
 
   const navigate = useNavigate();
 
@@ -17,7 +16,7 @@ function HomePage() {
     <div className="flex justify-center  bg-gray-100 mt-4">
       <div className="text-center p-6 bg-white shadow-lg rounded-lg max-w-lg w-full">
         <h1 className="text-4xl font-bold text-gray-800">
-          Bienvenido, {user ? user.name : "Guest"}!
+          Bienvenido, { user?.name ?? "Guest"}!
         </h1>
         <p className="mt-4 text-lg text-gray-600">
           {isBlogger
