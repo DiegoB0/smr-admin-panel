@@ -145,7 +145,7 @@ const RequisicionesPage = () => {
           </button>
         </div>
 
-        {/* Estadísticas */}
+        {/* Estadísticas de Requisiciones*/}
         <RequisicionStats requisiciones={requisiciones} />
       </div>
 
@@ -159,7 +159,7 @@ const RequisicionesPage = () => {
         onDelete={handleDeleteRequisicion}
       />
 
-      {/* Modal de formulario */}
+      {/* Modal de formulario para requisicion */}
       {showForm && (
         <RequisicionForm
           requisicion={editingRequisicion}
