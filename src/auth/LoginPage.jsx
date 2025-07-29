@@ -1,44 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../hooks/useAuth';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Swal from 'sweetalert2';
+import { login } from '../store/features/auth/authSlice';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [genericError, setGenericError] = useState(null);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { status, error } = useSelector(s => s.auth)
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError(null); // Clear previous errors
+    setGenericError(null);
 
     try {
-      const result = await login({ email, password }, dispatch);
+      const result = await dispatch(login({ email, password })).unwrap()
       console.log('Login response:', result);
 
-      if (result.success) {
-        Swal.fire({
-          title: '¡Éxito!',
-          text: 'Inicio de sesión exitoso',
-          icon: 'success',
-          confirmButtonColor: '#1F2937',
-          confirmButtonText: 'Continuar',
-        }).then(() => {
-          navigate('/dashboard/');
-        });
-      } else {
-        Swal.fire({
-          title: 'Error',
-          text: result.message || 'Fallo al iniciar sesión',
-          icon: 'error',
-          confirmButtonColor: '#1F2937',
-          confirmButtonText: 'Intentar de nuevo',
-        });
-        setError(result.message || 'Login failed');
-      }
+      Swal.fire({
+        title: '¡Éxito!',
+        text: 'Inicio de sesión exitoso',
+        icon: 'success',
+        confirmButtonColor: '#1F2937',
+        confirmButtonText: 'Continuar',
+      }).then(() => {
+        navigate('/dashboard/');
+      });
+
     } catch (err) {
       Swal.fire({
         title: 'Error',
@@ -49,7 +40,7 @@ function LoginPage() {
       });
 
       console.error('Login error:', err);
-      setError('An error occurred during login');
+      setGenericError('An error occurred during login');
     }
   };
 
@@ -58,8 +49,8 @@ function LoginPage() {
       <div className="w-full max-w-sm bg-white p-8 rounded-lg shadow-lg">
         <h2 className="text-2xl font-semibold text-center mb-6">Iniciar Sesion</h2>
 
-        {error && (
-          <p className="text-red-500 text-sm text-center mb-4">{error}</p>
+        {genericError && (
+          <p className="text-red-500 text-sm text-center mb-4">{genericError}</p>
         )}
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -89,11 +80,17 @@ function LoginPage() {
 
           <button
             type="submit"
+            disabled={status === 'loading'}
             className="w-full py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
           >
-            Ingresar
+            {status === 'loading' ? 'Ingresando...' : 'Ingresar'}
           </button>
         </form>
+
+        {status === 'failed' && (
+          <p className='mt-4 text-red-500 text-center'> {error} </p>
+
+        )}
       </div>
     </div>
   );

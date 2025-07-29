@@ -1,70 +1,43 @@
-import { Roles, Permissions } from './authEnums';
+import { Roles } from './authEnums';
 
-export const hasRole = (roles, state) => {
-  // If roles is a single string, convert it into an array for consistency
-  if (!Array.isArray(roles)) {
-    roles = [roles];
+export const isAuthenticated = state => Boolean(state.auth.isAuthenticated);
+
+export const hasRole = (state, wantedRole) => {
+  if (!state?.auth?.isAuthenticated) return false
+
+  const allowed = Array.isArray(wantedRole) ? wantedRole : [wantedRole];
+
+  const userRoles = state.auth.user?.roles ?? []
+  return allowed.some(r => userRoles.includes(r))
+};
+
+export const hasPermission = (state, perm) => {
+  if (!state?.auth?.isAuthenticated) return false;
+  const userPerms = state.auth.user?.permissions ?? [];
+  return userPerms.includes(perm)
+};
+
+
+export function canAccessResource(
+  state,
+  resourceType,         
+  action,              
+  resourceUserId = null 
+) {
+  if (!state?.auth?.isAuthenticated) return false
+
+  const userRoles = state.auth.user?.roles ?? []
+  if (userRoles.includes(Roles.ADMIN)) return true
+
+  const perm = `${action}-${resourceType}`       
+
+  const userPerms = state.auth.user?.permissions ?? []
+  const hasPerm  = userPerms.includes(perm)
+
+  if ((action === 'edit' || action === 'delete') && resourceUserId) {
+    return hasPerm && state.auth.user.id === resourceUserId
   }
 
-  return state.auth.isAuthenticated && roles.some(role => state.auth.user?.roles.includes(role));
-};
+  return hasPerm
+}
 
-export const hasPermission = (permission, state) => {
-  return state.auth.isAuthenticated && state.auth.user?.permissions.includes(permission);
-};
-
-export const isAuthenticated = (state) => {
-
-  return state.auth.isAuthenticated;
-
-};
-
-// General resource access (user or post) with ownership
-export const canAccessResource = (resourceType, action, resourceUserId, state) => {
-  if (!state.auth.isAuthenticated) return false;
-  const userId = state.auth.user?.id;
-
-  // Admin can do anything
-
-  if (hasRole(Roles.ADMIN, state)) return true;
-
-
-  // Map resource type and action to permission
-  const permissionMap = {
-    post: {
-      create: Permissions.CREATE_POST,
-      read: Permissions.READ_POST,
-      edit: Permissions.EDIT_POST,
-      delete: Permissions.DELETE_POST,
-    },
-    user: {
-      create: Permissions.CREATE_USER,
-      read: Permissions.READ_USER,
-      edit: Permissions.EDIT_USER,
-      delete: Permissions.DELETE_USER,
-    },
-  };
-
-
-  const permission = permissionMap[resourceType]?.[action];
-  if (!permission) return false;
-
-  // For create/read, just need permission (no ownership check)
-  if (action === 'create' || action === 'read') {
-
-    return hasPermission(permission, state);
-  }
-
-  // For edit/delete, need permission + ownership (unless admin)
-  return hasPermission(permission, state) && resourceUserId === userId;
-};
-
-// Specific helpers for convenience
-export const canAccessPost = (postUserId, action, state) => {
-  return canAccessResource('post', action, postUserId, state);
-};
-
-export const canAccessUser = (userId, action, state) => {
-
-  return canAccessResource('user', action, userId, state);
-};

@@ -4,7 +4,7 @@ import { TbWorld } from "react-icons/tb";
 import { HiUsers } from "react-icons/hi2";
 import { Link, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { logoutUser } from '../../hooks/useAuth';
+import { logout } from '../../store/features/auth/authSlice';
 import { FaPaperPlane } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
 import { IoSettingsSharp } from "react-icons/io5";
@@ -20,11 +20,9 @@ function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)
   const [isOpenWeb, setIsOpenWeb] = useState(false)
   const [isOpenAlmacen, setIsOpenAlmacen] = useState(false)
-  const location = useLocation(); // To detect the current page
-  const state = useSelector((state) => state)
+  const location = useLocation(); 
   const dispatch = useDispatch();
 
-  // Function to toggle dropdown
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
   };
@@ -40,11 +38,21 @@ function Sidebar() {
 
 
   const handleLogout = () => {
-    // Use the Redux logout function
-    logoutUser(dispatch);
-    // Redirect to login page
+    dispatch(logout)
     navigate('/auth/login');
   };
+
+  const canCreatePost = useSelector(s => canAccessResource(s, 'user', 'read'));
+
+  const canReadUsers = useSelector(s => canAccessResource(s, 'user', 'read'));
+
+  const isAdmin = useSelector(s => hasRole(s, Roles.ADMIN));
+
+  const isAdminWeb = useSelector(s => hasRole(s, Roles.ADMIN_WEB))
+
+  const isAdminAlmacen = useSelector(s => hasRole(s, Roles.ADMIN_ALMACEN))
+
+  
 
   return (
     <div className="w-[300px] bg-gray-900 text-white h-screen flex flex-col overflow-y-auto">
@@ -54,7 +62,6 @@ function Sidebar() {
       <div className='flex flex-col justify-around h-full'>
         <nav className="flex-1 px-4 py-6">
           <ul>
-            {/* Home link with active indicator */}
 
             <li>
               <Link
@@ -71,7 +78,7 @@ function Sidebar() {
 
 
             {
-              canAccessResource('post', 'create', null, state) && (
+              canCreatePost && (
                 <li>
                   <Link
                     to="/dashboard/blogs"
@@ -88,7 +95,7 @@ function Sidebar() {
             }
 
             {
-              canAccessResource('user', 'read', null, state) && (
+              canReadUsers && (
                 <li>
                   <Link
                     to="/dashboard/users"
@@ -105,7 +112,7 @@ function Sidebar() {
             }
 
             {
-              hasRole(Roles.ADMIN, state) && (
+              (isAdminAlmacen || isAdmin) && (
                 <li>
                   <button
                     className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpenAlmacen ? 'border-l-2' : ''}`}
@@ -115,7 +122,7 @@ function Sidebar() {
                       <span className='mt-1'>
                         <IoStorefront />
                       </span>
-                      <div className='flex gap-2 justify-between w-3/4'>
+                      <div className='flex gap-2 justify-between w-full'>
                         Administrar almacen
                         <span className='mt-1'>
                           <MdKeyboardArrowUp
@@ -125,6 +132,7 @@ function Sidebar() {
                       </div>
                     </div>
                   </button>
+
                   {isOpenAlmacen && (
                     <ul className="pl-4">
                       <li>
@@ -207,7 +215,7 @@ function Sidebar() {
 
 
             {
-              hasRole(Roles.ADMIN, state) && (
+              isAdmin && (
                 <li>
                   <button
                     className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpen ? 'border-l-2' : ''}`}
@@ -218,7 +226,7 @@ function Sidebar() {
                         <MdEmail />
                       </span>
 
-                      <div className='flex gap-2 justify-between w-3/4'>
+                      <div className='flex gap-2 justify-between w-full'>
                         Administrar emails
                         <span className='mt-1'>
                           <MdKeyboardArrowUp
@@ -266,7 +274,7 @@ function Sidebar() {
 
 
             {
-              hasRole([Roles.ADMIN, Roles.ADMIN_WEB], state) && (
+              (isAdminWeb || isAdmin) && (
                 <li>
                   <button
                     className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpenWeb ? 'border-l-2' : ''}`}
@@ -277,7 +285,7 @@ function Sidebar() {
                         <TbWorld />
                       </span>
 
-                      <div className='flex gap-2 justify-between w-3/4'>
+                      <div className='flex gap-2 justify-between w-full'>
                         Administrar web
                         <span className='mt-1'>
                           <MdKeyboardArrowUp
