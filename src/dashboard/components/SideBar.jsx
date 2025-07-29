@@ -142,6 +142,7 @@ function Sidebar() {
                           className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
                             }`}
                         >
+      
                           Entradas
                         </Link>
                       </li>
@@ -176,7 +177,18 @@ function Sidebar() {
                           Obras
                         </Link>
                       </li>
-
+                    {/*  AGREGAR ESTE NUEVO ENLACE AQUÍ */}
+                       <li>
+                        <Link
+                          to="/dashboard/almacenes"
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${
+                          location.pathname === '/dashboard/almacenes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                          }`}
+                          >
+                            Almacenes
+                          </Link>
+                        </li>
+                        {/* 👆 NUEVO ENLACE AGREGADO */}
 
                       <li>
                         <Link
