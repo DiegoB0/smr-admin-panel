@@ -33,7 +33,7 @@ function BlogPage() {
 
       {
 
-        hasRole([Roles.ADMIN, Roles.BLOGGER], state) && (
+        hasRole(state, [Roles.ADMIN, Roles.BLOGGER]) && (
           <>
             <div className='mb-2 flex justify-between w-full'>
 
