@@ -1,7 +1,9 @@
 export const Roles = Object.freeze({
   ADMIN: 'admin',
   BLOGGER: 'blogger',
-  ADMIN_WEB: 'admin-web'
+  ADMIN_WEB: 'admin-web',
+  ADMIN_ALMACEN: 'admin-almacen',
+  OPERADOR: 'operador'
 });
 
 export const Permissions = Object.freeze({
@@ -25,4 +27,13 @@ export const Permissions = Object.freeze({
   READ_SERVICE: 'read-service',
   EDIT_SERVICE: 'edit-service',
   DELETE_SERVICE: 'delete-service',
+  CREATE_REQUESICION: 'create-requesicion',
+  READ_REQUESICION: 'read-requesicion',
+  EDIT_REQUESICION: 'edit-requesicion',
+  DELETE_REQUESICION: 'delete-requesicion',
+  ACCEPT_REQUESICION: 'accept-requesicion',
+  CREATE_ALMACEN: 'create-almacen',
+  READ_ALMACEN: 'read-almacen',
+  EDIT_ALMACEN: 'edit-almacen',
+  DELETE_ALMACEN: 'delete-almacen',
 });
