@@ -1,14 +1,14 @@
 import React from 'react'
 import { useState } from 'react';
 import { FaCirclePlus } from "react-icons/fa6";
-import { useSelector } from 'react-redux';
-import { Roles } from '../../guards/authEnums';
-import { hasRole } from '../../guards/authGuards';
+import { useAuthFlags } from '../../hooks/useAuth';
 
 function BlogPage() {
   const [isBlogFormOpen, setIsBlogFormOpen] = useState(false)
-  const state = useSelector((state) => state);
   const [previewImage, setPreviewImage] = useState(null);
+
+
+  const { isAdmin, isAdminWeb } = useAuthFlags();
 
   // Open the modal
   const toggleBlogModal = () => setIsBlogFormOpen(!isBlogFormOpen);
@@ -30,10 +30,9 @@ function BlogPage() {
   return (
     <div className="p-8 space-y-12 overflow-y-auto">
 
-
       {
 
-        hasRole(state, [Roles.ADMIN, Roles.BLOGGER]) && (
+        (isAdminWeb || isAdmin) && (
           <>
             <div className='mb-2 flex justify-between w-full'>
 
@@ -81,8 +80,7 @@ function BlogPage() {
 
 
       {
-
-        hasRole([Roles.ADMIN, Roles.ADMIN_WEB], state) && (
+        (isAdminWeb || isAdmin) && (
           <>
             {/* Todos los Blogs */}
             <div className='mb-2 flex justify-between w-full'>

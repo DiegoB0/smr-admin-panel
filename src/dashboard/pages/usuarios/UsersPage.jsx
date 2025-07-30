@@ -1,15 +1,61 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useState } from 'react';
 import { FaCirclePlus } from "react-icons/fa6";
-import { useSelector } from 'react-redux';
+import { useAuthFlags } from '../../../hooks/useAuth';
+import { useUser } from '../../../hooks/useUser';
+import { useDebounce } from '../../../hooks/customHooks';
 
 function UsersPage() {
-  const [isBlogFormOpen, setIsBlogFormOpen] = useState(false)
-  const state = useSelector((state) => state);
+  const [isUserFormOpen, setIsUserFormOpen] = useState(false)
   const [previewImage, setPreviewImage] = useState(null);
+  const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags();
 
-  // Open the modal
-  const toggleBlogModal = () => setIsBlogFormOpen(!isBlogFormOpen);
+  const { listUsers } = useUser();
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+
+  const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false
+  });
+
+  const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearchTerm]);
+
+  useEffect(() => {
+    setLoading(true);
+    listUsers(
+      {
+        page,
+        limit: pagination.itemsPerPage,
+        search: debouncedSearchTerm,
+        order: 'ASC'
+      }
+    )
+      .then(res => {
+        console.log('Data from the users: ', res.data.data);
+        console.log('Pagination metadata: ', res.data.meta);
+        setUsers(res.data.data);
+        setPagination(res.data.meta);
+      })
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [page, debouncedSearchTerm]);
+
+  if (loading) return <p> loading...</p>;
+  if (error) return <p> Error: {error}</p>;
+
+  const toggleUsersModal = () => setIsUserFormOpen(!isUserFormOpen);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -34,28 +80,58 @@ function UsersPage() {
       <div className='mb-2 flex justify-between w-full'>
 
         <h2 className='text-xl font-bold mb-4 text-gray-900 uppercase'>Usuarios</h2>
-        <button
-          type="submit"
-          className='flex gap-2 py-2 px-3 bg-gray-900 text-white rounded-xl font-semibold'
-          onClick={toggleBlogModal}
-        >
-          Nuevo
-          <span className='mt-1'>
-            <FaCirclePlus />
-          </span>
-        </button>
+        {
+          canCreateUsers && (
+            <button
+              type="submit"
+              className='flex gap-2 py-2 px-3 bg-gray-900 text-white rounded-xl font-semibold'
+              onClick={toggleUsersModal}
+            >
+              Nuevo
+              <span className='mt-1'>
+                <FaCirclePlus />
+              </span>
+            </button>
+          )
+        }
       </div>
 
       <div className='border border-gray-300 p-2 rounded-xl'>
 
+
+        <div className="flex gap-4 items-center justify-end">
+
+          <select
+            value={page}
+            onChange={e => setPage(Number(e.target.value))}
+            className="px-2 py-1 border rounded"
+          >
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="text"
+            placeholder="Buscar usuarios…"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="px-3 py-1 border rounded"
+          />
+
+
+
+        </div>
+
         <h2 className="text-xl font-semibold mb-4 text-gray-900 border-l-3 border-red-700 px-2">Registros</h2>
         <div className="overflow-x-auto rounded-xl shadow">
-
 
           <table className="min-w-full bg-white text-sm">
             <thead className="bg-gray-100 text-left">
               <tr>
-                <th className="px-4 py-2 text-gray-600">Perfil</th>
+                <th className="px-4 py-2 text-gray-600">Foto Perfil</th>
                 <th className="px-4 py-2 text-gray-600">Nombre</th>
                 <th className="px-4 py-2 text-gray-600">Email</th>
                 <th className="px-4 py-2 text-gray-600">Roles</th>
@@ -66,17 +142,65 @@ function UsersPage() {
 
             </thead>
             <tbody>
-              {/* Insert rows here */}
+              {
+                users.map(u => (
+                  <tr key={u.id}>
+                    <td> Not yet </td>
+                    <td> {u.name} </td>
+                    <td> {u.email} </td>
+                    <td> {u.roles} </td>
+                    <td> {u.isActive ? 'Activo' : 'No activo'} </td>
+                    <td>
+                      {
+                        canEditUsers && (
+                          <button className='p-2' onClick={() => console.log('Edit')}> Editar </button>
+                        )
+                      }
+                      {
+                        canDeleteUsers && (
+                          <button onClick={() => console.log('Deleted!')}> Eliminar </button>
+                        )
+                      }
+                    </td>
+                  </tr>
+                ))
+              }
             </tbody>
 
           </table>
+
+          <div className='flex justify-center mt-4 p-4'>
+            <button
+              onClick={() => setPage(prev => prev - 1)}
+              disabled={!pagination.hasPreviousPage}
+              className="bg-gray-900 text-white font-medium text-xl rounded-md px-4 py-2 border rounded disabled:opacity-50"
+            >
+              Anterior
+            </button>
+
+            <span className='px-4 py-3'>
+              Pagina {pagination.currentPage} de {pagination.totalPages} (
+              {pagination.totalItems} elementos)
+            </span>
+
+            <button
+              onClick={() => setPage(prev => prev + 1)}
+              disabled={!pagination.hasNextPage}
+              className="bg-gray-900 text-white font-medium text-lg rounded-md px-4 py-2 border rounded disabled:opacity-50"
+            >
+              Siguiente
+            </button>
+
+
+          </div>
+
         </div>
       </div>
 
 
 
       {/* Modal */}
-      {isBlogFormOpen && (
+      {isUserFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-gray-900 text-white rounded-xl shadow-xl w-1/2 max-w-lg p-6 relative">
             <h3 className="text-xl font-semibold mb-4">Nuevo Usuario</h3>
@@ -201,7 +325,7 @@ function UsersPage() {
               <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={toggleBlogModal}
+                  onClick={toggleUsersModal}
                   className="text-red-500 border border-transparent hover:border-red-500 py-2 px-4 rounded-xl transition-colors duration-200"
                 >
                   Cerrar
@@ -221,7 +345,7 @@ function UsersPage() {
 
             {/* Optional Close (X) button */}
             <button
-              onClick={toggleBlogModal}
+              onClick={toggleUsersModal}
               className="absolute top-3 right-4 text-gray-400 hover:text-white text-xl"
             >
 

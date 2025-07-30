@@ -3,7 +3,7 @@ import { IoStorefront } from "react-icons/io5";
 import { TbWorld } from "react-icons/tb";
 import { HiUsers } from "react-icons/hi2";
 import { Link, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { logout } from '../../store/features/auth/authSlice';
 import { FaPaperPlane } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
@@ -12,16 +12,17 @@ import { MdEmail } from "react-icons/md";
 import { MdKeyboardArrowUp } from "react-icons/md";
 import { PiSignOutBold } from "react-icons/pi";
 import { useNavigate } from 'react-router-dom';
-import { hasRole, canAccessResource } from '../../guards/authGuards';
-import { Roles } from '../../guards/authEnums';
+import { useAuthFlags } from '../../hooks/useAuth';
 
 function Sidebar() {
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = useState(false)
-  const [isOpenWeb, setIsOpenWeb] = useState(false)
-  const [isOpenAlmacen, setIsOpenAlmacen] = useState(false)
-  const location = useLocation(); 
+  const [isOpen, setIsOpen] = useState(false);
+  const [isOpenWeb, setIsOpenWeb] = useState(false);
+  const [isOpenAlmacen, setIsOpenAlmacen] = useState(false);
+  const location = useLocation();
   const dispatch = useDispatch();
+
+  const { isAdmin, isAdminAlmacen, isAdminWeb, canReadUsers, canCreatePost } = useAuthFlags();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -38,21 +39,9 @@ function Sidebar() {
 
 
   const handleLogout = () => {
-    dispatch(logout)
+    dispatch(logout())
     navigate('/auth/login');
   };
-
-  const canCreatePost = useSelector(s => canAccessResource(s, 'user', 'read'));
-
-  const canReadUsers = useSelector(s => canAccessResource(s, 'user', 'read'));
-
-  const isAdmin = useSelector(s => hasRole(s, Roles.ADMIN));
-
-  const isAdminWeb = useSelector(s => hasRole(s, Roles.ADMIN_WEB))
-
-  const isAdminAlmacen = useSelector(s => hasRole(s, Roles.ADMIN_ALMACEN))
-
-  
 
   return (
     <div className="w-[300px] bg-gray-900 text-white h-screen flex flex-col overflow-y-auto">
@@ -150,7 +139,7 @@ function Sidebar() {
                           className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
                             }`}
                         >
-      
+
                           Entradas
                         </Link>
                       </li>
@@ -185,18 +174,17 @@ function Sidebar() {
                           Obras
                         </Link>
                       </li>
-                    {/*  AGREGAR ESTE NUEVO ENLACE AQUÍ */}
-                       <li>
+                      {/*  AGREGAR ESTE NUEVO ENLACE AQUÍ */}
+                      <li>
                         <Link
                           to="/dashboard/almacenes"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${
-                          location.pathname === '/dashboard/almacenes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                          }`}
-                          >
-                            Almacenes
-                          </Link>
-                        </li>
-                        {/* 👆 NUEVO ENLACE AGREGADO */}
+                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/almacenes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                            }`}
+                        >
+                          Almacenes
+                        </Link>
+                      </li>
+                      {/* 👆 NUEVO ENLACE AGREGADO */}
 
                       <li>
                         <Link

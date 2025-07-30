@@ -17,9 +17,35 @@ export const login = createAsyncThunk(
 );
 
 const token = localStorage.getItem('auth_token');
+
+let user = null;
+
+// Rehidrate the user in case there's token
+if (token) {
+
+  api.defaults.headers.common.Authorization = `Bearer ${token}`
+
+  let {
+    sub: id,
+    email,
+    name,
+    roles = [],
+    permissions = []
+  } = jwtDecode(token)
+
+  user = {
+    id,
+    email,
+    name,
+    roles: roles.map(r => r.toLowerCase()),
+    permissions: permissions.map(p => p.toLowerCase())
+  };
+
+}
+
 const initialState = {
   token: token || null,
-  user: null,
+  user: user,
   isAuthenticated: Boolean(token),
   status: 'idle',
   error: null
