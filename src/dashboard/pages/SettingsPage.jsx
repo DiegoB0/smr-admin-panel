@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 
-
 function SettingsPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -55,7 +54,6 @@ function SettingsPage() {
             </label>
             <input
               id="email"
-
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -81,13 +79,26 @@ function SettingsPage() {
               className="w-full mt-1 p-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
             />
           </div>
+
+          <div className="w-1/2">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+             Confirmar Contraseña
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Confirmar contraseña"
+              className="w-full mt-1 p-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
 
         {/* Profile Picture */}
         <div className="flex gap-4">
           <div className="w-1/2">
             <label htmlFor="profileImage" className="block text-sm font-medium text-gray-700">
-
               Imagen de Perfil
             </label>
             <input
@@ -103,7 +114,6 @@ function SettingsPage() {
               <div className="mt-4">
                 <img
                   src={previewImage}
-
                   alt="Profile Preview"
                   className="max-h-40 w-auto rounded-xl border border-gray-300"
                 />

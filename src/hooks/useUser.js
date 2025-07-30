@@ -2,6 +2,13 @@ import { api } from '../api/api';
 
 export function useUser() {
   /**
+   * Create a new user.
+   * @param {object} data
+   * @return {Promise<AxiosResponse>}
+   */
+  const createUser = (data) => api.post('usuarios/add', data);
+
+  /**
      * Fetch list of users.
      * @param {object} [params] – query params (e.g. { page: 1 })
      * @returns {Promise<AxiosResponse>}
@@ -17,19 +24,20 @@ export function useUser() {
     return api.get('usuarios/all_users', { params });
   };
 
+  /**
+     * Fetch list of roles.
+     * @returns {Promise<AxiosResponse>}
+     */
+  const listRoles = () => {
+    return api.get('usuarios/find_roles');
+  };
+
   /** 
    *  Fetch a single user by id.
    *  @param {string|number} id
    *  @return {Promise<AxiosResponse>}
    */
   const getOneUser = (id) => api.get(`usuarios/find_one/${id}`)
-
-  /**
-   * Create a new user.
-   * @param {object} data
-   * @return {Promise<AxiosResponse>}
-   */
-  const createUser = (data) => api.post('usuarios/add', data);
 
   /**
    * Delete a user.
@@ -47,6 +55,7 @@ export function useUser() {
   return {
     createUser,
     listUsers,
+    listRoles,
     getOneUser,
     deleteUser,
     updateUser,

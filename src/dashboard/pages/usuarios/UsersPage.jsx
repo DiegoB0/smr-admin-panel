@@ -1,20 +1,20 @@
 import React, { useEffect } from 'react'
 import { useState } from 'react';
 import { FaCirclePlus } from "react-icons/fa6";
+import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
 import { useAuthFlags } from '../../../hooks/useAuth';
 import { useUser } from '../../../hooks/useUser';
 import { useDebounce } from '../../../hooks/customHooks';
+import Swal from 'sweetalert2';
 
 function UsersPage() {
   const [isUserFormOpen, setIsUserFormOpen] = useState(false)
   const [previewImage, setPreviewImage] = useState(null);
   const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags();
 
-  const { listUsers } = useUser();
+  const { listUsers, createUser, listRoles } = useUser();
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
 
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
@@ -25,35 +25,76 @@ function UsersPage() {
   });
 
   const [page, setPage] = useState(1);
+  const [limitOption, setLimitOption] = useState('5');
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+  const limit = limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10)
+
+  // Input search
+
+  // Fields for the form
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
+  // Roles
+  const [roleOptions, setRoleOptions] = useState([]);
+  const [selectedRole, setSelectedRol] = useState('');
+
+  // Fetch roles
+  useEffect(() => {
+    setLoading(true);
+    listRoles()
+      .then(res => {
+        setRoleOptions(res.data);
+      })
+      .catch(err => {
+        console.log(err)
+        Swal.fire({
+          title: 'Error',
+          text: err.message || 'Fallo al traer roles',
+          icon: 'error',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Ok',
+        });
+      })
+      .finally(() => setLoading(false));
+
+  }, []);
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearchTerm]);
 
+  // Fetch users
   useEffect(() => {
     setLoading(true);
     listUsers(
       {
         page,
-        limit: pagination.itemsPerPage,
+        limit,
         search: debouncedSearchTerm,
         order: 'ASC'
       }
     )
       .then(res => {
-        console.log('Data from the users: ', res.data.data);
-        console.log('Pagination metadata: ', res.data.meta);
-        setUsers(res.data.data);
-        setPagination(res.data.meta);
+        setUsers(res.data.data)
+        setPagination(res.data.meta)
       })
-      .catch(err => setError(err.message))
+      .catch(err => {
+        console.log(err)
+        Swal.fire({
+          title: 'Error',
+          text: err.message || 'Fallo al traer usuarios',
+          icon: 'error',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Ok',
+        });
+      })
       .finally(() => setLoading(false));
-  }, [page, debouncedSearchTerm]);
-
-  if (loading) return <p> loading...</p>;
-  if (error) return <p> Error: {error}</p>;
+  }, [page, limit, debouncedSearchTerm]);
 
   const toggleUsersModal = () => setIsUserFormOpen(!isUserFormOpen);
 
@@ -71,11 +112,78 @@ function UsersPage() {
     }
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      Swal.fire({
+        title: 'Error',
+        text: 'Las contrasenas no coinciden',
+        icon: 'error',
+        confirmButtonColor: '#1F2937',
+        confirmButtonText: 'Ok',
+      });
+      return
+    }
+
+    const payload = {
+      name,
+      email,
+      password,
+      image: '',
+      roles: selectedRole ? [selectedRole] : [],
+    };
+
+    try {
+      const { data: newUser } = await createUser(payload);
+      console.log('User created: ', newUser);
+
+      Swal.fire({
+        title: '¡Nuevo Usuario!',
+        text: 'Se ha registrado un nuevo usuario',
+        icon: 'success',
+        confirmButtonColor: '#1F2937',
+        confirmButtonText: 'Ok',
+      }).then(() => {
+        setUsers(prevUsers => [newUser, ...prevUsers]);
+        clearForm();
+      });
+
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        title: 'Error',
+        text: err.message || 'Fallo al registrar usuario',
+        icon: 'error',
+        confirmButtonColor: '#1F2937',
+        confirmButtonText: 'Ok',
+      });
+    }
+
+    setIsUserFormOpen(!isUserFormOpen);
+
+  };
+
+  const handleCloseModal = () => {
+    setIsUserFormOpen(!isUserFormOpen);
+    clearForm();
+  }
+
+  const handleSearchChange = e => {
+    setSearchTerm(e.target.value)
+    setLoading(true)
+  }
+
+  const clearForm = () => {
+    setName('')
+    setPassword('')
+    setConfirmPassword('')
+    setEmail('')
+    setSelectedRol('')
+  };
+
   return (
     <div className="p-8 space-y-12 overflow-y-auto">
-
-
-      {/* Mis Blogs */}
 
       <div className='mb-2 flex justify-between w-full'>
 
@@ -102,68 +210,92 @@ function UsersPage() {
         <div className="flex gap-4 items-center justify-end">
 
           <select
-            value={page}
-            onChange={e => setPage(Number(e.target.value))}
+            value={limitOption}
+            onChange={e => setLimitOption(e.target.value)}
             className="px-2 py-1 border rounded"
           >
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(p => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
+            <option value="5"> 5 </option>
+            <option value="10"> 10 </option>
+            <option value="20"> 20 </option>
+            <option value="all"> TODOS </option>
           </select>
 
           <input
             type="text"
             placeholder="Buscar usuarios…"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
             className="px-3 py-1 border rounded"
           />
-
-
-
         </div>
 
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 border-l-3 border-red-700 px-2">Registros</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-800 border-l-3 border-red-700 px-2">
+          <span className='text-lg'> ({pagination.totalItems}) </span> REGISTROS
+        </h2>
         <div className="overflow-x-auto rounded-xl shadow">
-
           <table className="min-w-full bg-white text-sm">
-            <thead className="bg-gray-100 text-left">
+            <thead className="bg-gray-100 text-center text-base uppercase font-semibold">
               <tr>
                 <th className="px-4 py-2 text-gray-600">Foto Perfil</th>
                 <th className="px-4 py-2 text-gray-600">Nombre</th>
                 <th className="px-4 py-2 text-gray-600">Email</th>
                 <th className="px-4 py-2 text-gray-600">Roles</th>
                 <th className="px-4 py-2 text-gray-600">Status</th>
-                <th className="px-4 py-2 text-gray-600">Acciones</th>
+                <th className="px-4 py-2 text-gray-600 text-right">Acciones</th>
 
               </tr>
 
             </thead>
             <tbody>
-              {
-                users.map(u => (
-                  <tr key={u.id}>
-                    <td> Not yet </td>
-                    <td> {u.name} </td>
-                    <td> {u.email} </td>
-                    <td> {u.roles} </td>
-                    <td> {u.isActive ? 'Activo' : 'No activo'} </td>
-                    <td>
-                      {
-                        canEditUsers && (
-                          <button className='p-2' onClick={() => console.log('Edit')}> Editar </button>
-                        )
-                      }
-                      {
-                        canDeleteUsers && (
-                          <button onClick={() => console.log('Deleted!')}> Eliminar </button>
-                        )
-                      }
-                    </td>
+              {loading
+                ?
+                (
+                  <tr className='animate-pulse'>
+                    <td className='p-2  h-4 bg-gray-200 text-gray-600'>Cargando... </td>
+                    <td className='p-2  h-4 bg-gray-200 text-gray-600'>Cargando... </td>
+                    <td className='p-2  h-4 bg-gray-200 text-gray-600'>Cargando... </td>
+                    <td className='p-2  h-4 bg-gray-200 text-gray-600'>Cargando... </td>
+                    <td className='p-2  h-4 bg-gray-200 text-gray-600'>Cargando... </td>
+                    <td className='p-2  h-4 bg-gray-200 text-gray-600'>Cargando... </td>
+
                   </tr>
-                ))
+                )
+                :
+                users.length > 0 ? (
+                  users.map(u => (
+                    <tr key={u.id} className=' text-center'>
+                      <td className=' text-lg'> Not yet </td>
+                      <td className='mt-2 text-lg'> {u.name} </td>
+                      <td className='mt-2 text-lg'> {u.email} </td>
+                      <td className='mt-2 text-lg'> {u.roles} </td>
+                      <td className='mt-2 text-lg'> 
+                        {u.isActive ? 'Activo' : 'No activo'}
+                      </td>
+                      <td className='flex mt-2 gap-2 justify-end'>
+                        {
+                          canDeleteUsers && (
+                            <button className='rounded-md px-2 py-1 text-lg font-medium text-red-700 border-2 border-red-700 hover:bg-red-700 hover:text-white transition-colors duration-200 hover:border-transparent' onClick={() => console.log('Deleted!')}> Eliminar </button>
+                          )
+                        }
+                        {
+                          canEditUsers && (
+                            <button className='text-white rounded-md font-medium px-6 py-1 bg-blue-700 text-lg hover:bg-blue-600 transition-colors duration-200' onClick={() => console.log('Edit')}> Editar </button>
+                          )
+                        }
+                      </td>
+                    </tr>
+                  ))
+                ) :
+                  (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="p-4 text-lg font-medium text-center text-gray-500 italic"
+                      >
+                        No se encontraron resultados.
+                      </td>
+                    </tr>
+                  )
               }
             </tbody>
 
@@ -179,8 +311,7 @@ function UsersPage() {
             </button>
 
             <span className='px-4 py-3'>
-              Pagina {pagination.currentPage} de {pagination.totalPages} (
-              {pagination.totalItems} elementos)
+              Pagina {pagination.currentPage} de {pagination.totalPages}
             </span>
 
             <button
@@ -201,11 +332,15 @@ function UsersPage() {
 
       {/* Modal */}
       {isUserFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-gray-900 text-white rounded-xl shadow-xl w-1/2 max-w-lg p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={handleCloseModal}
+        >
+          <div className="bg-gray-900 text-white rounded-xl shadow-xl w-1/2 max-w-lg p-6 relative"
+            onClick={e => e.stopPropagation()}
+          >
             <h3 className="text-xl font-semibold mb-4">Nuevo Usuario</h3>
 
-            <form>
+            <form onSubmit={handleSubmit}>
               <div className="mb-4 flex gap-4">
                 {/* Nombre */}
                 <div className="w-1/2">
@@ -215,24 +350,28 @@ function UsersPage() {
                   <input
                     id="nombre"
                     type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
                     placeholder="Escribe el nombre"
                     className="w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none"
+                    required
                   />
                 </div>
 
                 {/* Email */}
-
                 <div className="w-1/2">
                   <label htmlFor="email" className="block text-sm font-medium text-white">
-
                     Email
                   </label>
 
                   <input
                     id="email"
                     type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
                     placeholder="Escribe el email"
                     className="w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none"
+                    required
                   />
                 </div>
               </div>
@@ -246,52 +385,52 @@ function UsersPage() {
                   <input
                     id="password"
                     type="password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
                     placeholder="Escribe la contraseña"
                     className="w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none"
+                    required
                   />
                 </div>
 
                 {/* Confirmar Contraseña */}
                 <div className="w-1/2">
-
                   <label htmlFor="confirm-password" className="block text-sm font-medium text-white">
-
                     Confirmar Contraseña
                   </label>
                   <input
-
                     id="confirm-password"
                     type="password"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="Confirmar contraseña"
                     className="w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none"
+                    required
                   />
                 </div>
               </div>
 
-
+              {/* Select Input */}
               <div className="mb-4 flex gap-4">
-                {/* Select Input */}
                 <div className="w-full">
                   <label htmlFor="categoria" className="block text-sm font-medium text-white">
                     Roles
                   </label>
                   <select
-                    id="categoria"
+                    id="roles"
+                    value={selectedRole}
+                    onChange={e => setSelectedRol(e.target.value)}
                     className="w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none appearance-none"
-
                   >
-                    <option value="" disabled selected className="bg-gray-900 text-white hover:bg-gray-700">
-                      Selecciona un rol
-                    </option>
-                    <option value="categoria1" className="bg-gray-900 text-white">
-                      Categoría 1
-                    </option>
-                    <option value="categoria2" className="bg-gray-900 text-white">
-                      Categoría 2
-                    </option>
-                    <option value="categoria3" className="bg-gray-900 text-white">
-                      Categoría 3
-                    </option>
+                    {roleOptions.map(role => (
+                      <option
+                        key={role.id}
+                        value={role.id}
+                        className='bg-gray-900 text-white'
+                      >
+                        {role.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -325,11 +464,10 @@ function UsersPage() {
               <div className="flex justify-end gap-2 mt-2">
                 <button
                   type="button"
-                  onClick={toggleUsersModal}
+                  onClick={handleCloseModal}
                   className="text-red-500 border border-transparent hover:border-red-500 py-2 px-4 rounded-xl transition-colors duration-200"
                 >
                   Cerrar
-
                 </button>
 
                 <button
@@ -337,7 +475,6 @@ function UsersPage() {
                   className="bg-gray-800 py-2 px-4 rounded-xl hover:bg-gray-700 transition-colors duration-200"
                 >
                   Enviar
-
                 </button>
               </div>
             </form>
@@ -345,23 +482,16 @@ function UsersPage() {
 
             {/* Optional Close (X) button */}
             <button
-              onClick={toggleUsersModal}
+              onClick={handleCloseModal}
               className="absolute top-3 right-4 text-gray-400 hover:text-white text-xl"
             >
-
               &times;
             </button>
           </div>
         </div>
       )}
-
-
-
-
-
     </div >
   );
 }
 
 export default UsersPage;
-
