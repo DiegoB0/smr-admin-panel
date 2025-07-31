@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react'
 import { useState } from 'react';
-import { FaCirclePlus } from "react-icons/fa6";
-import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa'
+import { FaCediSign, FaCirclePlus } from "react-icons/fa6";
 import { useAuthFlags } from '../../../hooks/useAuth';
 import { useUser } from '../../../hooks/useUser';
 import { useDebounce } from '../../../hooks/customHooks';
@@ -12,7 +11,7 @@ function UsersPage() {
   const [previewImage, setPreviewImage] = useState(null);
   const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags();
 
-  const { listUsers, createUser, listRoles } = useUser();
+  const { listUsers, createUser, listRoles, deleteUser } = useUser();
 
   const [loading, setLoading] = useState(false);
 
@@ -137,7 +136,6 @@ function UsersPage() {
     try {
       const { data: newUser } = await createUser(payload);
       console.log('User created: ', newUser);
-
       Swal.fire({
         title: '¡Nuevo Usuario!',
         text: 'Se ha registrado un nuevo usuario',
@@ -164,15 +162,59 @@ function UsersPage() {
 
   };
 
+  const handleDeleteUser = async (id) => {
+
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¡No podrás revertir esta acción!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!result.isConfirmed) return
+
+    deleteUser(id)
+      .then(() => {
+        Swal.fire({
+          title: '¡Usuario Eliminado Correctamente!',
+          text: 'Se ha registrado un nuevo usuario',
+          icon: 'success',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Ok',
+        }).then(() => {
+            // Get rid of the user in the UI
+            setUsers((current) => current.filter((user) => user.id !== id));
+        });
+
+      })
+      .catch(() => {
+        Swal.fire({
+          title: 'Error',
+          text: err.message || 'Fallo al eliminar usuario',
+          icon: 'error',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Ok',
+        });
+      })
+  };
+
+  const handleEditUser = () => {
+
+  };
+
   const handleCloseModal = () => {
     setIsUserFormOpen(!isUserFormOpen);
     clearForm();
-  }
+  };
 
   const handleSearchChange = e => {
     setSearchTerm(e.target.value)
     setLoading(true)
-  }
+  };
 
   const clearForm = () => {
     setName('')
@@ -225,7 +267,7 @@ function UsersPage() {
             placeholder="Buscar usuarios…"
             value={searchTerm}
             onChange={handleSearchChange}
-            className="px-3 py-1 border rounded"
+            className="px-3 py-1 text-lg border text-gray-800 rounded-md bg-gray-200 border-transparent"
           />
         </div>
 
@@ -234,7 +276,7 @@ function UsersPage() {
         </h2>
         <div className="overflow-x-auto rounded-xl shadow">
           <table className="min-w-full bg-white text-sm">
-            <thead className="bg-gray-100 text-center text-base uppercase font-semibold">
+            <thead className="bg-gray-200 text-center text-base uppercase font-semibold">
               <tr>
                 <th className="px-4 py-2 text-gray-600">Foto Perfil</th>
                 <th className="px-4 py-2 text-gray-600">Nombre</th>
@@ -268,18 +310,18 @@ function UsersPage() {
                       <td className='mt-2 text-lg'> {u.name} </td>
                       <td className='mt-2 text-lg'> {u.email} </td>
                       <td className='mt-2 text-lg'> {u.roles} </td>
-                      <td className='mt-2 text-lg'> 
+                      <td className='mt-2 text-lg'>
                         {u.isActive ? 'Activo' : 'No activo'}
                       </td>
                       <td className='flex mt-2 gap-2 justify-end'>
                         {
                           canDeleteUsers && (
-                            <button className='rounded-md px-2 py-1 text-lg font-medium text-red-700 border-2 border-red-700 hover:bg-red-700 hover:text-white transition-colors duration-200 hover:border-transparent' onClick={() => console.log('Deleted!')}> Eliminar </button>
+                            <button className='rounded-md px-2 py-1 text-lg font-medium text-red-700 border-2 border-red-700 hover:bg-red-700 hover:text-white transition-colors duration-200 hover:border-transparent' onClick={() => handleDeleteUser(u.id)}> Eliminar </button>
                           )
                         }
                         {
                           canEditUsers && (
-                            <button className='text-white rounded-md font-medium px-6 py-1 bg-blue-700 text-lg hover:bg-blue-600 transition-colors duration-200' onClick={() => console.log('Edit')}> Editar </button>
+                            <button className='text-white rounded-md font-medium px-6 py-1 bg-blue-700 text-lg hover:bg-blue-600 transition-colors duration-200' onClick={() => console.log(`Select edit ${u.id}`)}> Editar </button>
                           )
                         }
                       </td>
