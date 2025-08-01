@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import { useState } from 'react';
-import { FaCediSign, FaCirclePlus } from "react-icons/fa6";
+import { FaCirclePlus } from "react-icons/fa6";
 import { useAuthFlags } from '../../../hooks/useAuth';
 import { useUser } from '../../../hooks/useUser';
 import { useDebounce } from '../../../hooks/customHooks';
@@ -11,7 +11,10 @@ function UsersPage() {
   const [previewImage, setPreviewImage] = useState(null);
   const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags();
 
-  const { listUsers, createUser, listRoles, deleteUser } = useUser();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editUserId, setEditUserId] = useState(null);
+
+  const { listUsers, createUser, listRoles, deleteUser, updateUser } = useUser();
 
   const [loading, setLoading] = useState(false);
 
@@ -30,7 +33,8 @@ function UsersPage() {
 
   const limit = limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10)
 
-  // Input search
+  // Persist the roles after update
+  const [originalRoles, setOriginalRoles] = useState([]);
 
   // Fields for the form
   const [name, setName] = useState('')
@@ -125,27 +129,55 @@ function UsersPage() {
       return
     }
 
-    const payload = {
+    const rolesToSend = isEditing
+      ? originalRoles
+      : selectedRole
+        ? [selectedRole]
+        : [];
+
+    const basePayload = {
       name,
       email,
       password,
-      image: '',
-      roles: selectedRole ? [selectedRole] : [],
+      image: ''
     };
 
+    const payload = isEditing
+      ? basePayload
+      : { ...basePayload, roles: selectedRole ? [selectedRole] : [] };
+
     try {
-      const { data: newUser } = await createUser(payload);
-      console.log('User created: ', newUser);
-      Swal.fire({
-        title: '¡Nuevo Usuario!',
-        text: 'Se ha registrado un nuevo usuario',
-        icon: 'success',
-        confirmButtonColor: '#1F2937',
-        confirmButtonText: 'Ok',
-      }).then(() => {
-        setUsers(prevUsers => [newUser, ...prevUsers]);
-        clearForm();
-      });
+      if (isEditing) {
+        const { data: updatedUser } = await updateUser(editUserId, payload);
+        Swal.fire({
+          title: "Usuario actualizado",
+          icon: "success",
+          confirmButtonColor: "#1F2937",
+        })
+          .then(() => {
+            setUsers((users) =>
+              users.map((u) =>
+                u.id === updatedUser.id
+                  ? { ...updatedUser, roles: updatedUser.roles ?? rolesToSend }
+                  : u
+              )
+            );
+            clearForm();
+          });
+      } else {
+        const { data: newUser } = await createUser(payload);
+        console.log('User created: ', newUser);
+        Swal.fire({
+          title: '¡Nuevo Usuario!',
+          text: 'Se ha registrado un nuevo usuario',
+          icon: 'success',
+          confirmButtonColor: '#1F2937',
+          confirmButtonText: 'Ok',
+        }).then(() => {
+          setUsers(prevUsers => [newUser, ...prevUsers]);
+          clearForm();
+        });
+      }
 
     } catch (err) {
       console.error(err);
@@ -186,8 +218,8 @@ function UsersPage() {
           confirmButtonColor: '#1F2937',
           confirmButtonText: 'Ok',
         }).then(() => {
-            // Get rid of the user in the UI
-            setUsers((current) => current.filter((user) => user.id !== id));
+          // Get rid of the user in the UI
+          setUsers((current) => current.filter((user) => user.id !== id));
         });
 
       })
@@ -202,11 +234,27 @@ function UsersPage() {
       })
   };
 
-  const handleEditUser = () => {
+  const handleEditUser = (user) => {
+    setIsEditing(true);
 
+    setOriginalRoles(user.roles || []);
+
+    // Find the role that belongs to the user to edit
+    const role = user.roles?.[0] ?? "";
+    const match = roleOptions.find(r => r.name === role);
+
+    setEditUserId(user.id);
+    setName(user.name);
+    setEmail(user.email);
+    setSelectedRol(match?.id ?? "");
+    setPassword("");
+    setConfirmPassword("");
+    setPreviewImage("");
+    setIsUserFormOpen(true);
   };
 
   const handleCloseModal = () => {
+    setIsEditing(false);
     setIsUserFormOpen(!isUserFormOpen);
     clearForm();
   };
@@ -321,7 +369,7 @@ function UsersPage() {
                         }
                         {
                           canEditUsers && (
-                            <button className='text-white rounded-md font-medium px-6 py-1 bg-blue-700 text-lg hover:bg-blue-600 transition-colors duration-200' onClick={() => console.log(`Select edit ${u.id}`)}> Editar </button>
+                            <button className='text-white rounded-md font-medium px-6 py-1 bg-blue-700 text-lg hover:bg-blue-600 transition-colors duration-200' onClick={() => handleEditUser(u)}> Editar </button>
                           )
                         }
                       </td>
@@ -380,7 +428,11 @@ function UsersPage() {
           <div className="bg-gray-900 text-white rounded-xl shadow-xl w-1/2 max-w-lg p-6 relative"
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="text-xl font-semibold mb-4">Nuevo Usuario</h3>
+            <h3 className="text-xl font-semibold mb-4">
+              {
+                isEditing ? 'Edtiar Usuario' : 'Nuevo Usuario'
+              }
+            </h3>
 
             <form onSubmit={handleSubmit}>
               <div className="mb-4 flex gap-4">
@@ -462,7 +514,8 @@ function UsersPage() {
                     id="roles"
                     value={selectedRole}
                     onChange={e => setSelectedRol(e.target.value)}
-                    className="w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none appearance-none"
+                    disabled={isEditing}
+                    className={` w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none appearance-none ${isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {roleOptions.map(role => (
                       <option

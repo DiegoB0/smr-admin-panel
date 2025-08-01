@@ -50,7 +50,7 @@ export function useUser() {
    * @param {string|number} id
    * @return {Promise<AxiosReponse>}
    */
-  const updateUser = (id, data) => api.put(`usuarios/update_user/${id}`, data);
+  const updateUser = (id, data) => api.patch(`usuarios/update_user/${id}`, data);
 
   return {
     createUser,
