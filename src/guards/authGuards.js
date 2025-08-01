@@ -11,6 +11,7 @@ export const hasRole = (state, wantedRole) => {
   return allowed.some(r => userRoles.includes(r))
 };
 
+// Just for special permissions like accept requisicion, etc
 export const hasPermission = (state, perm) => {
   if (!state?.auth?.isAuthenticated) return false;
   const userPerms = state.auth.user?.permissions ?? [];

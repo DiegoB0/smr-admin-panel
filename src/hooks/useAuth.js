@@ -1,22 +1,43 @@
-// import { api } from '../api/api';
-// import { setCredentials, logout } from '../store/features/auth/authSlice';
-//
-// export const login = async ({ email, password }, dispatch) => {
-//   try {
-//     const response = await api.post('/auth/login', { email, password });
-//     const { token, user } = response.data;
-//
-//     // Dispatch to Redux
-//     dispatch(setCredentials({ token, user }));
-//
-//     return { success: true, data: response.data };
-//
-//   } catch (error) {
-//     return { success: false, message: error.response?.data?.message || 'Unknown error' };
-//   }
-// };
-//
-// export const logoutUser = (dispatch) => {
-//
-//   dispatch(logout());
-// };
+import { useSelector } from 'react-redux';
+import { Roles } from '../guards/authEnums';
+import { hasRole, canAccessResource } from '../guards/authGuards';
+
+export function useAuthFlags() {
+  // Posts
+  const canCreatePost = useSelector(s => canAccessResource(s, 'post', 'create'))
+  const canReadPosts = useSelector(s => canAccessResource(s, 'post', 'read'));
+  const canDeletePost = useSelector(s => canAccessResource(s, 'post', 'delete'))
+  // const canDeleteOwnPost = userSelector(s => canAccessResource(s, 'user', 'delete'))
+  const canEditPost = useSelector(s => canAccessResource(s, 'post', 'read'));
+
+  // Users
+  const canCreateUsers = useSelector(s => canAccessResource(s, 'user', 'create'))
+  const canReadUsers = useSelector(s => canAccessResource(s, 'user', 'read'));
+  const canDeleteUsers = useSelector(s => canAccessResource(s, 'user', 'delete'))
+  const canEditUsers = useSelector(s => canAccessResource(s, 'user', 'edit'))
+
+  // Almacenes
+
+  // Check roles
+  const isBlogger = useSelector(s => hasRole(s, Roles.BLOGGER));
+  const isOperador = useSelector(s => hasRole(s, Roles.OPERADOR));
+  const isAdmin = useSelector(s => hasRole(s, Roles.ADMIN));
+  const isAdminWeb = useSelector(s => hasRole(s, Roles.ADMIN_WEB))
+  const isAdminAlmacen = useSelector(s => hasRole(s, Roles.ADMIN_ALMACEN))
+
+  return {
+    canCreatePost,
+    canReadPosts,
+    canDeletePost,
+    canEditPost,
+    canCreateUsers,
+    canReadUsers,
+    canDeleteUsers,
+    canEditUsers,
+    isAdmin,
+    isAdminWeb,
+    isAdminAlmacen,
+    isBlogger,
+    isOperador
+  }
+}

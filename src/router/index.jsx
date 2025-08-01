@@ -6,7 +6,7 @@ import HomePage from "../dashboard/pages/HomePage";
 import SettingsPage from "../dashboard/pages/SettingsPage";
 import DashboardLayout from "../dashboard/layouts/DashboardLayout";
 import { NotFoundPage } from "../components/NotFoundPage";
-import UsersPage from "../dashboard/pages/UsersPage";
+import UsersPage from "../dashboard/pages/usuarios/UsersPage";
 import BlogPage from "../dashboard/pages/BlogPage";
 import TestimonialsPage from "../dashboard/pages/TestimonialsPage";
 import ProjectsPage from "../dashboard/pages/ProjectsPage";
