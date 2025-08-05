@@ -46,6 +46,7 @@ function UsersPage() {
   const [roleOptions, setRoleOptions] = useState([]);
   const [selectedRole, setSelectedRol] = useState('');
 
+
   // Fetch roles
   useEffect(() => {
     setLoading(true);
@@ -135,6 +136,13 @@ function UsersPage() {
         ? [selectedRole]
         : [];
 
+    // Get the role name for the insert
+    const roleName = rolesToSend.map(rid => {
+      const found = roleOptions.find(r => r.id === rid);
+      return found ? found.name : rid;
+    })
+
+
     const basePayload = {
       name,
       email,
@@ -142,45 +150,75 @@ function UsersPage() {
       image: ''
     };
 
-    const payload = isEditing
-      ? basePayload
-      : { ...basePayload, roles: selectedRole ? [selectedRole] : [] };
+    const payload = {
+      ...basePayload,
+      ...(!isEditing && {
+        roles: rolesToSend
+      })
+    };
 
     try {
       if (isEditing) {
-        const { data: updatedUser } = await updateUser(editUserId, payload);
-        Swal.fire({
-          title: "Usuario actualizado",
-          icon: "success",
-          confirmButtonColor: "#1F2937",
-        })
-          .then(() => {
-            setUsers((users) =>
-              users.map((u) =>
-                u.id === updatedUser.id
-                  ? { ...updatedUser, roles: updatedUser.roles ?? rolesToSend }
-                  : u
-              )
-            );
+        try {
+          const { data: updatedUser } = await updateUser(editUserId, payload);
+          Swal.fire({
+            title: "Usuario actualizado",
+            icon: "success",
+            confirmButtonColor: "#1F2937",
+          })
+            .then(() => {
+              setUsers((users) =>
+                users.map((u) =>
+                  u.id === updatedUser.id
+                    ? { ...updatedUser, roles: updatedUser.roles ?? rolesToSend }
+                    : u
+                )
+              );
+              clearForm();
+            });
+        } catch (err) {
+          console.log(err?.response?.data);
+          Swal.fire({
+            title: 'Error',
+            text: err?.response?.data?.message || 'Fallo al registrar usuario',
+            icon: 'error',
+            confirmButtonColor: '#1F2937',
+            confirmButtonText: 'Ok',
+          });
+        }
+      } else {
+        try {
+          console.log(payload)
+          const { data: newUser } = await createUser(payload);
+          Swal.fire({
+            title: '¡Nuevo Usuario!',
+            text: 'Se ha registrado un nuevo usuario',
+            icon: 'success',
+            confirmButtonColor: '#1F2937',
+            confirmButtonText: 'Ok',
+          }).then(() => {
+            setUsers(prevUsers => [
+              {
+                ...newUser,
+                roles: roleName
+              },
+              ...prevUsers
+            ]);
+
             clearForm();
           });
-      } else {
-        const { data: newUser } = await createUser(payload);
-        console.log('User created: ', newUser);
-        Swal.fire({
-          title: '¡Nuevo Usuario!',
-          text: 'Se ha registrado un nuevo usuario',
-          icon: 'success',
-          confirmButtonColor: '#1F2937',
-          confirmButtonText: 'Ok',
-        }).then(() => {
-          setUsers(prevUsers => [newUser, ...prevUsers]);
-          clearForm();
-        });
+        } catch (err) {
+          Swal.fire({
+            title: 'Error',
+            text: err?.response?.data?.message || 'Fallo al registrar usuario',
+            icon: 'error',
+            confirmButtonColor: '#1F2937',
+            confirmButtonText: 'Ok',
+          });
+        }
       }
 
     } catch (err) {
-      console.error(err);
       Swal.fire({
         title: 'Error',
         text: err.message || 'Fallo al registrar usuario',
@@ -272,6 +310,11 @@ function UsersPage() {
     setSelectedRol('')
   };
 
+
+  const getRoles = (roleId) => {
+    roleOptions.find(r => r.id === roleId?.name || roleId);
+  }
+
   return (
     <div className="p-8 space-y-12 overflow-y-auto">
 
@@ -320,7 +363,7 @@ function UsersPage() {
         </div>
 
         <h2 className="text-xl font-semibold mb-4 text-gray-800 border-l-3 border-red-700 px-2">
-          <span className='text-lg'> ({pagination.totalItems}) </span> REGISTROS
+          <span className='text-lg'> ({users.length || "0"}) </span> REGISTROS
         </h2>
         <div className="overflow-x-auto rounded-xl shadow">
           <table className="min-w-full bg-white text-sm">
@@ -515,8 +558,15 @@ function UsersPage() {
                     value={selectedRole}
                     onChange={e => setSelectedRol(e.target.value)}
                     disabled={isEditing}
+                    required
                     className={` w-full mt-1 p-2 bg-transparent text-white border border-gray-600 rounded-xl outline-none ring-0 focus:ring-1 focus:ring-white focus:border-white transition-all shadow-none appearance-none ${isEditing ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
+                    {!isEditing && (
+                      <option value="" disabled>
+                        — Selecciona un rol —
+                      </option>
+                    )}
+
                     {roleOptions.map(role => (
                       <option
                         key={role.id}
