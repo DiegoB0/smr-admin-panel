@@ -23,12 +23,12 @@ function AuthLayout() {
             }}
           ></div>
 
-          <h2 className="text-4xl font-semibold mb-4 relative">Bienvenido a SMR Heavy Maq</h2>
+          <h2 className="text-4xl font-semibold mb-4 relative">Panel de Control Logmine</h2>
           <p className="text-lg mb-4 relative">
-            Expertos en Mantenimiento de Maquinaria Pesada
+            Supervisión Integral de Almacenes y Mantenimiento de Maquinaria
           </p>
           <p className="text-sm relative">
-            Soluciones profesionales y servicio técnico especializado para mantener su maquinaria funcionando de manera óptima.
+            Administra almacenes, controla operaciones técnicas y mejora la eficiencia del equipo desde un solo lugar.
           </p>
         </div>
 
