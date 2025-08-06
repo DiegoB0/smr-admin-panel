@@ -2,15 +2,18 @@
 
 import { useEffect, useState } from "react"
 import { FaCirclePlus } from "react-icons/fa6"
-import { MapPin, User, Edit, Trash2, Package, Search, TrendingUp, AlertTriangle } from "lucide-react"
+import { MapPin, User, Edit, Trash2, Eye, Package, Search, TrendingUp, AlertTriangle } from "lucide-react"
 import Swal from "sweetalert2"
 import { useAlmacenes } from "../../hooks/useAlmacenes"
 import { useDebounce } from "../../hooks/customHooks"
+import { useNavigate } from "react-router-dom";
 
 function AlmacenesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editId, setEditId] = useState(null)
+
+  const navigate = useNavigate()
 
   const [almacenes, setAlmacenes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -201,6 +204,12 @@ function AlmacenesPage() {
           <Package className="w-4 h-4 mr-2" />
           <span>Estado: Operativo</span>
         </div>
+
+        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
+          onClick={() => navigate(`/dashboard/almacenes/${almacen.id}`)}
+        >
+          <span className="mt-1"> <Eye /> </span>
+          Ver inventario</button>
       </div>
 
       <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between items-center">
