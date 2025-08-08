@@ -46,7 +46,7 @@ function Sidebar() {
   return (
     <div className="w-[300px] bg-gray-900 text-white h-screen flex flex-col overflow-y-auto">
       <div className='flex justify-center items-center'>
-        <h1 className='text-2xl text-gray-200 font-extrabold'>SMR Admin<span className='text-6xl text-red-600'>.</span></h1>
+        <h1 className='text-2xl text-gray-200 font-extrabold'>Logmine Admin<span className='text-6xl text-red-600'>.</span></h1>
       </div>
       <div className='flex flex-col justify-around h-full'>
         <nav className="flex-1 px-4 py-6">
@@ -156,7 +156,7 @@ function Sidebar() {
 
                       <li>
                         <Link
-                          to="/dashboard/notifications"
+                          to="/dashboard/productos"
                           className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : ''
                             }`}
                         >
