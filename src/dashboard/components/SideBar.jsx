@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FaFileAlt } from "react-icons/fa";
 import { IoStorefront } from "react-icons/io5";
 import { TbWorld } from "react-icons/tb";
 import { HiUsers } from "react-icons/hi2";
@@ -22,7 +23,7 @@ function Sidebar() {
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const { isAdmin, isAdminAlmacen, isAdminWeb, canReadUsers, canCreatePost } = useAuthFlags();
+  const { isAdmin, isAdminAlmacen, isAdminWeb, isOperador, canReadUsers, canCreatePost } = useAuthFlags();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -316,6 +317,23 @@ function Sidebar() {
                       </li>
                     </ul>
                   )}
+                </li>
+              )
+            }
+
+            {
+              isOperador && (
+                <li>
+                  <Link
+                    to="/dashboard/reportes/operadores"
+                    className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 flex gap-2 ${location.pathname === '/dashboard/reportes/operadores' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                      }`}
+                  >
+                    <span className='mt-1'>
+                      <FaFileAlt />
+                    </span>
+                    Reportes
+                  </Link>
                 </li>
               )
             }

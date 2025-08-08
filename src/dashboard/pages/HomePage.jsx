@@ -7,7 +7,9 @@ import { useNavigate } from 'react-router-dom';
 function HomePage() {
   const user = useSelector(state => state?.auth?.user)
   const isAdmin = useSelector(s => hasRole(s, Roles.ADMIN));
-  const isBlogger = hasRole(s => hasRole(s, Roles.BLOGGER)); 
+  const isOperador = useSelector(s => hasRole(s, Roles.OPERADOR));
+  const isAdminAlmacen = useSelector(s => hasRole(s, Roles.ADMIN_ALMACEN));
+  const isBlogger = hasRole(s => hasRole(s, Roles.BLOGGER));
   const isAdminWeb = hasRole(s => hasRole(s, Roles.ADMIN_WEB))
 
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ function HomePage() {
     <div className="flex justify-center  bg-gray-100 mt-4">
       <div className="text-center p-6 bg-white shadow-lg rounded-lg max-w-lg w-full">
         <h1 className="text-4xl font-bold text-gray-800">
-          Bienvenido, { user?.name ?? "Guest"}!
+          Bienvenido, {user?.name ?? "Guest"}!
         </h1>
         <p className="mt-4 text-lg text-gray-600">
           {isBlogger
@@ -25,7 +27,11 @@ function HomePage() {
               ? "Eres un Administrador."
               : isAdminWeb
                 ? "Eres un Administrador Web."
-                : 'Por favor inicia sesion.'
+                : isAdminAlmacen
+                  ? "Administrar nuevos reportes"
+                  : isOperador
+                    ? "Ver mis reportes"
+                    : 'Por favor inicia sesion.'
           }
         </p>
         {isBlogger && (

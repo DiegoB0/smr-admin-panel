@@ -18,6 +18,7 @@ import RequisicionesPage from "../dashboard/pages/RequisicionesPage";
 import AlmacenesPage from "../dashboard/pages/AlmacenesPage"; 
 import ProductosPage from "../dashboard/pages/ProductosPage";
 import AlmacenenInventarioPage from "../dashboard/pages/AlmacenenInventarioPage";
+import ReportesOperadorPage from "../dashboard/pages/ReportesOperadorPage";
 
 function AppRoutes() {
   return (
@@ -51,6 +52,7 @@ function RouteLoader() {
         <Route path="almacenes" element={isAuthenticated ? <AlmacenesPage /> : <Navigate to="/auth/login" />} />
         <Route path="productos" element={isAuthenticated ? <ProductosPage /> : <Navigate to="/auth/login" />} />
         <Route path="almacenes/:id" element={isAuthenticated ? <AlmacenenInventarioPage /> : <Navigate to="/auth/login" />} />
+        <Route path="reportes/operadores" element={isAuthenticated ? <ReportesOperadorPage /> : <Navigate to={"/auth/login"} />}></Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
