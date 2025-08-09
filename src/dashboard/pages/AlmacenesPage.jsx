@@ -43,7 +43,7 @@ function AlmacenesPage() {
   })
 
   const { listAlmacen, createAlmacen, updateAlmacen, deleteAlmacen, listEncargados } = useAlmacenes()
-  const { listObras } = useObras()
+  const { listAllowedObras } = useObras()
 
   useEffect(() => {
     setPage(1)
@@ -54,16 +54,21 @@ function AlmacenesPage() {
 
     if (isAdmin) {
       fetchObras()
-      fetchEncargados()
     }
 
   }, [page, limitOption, debouncedSearchTerm])
 
-  const fetchObras = async () => {
+  useEffect(() => {
+    if (!isEditing && isAdmin) {
+      fetchEncargados();
+      fetchObras();
+    }
+  }, [isEditing]);
+
+  const fetchObras = async (almacenId) => {
     setLoading(true)
     try {
-      const res = await listObras()
-      console.log(res)
+      const res = await listAllowedObras({ almacenId })
       setObras(res.data.data)
 
     } catch (err) {
@@ -74,18 +79,18 @@ function AlmacenesPage() {
     }
   }
 
-  const fetchEncargados = async () => {
-    setLoading(true)
+  const fetchEncargados = async (almacenId) => {
+    setLoading(true);
     try {
-      const res = await listEncargados()
-      setEncargados(res.data)
+      const res = await listEncargados(almacenId);
+      setEncargados(res.data);
     } catch (err) {
-      console.error(err)
-      Swal.fire("Error", "Fallo al traer encargados", "error")
+      console.error(err);
+      Swal.fire("Error", "Fallo al traer encargados", "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchAlmacenes = async () => {
     setLoading(true)
@@ -159,6 +164,8 @@ function AlmacenesPage() {
     setSelectedObra(almacen.obraId)
     setSelectedEncargado(almacen.encargadoId)
     setIsModalOpen(true)
+    fetchEncargados(almacen.id)
+    fetchObras(almacen.id)
   }
 
   const closeModal = () => {
@@ -487,7 +494,6 @@ function AlmacenesPage() {
                 <select
                   value={selectedEncargado}
                   onChange={(e) => setSelectedEncargado(e.target.value)}
-                  required
                   className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent `}
                 >
                   {!isEditing && (
@@ -495,10 +501,6 @@ function AlmacenesPage() {
                       — Selecciona una encargado —
                     </option>
                   )}
-
-                  <option value="">
-                    Sin Encargado
-                  </option>
 
                   {encargados.map((encargado) => (
                     <option key={encargado.id} value={encargado.id}>
