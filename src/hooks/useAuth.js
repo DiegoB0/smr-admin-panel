@@ -16,8 +16,6 @@ export function useAuthFlags() {
   const canDeleteUsers = useSelector(s => canAccessResource(s, 'user', 'delete'))
   const canEditUsers = useSelector(s => canAccessResource(s, 'user', 'edit'))
 
-  // Almacenes
-
   // Check roles
   const isBlogger = useSelector(s => hasRole(s, Roles.BLOGGER));
   const isOperador = useSelector(s => hasRole(s, Roles.OPERADOR));

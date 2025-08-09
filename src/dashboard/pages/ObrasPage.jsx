@@ -2,7 +2,7 @@ import React from 'react'
 
 function ObrasPage() {
   return (
-    <div>ObrasPage</div>
+    <div>Obras Page</div>
   )
 }
 
