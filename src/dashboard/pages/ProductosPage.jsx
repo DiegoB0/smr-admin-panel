@@ -7,7 +7,7 @@ import Swal from "sweetalert2"
 import { useDebounce } from "../../hooks/customHooks"
 import { useProductos } from "../../hooks/useProductos"
 import { useAuthFlags } from "../../hooks/useAuth"
-import { Package, Tag, AlignLeft, Ruler, Image, Search, Box, Edit, Trash2 } from 'lucide-react'
+import { Package, DollarSign, Tag, AlignLeft, Ruler, Image, Search, Box, Edit, Trash2 } from 'lucide-react'
 
 function ProductosPage() {
   const { listProductos, createProducto, deleteProducto, updateProducto } = useProductos()
@@ -308,7 +308,7 @@ function ProductosPage() {
                       Unidad
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Ruler className="w-4 h-4 inline mr-1" />
+                      <DollarSign className="w-4 h-4 inline mr-1" />
                       Precio
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -474,7 +474,7 @@ function ProductosPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Ruler className="w-4 h-4 inline mr-1" />
+                  <DollarSign className="w-4 h-4 inline mr-1" />
                   Precio
                 </label>
                 <input

@@ -2,10 +2,11 @@
 
 import React, { useEffect, useState } from "react"
 import { FaCirclePlus } from "react-icons/fa6"
-import { User, Mail, Shield, Search, Users, UserCheck, UserX, Edit, Trash2, Eye } from 'lucide-react'
+import { User, Mail, HardHat, Shield, Search, Users, UserCheck, UserX, Edit, Trash2, Eye } from 'lucide-react'
 import { useAuthFlags } from "../../../hooks/useAuth"
 import { useUser } from "../../../hooks/useUser"
 import { useDebounce } from "../../../hooks/customHooks"
+import { useObras } from "../../../hooks/useObras"
 import Swal from "sweetalert2"
 
 function UsersPage() {
@@ -26,7 +27,7 @@ function UsersPage() {
     totalPages: 1,
     hasNextPage: false,
     hasPreviousPage: false,
-    totalItems: 0, // Aseguramos que totalItems esté disponible para las estadísticas
+    totalItems: 0,
   })
 
   const [page, setPage] = useState(1)
@@ -39,6 +40,10 @@ function UsersPage() {
   // Persist the roles after update
   const [originalRoles, setOriginalRoles] = useState([])
 
+  // Select obras
+  const [obras, setObras] = useState([]);
+  const [selectedObra, setSelectedObra] = useState("");
+
   // Fields for the form
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -48,6 +53,19 @@ function UsersPage() {
   // Roles
   const [roleOptions, setRoleOptions] = useState([])
   const [selectedRole, setSelectedRol] = useState("")
+
+  const { listObras } = useObras();
+
+  useEffect(() => {
+    if (selectedRole) {
+      const roleObj = roleOptions.find(r => r.id === selectedRole);
+      if (roleObj?.name?.toLowerCase() === "operador") {
+        listObras({ limit: 0 })
+          .then(res => setObras(res.data.data))
+          .catch(err => console.error("Error fetching obras", err));
+      }
+    }
+  }, [selectedRole]);
 
   // Fetch roles
   useEffect(() => {
@@ -137,6 +155,9 @@ function UsersPage() {
       return found ? found.name : rid
     })
 
+    const roleObj = roleOptions.find(r => r.id === selectedRole);
+    const isOperador = roleObj?.name?.toLowerCase() === "operador";
+
     const basePayload = {
       name,
       email,
@@ -149,6 +170,7 @@ function UsersPage() {
       ...(!isEditing && {
         roles: rolesToSend,
       }),
+      ...(isOperador && { obraId: Number(selectedObra) })
     }
 
     try {
@@ -276,6 +298,9 @@ function UsersPage() {
     setConfirmPassword("")
     setPreviewImage("")
     setIsUserFormOpen(true)
+    if (user.obraId) {
+      setSelectedObra(user.obraId);
+    }
   }
 
   const handleCloseModal = () => {
@@ -480,9 +505,8 @@ function UsersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                            }`}
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                              }`}
                           >
                             {user.isActive ? "Activo" : "Inactivo"}
                           </span>
@@ -641,9 +665,8 @@ function UsersPage() {
                   onChange={(e) => setSelectedRol(e.target.value)}
                   disabled={isEditing}
                   required
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    isEditing ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditing ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                 >
                   {!isEditing && (
                     <option value="" disabled>
@@ -658,6 +681,36 @@ function UsersPage() {
                   ))}
                 </select>
               </div>
+
+              {(() => {
+                const selectedRoleObj = roleOptions.find(r => r.id === selectedRole);
+                if (selectedRoleObj?.name?.toLowerCase() === "operador") {
+                  return (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <HardHat className="w-4 h-4 inline mr-1" />
+                        Obra
+                      </label>
+                      <select
+                        value={selectedObra}
+                        onChange={(e) => setSelectedObra(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="" disabled>
+                          — Selecciona una obra —
+                        </option>
+                        {obras.map((obra) => (
+                          <option key={obra.id} value={obra.id}>
+                            {obra.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Imagen de perfil</label>

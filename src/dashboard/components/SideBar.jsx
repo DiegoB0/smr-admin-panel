@@ -67,24 +67,6 @@ function Sidebar() {
               </Link>
             </li>
 
-
-            {/* { */}
-            {/*   canCreatePost && ( */}
-            {/*     <li> */}
-            {/*       <Link */}
-            {/*         to="/dashboard/blogs" */}
-            {/*         className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/blogs' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
-            {/*           }`} */}
-            {/*       > */}
-            {/*         <span className='mt-1'> */}
-            {/*           <FaPaperPlane /> */}
-            {/*         </span> */}
-            {/*         Blogs */}
-            {/*       </Link> */}
-            {/*     </li> */}
-            {/*   ) */}
-            {/* } */}
-
             {
               canReadUsers && (
                 <li>
@@ -183,15 +165,19 @@ function Sidebar() {
                         </Link>
                       </li>
 
-                      <li>
-                        <Link
-                          to="/dashboard/reportes"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/reportes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                            }`}
-                        >
-                          Reportes
-                        </Link>
-                      </li>
+                      {
+                        isAdminAlmacen && (
+                          <li>
+                            <Link
+                              to="/dashboard/reportes"
+                              className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/reportes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                                }`}
+                            >
+                              Reportes
+                            </Link>
+                          </li>
+                        )
+                      }
 
                       <li>
                         <Link

@@ -19,8 +19,11 @@ export function useAlmacenes() {
     return api.get("almacenes/all_almacenes", { params })
   }
 
-  const listEncargados = () => api.get("almacenes/encargados/all_encargados")
-  
+  const listEncargados = (almacenId) =>
+    api.get("almacenes/encargados/all_encargados", {
+      params: almacenId ? { almacenId } : {}
+    });
+
 
   const getOneAlmacen = (id) => api.get(`almacenes/find_almacen/${id}`)
 
