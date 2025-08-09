@@ -18,6 +18,10 @@ import RequisicionesPage from "../dashboard/pages/RequisicionesPage";
 import AlmacenesPage from "../dashboard/pages/AlmacenesPage"; 
 import ProductosPage from "../dashboard/pages/ProductosPage";
 import AlmacenenInventarioPage from "../dashboard/pages/AlmacenenInventarioPage";
+import ReportesOperadorPage from "../dashboard/pages/ReportesOperadorPage";
+import ReportesPage from "../dashboard/pages/ReportesPage";
+import ObrasPage from "../dashboard/pages/ObrasPage";
+import EquiposPage from "../dashboard/pages/EquiposPage";
 
 function AppRoutes() {
   return (
@@ -48,9 +52,13 @@ function RouteLoader() {
         <Route path="services" element={isAuthenticated ? <ServicesPage /> : <Navigate to="/auth/login" />} />
         <Route path="settings" element={isAuthenticated ? <SettingsPage /> : <Navigate to="/auth/login" />} />
         <Route path="requisiciones" element={isAuthenticated ? <RequisicionesPage /> : <Navigate to={"/auth/login"} />}></Route>
+        <Route path="reportes" element={isAuthenticated ? <ReportesPage /> : <Navigate to={"/auth/login"} />}></Route>
+        <Route path="obras" element={isAuthenticated ? <ObrasPage /> : <Navigate to={"/auth/login"} />}></Route>
+        <Route path="equipos" element={isAuthenticated ? <EquiposPage /> : <Navigate to={"/auth/login"} />}></Route>
         <Route path="almacenes" element={isAuthenticated ? <AlmacenesPage /> : <Navigate to="/auth/login" />} />
         <Route path="productos" element={isAuthenticated ? <ProductosPage /> : <Navigate to="/auth/login" />} />
         <Route path="almacenes/:id" element={isAuthenticated ? <AlmacenenInventarioPage /> : <Navigate to="/auth/login" />} />
+        <Route path="reportes/operadores" element={isAuthenticated ? <ReportesOperadorPage /> : <Navigate to={"/auth/login"} />}></Route>
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

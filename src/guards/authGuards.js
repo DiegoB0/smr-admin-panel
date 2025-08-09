@@ -3,12 +3,17 @@ import { Roles } from './authEnums';
 export const isAuthenticated = state => Boolean(state.auth.isAuthenticated);
 
 export const hasRole = (state, wantedRole) => {
-  if (!state?.auth?.isAuthenticated) return false
+  if (!state?.auth?.isAuthenticated) return false;
 
   const allowed = Array.isArray(wantedRole) ? wantedRole : [wantedRole];
+  const userRoles = state.auth.user?.roles ?? [];
 
-  const userRoles = state.auth.user?.roles ?? []
-  return allowed.some(r => userRoles.includes(r))
+  const normalize = str =>
+    str.toLowerCase().replace(/\s+/g, '-').trim();
+
+  return allowed.some(r =>
+    userRoles.some(ur => normalize(ur) === normalize(r))
+  );
 };
 
 // Just for special permissions like accept requisicion, etc

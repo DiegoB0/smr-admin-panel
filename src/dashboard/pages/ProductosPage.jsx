@@ -36,6 +36,7 @@ function ProductosPage() {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [unidad, setUnidad] = useState("")
+  const [precio, setPrecio] = useState(0)
   const [imageUrl, setImageUrl] = useState("")
   const [previewImage, setPreviewImage] = useState(null)
 
@@ -48,6 +49,7 @@ function ProductosPage() {
     setName("")
     setDescription("")
     setUnidad("")
+    setPrecio(0)
     setImageUrl("")
     setPreviewImage(null)
   }
@@ -97,6 +99,7 @@ function ProductosPage() {
       name,
       description,
       unidad,
+      precio,
       imageUrl: previewImage || imageUrl,
     }
 
@@ -104,6 +107,7 @@ function ProductosPage() {
       name,
       description,
       unidad,
+      precio,
       imageUrl: previewImage || imageUrl,
     }
 
@@ -128,6 +132,7 @@ function ProductosPage() {
     setEditId(producto.id)
     setProductoId(producto.id)
     setName(producto.name)
+    setPrecio(producto.precio)
     setDescription(producto.description)
     setUnidad(producto.unidad)
     setImageUrl(producto.imageUrl)
@@ -303,6 +308,10 @@ function ProductosPage() {
                       Unidad
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <Ruler className="w-4 h-4 inline mr-1" />
+                      Precio
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <Image className="w-4 h-4 inline mr-1" />
                       Imagen
                     </th>
@@ -319,6 +328,7 @@ function ProductosPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.description}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.unidad}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.precio || 0}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <img
                             src={p.imageUrl || "/placeholder.svg?height=48&width=48&query=product"}
@@ -459,6 +469,18 @@ function ProductosPage() {
                   type="text"
                   value={unidad}
                   onChange={(e) => setUnidad(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Ruler className="w-4 h-4 inline mr-1" />
+                  Precio
+                </label>
+                <input
+                  type="text"
+                  value={precio}
+                  onChange={(e) => setPrecio(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
