@@ -1,8 +1,8 @@
 import { api } from "../api/api"
 
 export function useObras() {
+  // Crear nueva obra
   const createObra = (data) => api.post("obras/add", data)
-
 
   const listObras = ({ page = 1, limit = 10, search = "", order = "ASC" } = {}) => {
     const safeLimit = limit === 0 ? 100 : limit
@@ -29,9 +29,12 @@ export function useObras() {
 
   const getOneObra = (id) => api.get(`obras/find_obras/${id}`)
 
-  const deleteObra = (id) => api.delete(`obras/delete_obras/${id}`)
 
-  const updateObra = (id, data) => api.patch(`obras/update_obras/${id}`, data)
+  // Eliminar una obra
+  const deleteObra = (id) => api.delete(`obras/delete_obra/${id}`)
+
+  // Actualizar una obra
+  const updateObra = (id, data) => api.patch(`obras/update_obra/${id}`, data)
 
   return {
     createObra,
@@ -42,4 +45,5 @@ export function useObras() {
     updateObra
   }
 }
+
 
