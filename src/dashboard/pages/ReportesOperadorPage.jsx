@@ -10,6 +10,7 @@ import { useAuthFlags } from "../../hooks/useAuth"
 import { Package, DollarSign, Tag, AlignLeft, Ruler, Image, Search, Box, Edit, Trash2 } from 'lucide-react'
 
 function ReportesOperadorPage() {
+  // Hey this is just to rewrite history
   const { listProductos, createProducto, deleteProducto, updateProducto } = useProductos()
 
   const [productos, setProductos] = useState([])
