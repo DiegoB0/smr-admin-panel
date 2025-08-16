@@ -37,8 +37,10 @@ export function useStock() {
    * @param {object} data - { almacenId, productId, cantidad }
    * @return {Promise<AxiosResponse>}
    */
-  const removeStock = (data) =>
-    api.delete("almacenes/products/remove_stock", { data });
+  const removeStock = ({ almacenId, productId, cantidad }) =>
+    api.delete("almacenes/products/remove_stock", {
+      params: { almacenId, productId, cantidad }
+    });
 
   return {
     addStock,

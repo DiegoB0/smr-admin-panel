@@ -18,7 +18,7 @@ export function useProductos() {
     limit = 10,
     search = '',
     order = 'ASC'
-  }) => {
+  } = {}) => {
     const params = { page, limit, search, order };
     return api.get('productos/all_productos', { params });
   };

@@ -22,13 +22,13 @@ export function useRequisiciones() {
     order = 'ASC',
     userId
   }) => {
-    const params = { page, limit, search, order };
-    return api.get('requisiciones/reportes/reports_by_user', { params });
+    const params = { page, limit, search, order, userId };
+    return api.get(`requisiciones/reportes/reports_by_user`, { params });
   };
 
   const updateReporte = (id, data) => api.patch(`requisiciones/reportes/update_report/${id}`, data);
 
-  const approveReport = (id) => api.patch(`requisiciones/reportes/${id}/approve`)
+  const approveReporte = (id) => api.patch(`requisiciones/reportes/${id}/approve`)
 
   const rejectReporte = (id) => api.patch(`requisiciones/reportes/${id}/reject`)
 
@@ -40,7 +40,7 @@ export function useRequisiciones() {
     listReportes,
     listMyReportes,
     updateReporte,
-    aproveReporte: approveReport,
+    approveReporte,
     rejectReporte
   };
 }
