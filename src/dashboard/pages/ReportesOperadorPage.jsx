@@ -11,9 +11,11 @@ import { Package, DollarSign, FileText, Tag, AlignLeft, Ruler, Image, Search, Ed
 import { useSelector } from "react-redux";
 
 function ReportesOperadorPage() {
+
   const userId = useSelector((state) => state.auth.user?.id)
   const { createProducto, updateProducto } = useProductos()
   const { listMyReportes } = useRequisiciones()
+
 
   const [productos, setProductos] = useState([])
   const [loading, setLoading] = useState(false)
