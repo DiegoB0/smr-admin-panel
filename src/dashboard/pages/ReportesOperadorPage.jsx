@@ -6,12 +6,14 @@ import { FaCirclePlus } from "react-icons/fa6"
 import Swal from "sweetalert2"
 import { useDebounce } from "../../hooks/customHooks"
 import { useProductos } from "../../hooks/useProductos"
-import { useAuthFlags } from "../../hooks/useAuth"
-import { Package, DollarSign, Tag, AlignLeft, Ruler, Image, Search, Box, Edit, Trash2 } from 'lucide-react'
+import { useRequisiciones } from "../../hooks/useRequisiciones";
+import { Package, DollarSign, FileText, Tag, AlignLeft, Ruler, Image, Search, Edit } from 'lucide-react'
+import { useSelector } from "react-redux";
 
 function ReportesOperadorPage() {
-  // Hey this is just to rewrite history
-  const { listProductos, createProducto, deleteProducto, updateProducto } = useProductos()
+  const userId = useSelector((state) => state.auth.user?.id)
+  const { createProducto, updateProducto } = useProductos()
+  const { listMyReportes } = useRequisiciones()
 
   const [productos, setProductos] = useState([])
   const [loading, setLoading] = useState(false)
@@ -28,7 +30,7 @@ function ReportesOperadorPage() {
     totalPages: 1,
     hasNextPage: false,
     hasPreviousPage: false,
-    totalItems: 0, // Added totalItems for stats
+    totalItems: 0,
   })
 
   // Form fields
@@ -73,7 +75,10 @@ function ReportesOperadorPage() {
 
   const fetchProductos = () => {
     setLoading(true)
-    listProductos({ page, limit, search: debouncedSearch, order: "ASC" })
+
+    // Check the user ID
+    if (!userId) return;
+    listMyReportes({ page, limit, search: debouncedSearch, order: 'ASC', userId })
       .then((res) => {
         setProductos(res.data.data)
         setPagination(res.data.meta)
@@ -151,10 +156,35 @@ function ReportesOperadorPage() {
     <div className="flex items-center justify-center py-12">
       <div className="flex flex-col items-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <p className="mt-4 text-gray-600">Cargando productos...</p>
+        <p className="mt-4 text-gray-600">Cargando reportes...</p>
       </div>
     </div>
   )
+
+  function formatDate(isoString) {
+    const date = new Date(isoString);
+
+    const meses = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+
+    const dia = date.getDate();
+    const mes = meses[date.getMonth()];
+    const año = date.getFullYear();
+
+    return `${dia} de ${mes} del ${año}`;
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -165,13 +195,13 @@ function ReportesOperadorPage() {
             <h1 className="text-3xl font-bold text-gray-900">Gestión de Reportes</h1>
             <p className="text-gray-600 mt-1">Administra tus propios reportes</p>
           </div>
-            <button
-              onClick={toggleModal}
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <FaCirclePlus className="w-5 h-5 mr-2" />
-              Nuevo Reporte
-            </button>
+          <button
+            onClick={toggleModal}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <FaCirclePlus className="w-5 h-5 mr-2" />
+            Nuevo Reporte
+          </button>
         </div>
       </div>
 
@@ -188,6 +218,18 @@ function ReportesOperadorPage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
+
+        <select
+          value={limitOption}
+          onChange={(e) => setLimitOption(e.target.value)}
+          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="5">TODOS</option>
+          <option value="all">Pendientes</option>
+          <option value="10">Aprobados</option>
+          <option value="20">Rechazados</option>
+        </select>
+
         <select
           value={limitOption}
           onChange={(e) => setLimitOption(e.target.value)}
@@ -212,27 +254,16 @@ function ReportesOperadorPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      ID
+                      Fecha de creacion
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Package className="w-4 h-4 inline mr-1" />
-                      Nombre
+                      Estatus
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <AlignLeft className="w-4 h-4 inline mr-1" />
-                      Descripción
+                      Revisado por:
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Ruler className="w-4 h-4 inline mr-1" />
-                      Unidad
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <DollarSign className="w-4 h-4 inline mr-1" />
-                      Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <Image className="w-4 h-4 inline mr-1" />
-                      Imagen
+                      Fecha de Revision
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
@@ -243,34 +274,26 @@ function ReportesOperadorPage() {
                   {productos.length > 0 ? (
                     productos.map((p) => (
                       <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.id}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.description}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.unidad}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.precio || 0}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <img
-                            src={p.imageUrl || "/placeholder.svg?height=48&width=48&query=product"}
-                            alt={p.name || "Producto"}
-                            className="h-12 w-12 object-cover rounded-lg mx-auto border border-gray-200"
-                          />
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(p.fechaCreacion)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.status}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.revisadoPor?.email || "no se ha revisado"}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{p.fechaRevision ? formatDate(p.fechaRevision) : "no se ha revisado"}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                              <button
-                                onClick={() => console.log(p)}
-                                className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                                title="Mostrar detalles"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleEdit(p)}
-                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                                title="Editar producto"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
+                            <button
+                              onClick={() => console.log(p)}
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Mostrar detalles"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEdit(p)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Editar reporte"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -278,8 +301,8 @@ function ReportesOperadorPage() {
                   ) : (
                     <tr>
                       <td colSpan="6" className="px-6 py-12 text-center">
-                        <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron productos</h3>
+                        <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron reportes</h3>
                         <p className="text-gray-600">
                           {searchTerm ? "Intenta ajustar los filtros de búsqueda" : "Comienza creando tu primer producto"}
                         </p>
