@@ -1,18 +1,20 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { Eye, FileText, Package, ClipboardList, Hash, Search, CircleCheck, CircleX, AlertTriangle } from "lucide-react"
+import { Eye, Award, FileText, Package, ClipboardList, Hash, Search, CircleCheck, CircleX, Timer } from "lucide-react"
 import { FaCirclePlus } from "react-icons/fa6"
 import Swal from "sweetalert2"
 import { useDebounce } from "../../hooks/customHooks"
 import { useRequisiciones } from "../../hooks/useRequisiciones"
 import { useProductos } from "../../hooks/useProductos"
+import { useEquipos } from "../../hooks/useEquipos"
 import { useSelector } from "react-redux"
 
 function ReportesOperadorPage() {
   const userId = useSelector((state) => state.auth.user?.id)
   const { listMyReportes, createReporte } = useRequisiciones()
   const { listProductos } = useProductos()
+  const { listEquipos } = useEquipos()
 
   const [reportes, setReportes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -39,6 +41,8 @@ function ReportesOperadorPage() {
   const [observaciones, setObservaciones] = useState("")
   const [items, setItems] = useState([{ productoId: "", cantidad: "" }])
   const [productos, setProductos] = useState([])
+  const [equipos, setEquipos] = useState([])
+  const [equipoId, setEquipoId] = useState("");
 
   const limit =
     limitOption === "all" ? pagination.totalItems || 0 : Number.parseInt(limitOption)
@@ -51,6 +55,7 @@ function ReportesOperadorPage() {
 
   const clearForm = () => {
     setObservaciones("")
+    setEquipoId("")
     setItems([{ productoId: "", cantidad: "" }])
   }
 
@@ -87,6 +92,16 @@ function ReportesOperadorPage() {
       })
   }
 
+  const fetchEquipos = () => {
+    listEquipos({ page: 1, limit: 100, order: "ASC" })
+      .then((res) => {
+        setEquipos(res.data.data)
+      })
+      .catch((err) => {
+        console.error("Error cargando productos:", err)
+      })
+  }
+
   useEffect(() => {
     setPage(1)
   }, [debouncedSearch, statusFilter])
@@ -97,6 +112,10 @@ function ReportesOperadorPage() {
 
   useEffect(() => {
     fetchProductos()
+  }, [])
+
+  useEffect(() => {
+    fetchEquipos()
   }, [])
 
   // --- FORM LOGIC ---
@@ -121,10 +140,17 @@ function ReportesOperadorPage() {
       Swal.fire("Error", "Las observaciones son requeridas", "error")
       return
     }
+
+    if (!equipoId.trim()) {
+      Swal.fire("Error", "El ID del equipo es requerido", "error")
+      return
+    }
+
     if (items.length === 0) {
       Swal.fire("Error", "Debes agregar al menos un item", "error")
       return
     }
+
     for (let i = 0; i < items.length; i++) {
       const { productoId, cantidad } = items[i]
       if (!productoId.trim()) {
@@ -139,11 +165,14 @@ function ReportesOperadorPage() {
 
     const payload = {
       observaciones,
+      equipoId,
       items: items.map((i) => ({
         productoId: String(i.productoId),
         cantidad: Number(i.cantidad),
       })),
     }
+
+    console.log(payload)
 
     try {
       await createReporte(payload)
@@ -173,6 +202,7 @@ function ReportesOperadorPage() {
   const StatsSection = ({ reportes }) => {
     const total = reportes.length
     const pendientes = reportes.filter((r) => r.status === "PENDIENTE").length
+    const procesados = reportes.filter((r) => r.status === "PROCESADO").length
     const aprobados = reportes.filter((r) => r.status === "APROBADO").length
     const rechazados = reportes.filter((r) => r.status === "RECHAZADO").length
 
@@ -185,11 +215,11 @@ function ReportesOperadorPage() {
         textColor: "text-blue-600",
       },
       {
-        title: "Pendientes",
-        value: pendientes,
-        icon: AlertTriangle,
-        color: "bg-yellow-500",
-        textColor: "text-yellow-600",
+        title: "Procesados",
+        value: procesados,
+        icon: Award,
+        color: "bg-gray-500",
+        textColor: "text-gray-600",
       },
       {
         title: "Aprobados",
@@ -197,6 +227,13 @@ function ReportesOperadorPage() {
         icon: CircleCheck,
         color: "bg-green-500",
         textColor: "text-green-600",
+      },
+      {
+        title: "Pendientes",
+        value: pendientes,
+        icon: Timer,
+        color: "bg-yellow-500",
+        textColor: "text-yellow-600",
       },
       {
         title: "Rechazados",
@@ -208,7 +245,7 @@ function ReportesOperadorPage() {
     ]
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {stats.map((stat, index) => (
           <div
             key={index}
@@ -269,8 +306,9 @@ function ReportesOperadorPage() {
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="ALL">Todos</option>
-          <option value="PENDIENTE">Pendientes</option>
+          <option value="PROCESADO">Procesados</option>
           <option value="APROBADO">Aprobados</option>
+          <option value="PENDIENTE">Pendientes</option>
           <option value="RECHAZADO">Rechazados</option>
         </select>
 
@@ -316,13 +354,14 @@ function ReportesOperadorPage() {
                       <td className="px-6 py-4">{formatDate(r.fechaCreacion || r.createdAt)}</td>
                       <td className="px-6 py-4">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            r.status === "PENDIENTE"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : r.status === "APROBADO"
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${r.status === "PENDIENTE"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : r.status === "APROBADO"
                               ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                              : r.status === "PROCESADO"
+                                ? "bg-gray-100 text-gray-700"
+                                : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {r.status}
                         </span>
@@ -416,6 +455,26 @@ function ReportesOperadorPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Escribe las observaciones del reporte..."
                 />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Package className="w-4 h-4 inline mr-1" />
+                  Euquipo *
+                </label>
+                <select
+                  value={equipoId}
+                  onChange={(e) => setEquipoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">-- Selecciona un equipo --</option>
+                  {equipos.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.equipo}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Items */}
@@ -523,15 +582,18 @@ function ReportesOperadorPage() {
                   <p className="text-gray-900">{selectedReporte.observaciones || "Sin observaciones"}</p>
                 </div>
                 <div>
+                  <p className="text-sm font-medium text-gray-500">Equipo</p>
+                  <p className="text-gray-900">{selectedReporte.equipo || "Sin equipo"}</p>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Estatus</p>
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      selectedReporte.status === "PENDIENTE"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : selectedReporte.status === "APROBADO"
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${selectedReporte.status === "PENDIENTE"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : selectedReporte.status === "APROBADO"
                         ? "bg-green-100 text-green-800"
                         : "bg-red-100 text-red-800"
-                    }`}
+                      }`}
                   >
                     {selectedReporte.status}
                   </span>

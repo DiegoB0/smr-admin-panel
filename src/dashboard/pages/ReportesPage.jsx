@@ -1,13 +1,15 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { Eye, FileText, CircleX, CircleCheck, Search, AlertTriangle } from "lucide-react"
+import { Eye, FileText, CircleX, Timer, Award, CircleCheck, Search } from "lucide-react"
 import Swal from "sweetalert2"
 import { useDebounce } from "../../hooks/customHooks"
 import { useRequisiciones } from "../../hooks/useRequisiciones"
+import { useAlmacenes } from "../../hooks/useAlmacenes"
 
 function ReportesPage() {
-  const { listReportes, approveReporte, rejectReporte } = useRequisiciones()
+  const { listReportes, approveReporte, rejectReporte, createRequisicion } = useRequisiciones()
+  const { listAlmacenes } = useAlmacenes()
 
   const [reportes, setReportes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -20,6 +22,8 @@ function ReportesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearch = useDebounce(searchTerm, 500)
 
+  const [almacenes, setAlmacenes] = useState([])
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -27,6 +31,82 @@ function ReportesPage() {
     hasPreviousPage: false,
     totalItems: 0,
   })
+
+
+  const [isRequisicionModalOpen, setIsRequisicionModalOpen] = useState(false);
+  const [selectedPeticionId, setSelectedPeticionId] = useState(null);
+  const [requisicionData, setRequisicionData] = useState({
+    almacenCargoId: 2,
+    hrm: "",
+    rcp: "",
+    titulo: "",
+    concepto: "",
+    prioridad: "",
+    metodo_pago: "",
+    requisicionType: "product",
+  });
+
+  const openRequisicionModal = (peticionId) => {
+    setSelectedPeticionId(peticionId);
+    setIsRequisicionModalOpen(true);
+  };
+
+  const clearForm = () => {
+    setRequisicionData({
+      almacenCargoId: "",
+      hrm: "",
+      rcp: "",
+      titulo: "",
+      concepto: "",
+      prioridad: "",
+      metodo_pago: "",
+      requisicionType: "product",
+    });
+    setSelectedPeticionId(null);
+  };
+
+  const closeRequisicionModal = () => {
+    clearForm();
+    setIsRequisicionModalOpen(false);
+    setSelectedPeticionId(null);
+  };
+
+
+  const fetchAlmacenes = () => {
+    listAlmacenes({ page: 1, limit: 100, order: "ASC" })
+      .then((res) => {
+        setAlmacenes(res.data.data)
+      })
+      .catch((err) => {
+        console.error("Error cargando productos:", err)
+      })
+  }
+
+
+  useEffect(() => {
+    fetchAlmacenes()
+  }, [])
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setRequisicionData({ ...requisicionData, [name]: value });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const payload = { ...requisicionData, peticionId: selectedPeticionId };
+      await createRequisicion(payload);
+      Swal.fire("Éxito", "Requisición creada correctamente", "success");
+      fetchReportes()
+      closeRequisicionModal();
+    } catch (err) {
+      Swal.fire(
+        "Error",
+        err.response?.data?.message || "Error al crear requisición",
+        "error"
+      );
+    }
+  };
 
   const limit =
     limitOption === "all" ? pagination.totalItems || 0 : Number.parseInt(limitOption)
@@ -36,7 +116,6 @@ function ReportesPage() {
     listReportes({ page, limit, search: debouncedSearch, order: "ASC" })
       .then((res) => {
         let data = res.data.data
-        // 👇 filtro en frontend
         if (statusFilter !== "ALL") {
           data = data.filter((r) => r.status === statusFilter)
         }
@@ -96,6 +175,7 @@ function ReportesPage() {
   const StatsSection = ({ reportes }) => {
     const total = reportes.length
     const pendientes = reportes.filter((r) => r.status === "PENDIENTE").length
+    const procesados = reportes.filter((r) => r.status === "PROCESADO").length
     const aprobados = reportes.filter((r) => r.status === "APROBADO").length
     const rechazados = reportes.filter((r) => r.status === "RECHAZADO").length
 
@@ -108,11 +188,11 @@ function ReportesPage() {
         textColor: "text-blue-600",
       },
       {
-        title: "Pendientes",
-        value: pendientes,
-        icon: AlertTriangle,
-        color: "bg-yellow-500",
-        textColor: "text-yellow-600",
+        title: "Procesados",
+        value: procesados,
+        icon: Award,
+        color: "bg-gray-500",
+        textColor: "text-gray-600",
       },
       {
         title: "Aprobados",
@@ -120,6 +200,13 @@ function ReportesPage() {
         icon: CircleCheck,
         color: "bg-green-500",
         textColor: "text-green-600",
+      },
+      {
+        title: "Pendientes",
+        value: pendientes,
+        icon: Timer,
+        color: "bg-yellow-500",
+        textColor: "text-yellow-600",
       },
       {
         title: "Rechazados",
@@ -131,7 +218,7 @@ function ReportesPage() {
     ]
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         {stats.map((stat, index) => (
           <div
             key={index}
@@ -194,8 +281,9 @@ function ReportesPage() {
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="ALL">Todos</option>
-          <option value="PENDIENTE">Pendientes</option>
+          <option value="PROCESADO">Procesados</option>
           <option value="APROBADO">Aprobados</option>
+          <option value="PENDIENTE">Pendientes</option>
           <option value="RECHAZADO">Rechazados</option>
         </select>
 
@@ -248,13 +336,14 @@ function ReportesPage() {
                       <td className="px-6 py-4 text-sm text-gray-500">{r.creadoPor?.email || "N/A"}</td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            r.status === "PENDIENTE"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : r.status === "APROBADO"
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${r.status === "PENDIENTE"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : r.status === "APROBADO"
                               ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
+                              : r.status === "PROCESADO"
+                                ? "bg-gray-100 text-gray-700"
+                                : "bg-red-100 text-red-800"
+                            }`}
                         >
                           {r.status}
                         </span>
@@ -275,6 +364,21 @@ function ReportesPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
+                          {r.status === "APROBADO" && (
+                            <button
+                              onClick={() => {
+                                openRequisicionModal(r.id)
+                                console.log(r.id)
+                              }}
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Crear requisicion"
+
+                            >
+                              <FileText className="w-4 h-4" />
+
+                            </button>
+                          )}
+
                           {r.status === "PENDIENTE" && (
                             <>
                               <button
@@ -341,6 +445,122 @@ function ReportesPage() {
         </div>
       )}
 
+      {isRequisicionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Crear Requisición
+              </h2>
+              <button
+                onClick={closeRequisicionModal}
+                className="text-gray-500 hover:text-gray-700 transition"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  name="titulo"
+                  placeholder="Título"
+                  value={requisicionData.titulo}
+                  onChange={handleChange}
+                  className="w-full border rounded-md p-2"
+                />
+                <input
+                  type="text"
+                  name="concepto"
+                  placeholder="Concepto"
+                  value={requisicionData.concepto}
+                  onChange={handleChange}
+                  className="w-full border rounded-md p-2"
+                />
+                <input
+                  type="text"
+                  name="hrm"
+                  placeholder="HRM"
+                  value={requisicionData.hrm}
+                  onChange={handleChange}
+                  className="w-full border rounded-md p-2"
+                />
+                <input
+                  type="text"
+                  name="rcp"
+                  placeholder="RCP"
+                  value={requisicionData.rcp}
+                  onChange={handleChange}
+                  className="w-full border rounded-md p-2"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <select
+                  name="prioridad"
+                  value={requisicionData.prioridad}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="" disabled>-- Selecciona la prioridad --</option>
+                  <option value="baja">Baja</option>
+                  <option value="media">Media</option>
+                  <option value="alta">Alta</option>
+                </select>
+
+                <select
+                  name="metodo_pago"
+                  value={requisicionData.metodo_pago}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="" disabled>-- Selecciona un método de pago --</option>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="transferencia">Transferencia</option>
+                  <option value="tarjeta">Tarjeta</option>
+                </select>
+
+                <select
+                  name="almacenCargoId"
+                  value={requisicionData.almacenCargoId}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="" disabled>-- Selecciona un almacén --</option>
+                  {almacenes.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-2">
+              <button
+                onClick={closeRequisicionModal}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
+              >
+                Crear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Detalle */}
       {isDetailModalOpen && selectedReporte && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -367,15 +587,20 @@ function ReportesPage() {
                   <p className="text-gray-900">{selectedReporte.observaciones || "Sin observaciones"}</p>
                 </div>
                 <div>
+                  <p className="text-sm font-medium text-gray-500">Equipo</p>
+                  <p className="text-gray-900">{selectedReporte.equipo || "Sin equipo"}</p>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Estatus</p>
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      selectedReporte.status === "PENDIENTE"
-                        ? "bg-yellow-100 text-yellow-800"
-                        : selectedReporte.status === "APROBADO"
+                    className={`px-2 py-1 rounded-full text-xs font-semibold ${selectedReporte.status === "PENDIENTE"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : selectedReporte.status === "APROBADO"
                         ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
+                        : selectedReporte.status === "PROCESADO"
+                          ? "bg-gray-100 text-gray-700"
+                          : "bg-red-100 text-red-800"
+                      }`}
                   >
                     {selectedReporte.status}
                   </span>
@@ -437,8 +662,9 @@ function ReportesPage() {
             </div>
           </div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   )
 }
 
