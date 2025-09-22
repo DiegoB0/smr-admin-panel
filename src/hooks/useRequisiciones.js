@@ -28,12 +28,16 @@ export function useRequisiciones() {
 
   const updateReporte = (id, data) => api.patch(`requisiciones/reportes/update_report/${id}`, data);
 
-  const approveReporte = (id) => api.patch(`requisiciones/reportes/${id}/approve`)
+  const approveReporte = (id) => api.patch(`requisiciones/reportes/${id}/approve`);
 
-  const rejectReporte = (id) => api.patch(`requisiciones/reportes/${id}/reject`)
-
+  const rejectReporte = (id) => api.patch(`requisiciones/reportes/${id}/reject`);
 
   /* REQUISICIONES */
+  const createServiceRequisicion = (data) =>
+    api.post('requisiciones/create_service_requisicion', data);
+    
+  const listRequisiciones = () =>
+    api.get('requisiciones/all_requisiciones');
 
   return {
     createReporte,
@@ -41,6 +45,8 @@ export function useRequisiciones() {
     listMyReportes,
     updateReporte,
     approveReporte,
-    rejectReporte
+    rejectReporte,
+    createServiceRequisicion,
+    listRequisiciones
   };
 }
