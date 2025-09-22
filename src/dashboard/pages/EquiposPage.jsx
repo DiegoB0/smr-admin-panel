@@ -1,134 +1,111 @@
 "use client"
 
-import React, { useEffect, useMemo, useState } from "react"
-import { FaCirclePlus } from "react-icons/fa6"
-import Swal from "sweetalert2"
-import { useDebounce } from "../../hooks/customHooks"
-import { useAuthFlags } from "../../hooks/useAuth"
+import React, { useEffect, useState } from "react";
+import { FaCirclePlus } from "react-icons/fa6";
+import Swal from "sweetalert2";
+import { useDebounce } from "../../hooks/customHooks";
+import { useAuthFlags } from "../../hooks/useAuth";
 import {
   Truck, Hash, Tag, Clipboard,
-  Search, Edit, Trash2, Eye, Box, CheckCircle2, Wrench, AlertTriangle
-} from "lucide-react"
+  Search, Edit, Trash2, CheckCircle2, Wrench, AlertTriangle
+} from "lucide-react";
 
-// import { useEquipos } from "../../hooks/useEquipos"
+import { useEquipos } from "../../hooks/useEquipos";
 
 function EquiposPage() {
-  const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags()
-  const [allEquipos, setAllEquipos] = useState([])
-  const [equipos, setEquipos] = useState([])
-  const [loading, setLoading] = useState(false)
+  const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags();
+  const [equipos, setEquipos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const { listEquipos, createEquipo, getOneEquipo, deleteEquipo, updateEquipo } = useEquipos();
 
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
-  const [editId, setEditId] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editId, setEditId] = useState(null);
 
-  const [page, setPage] = useState(1)
-  const [limitOption, setLimitOption] = useState("5")
-  const [searchTerm, setSearchTerm] = useState("")
-  const debouncedSearch = useDebounce(searchTerm, 400)
+  const [page, setPage] = useState(1);
+  const [limitOption, setLimitOption] = useState("5");
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 400);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     hasNextPage: false,
     hasPreviousPage: false,
     totalItems: 0,
-  })
-
-  const limit = limitOption === "all" ? (pagination.totalItems || 0) : Number.parseInt(limitOption)
+  });
 
   // Form fields
-  const [tipoEquipo, setTipoEquipo] = useState("")
-  const [numeroEconomico, setNumeroEconomico] = useState("")
-  const [modelo, setModelo] = useState("")
-  const [serie, setSerie] = useState("")
-  const [estatus, setEstatus] = useState("Activo")
+  const [tipoEquipo, setTipoEquipo] = useState("");
+  const [numeroEconomico, setNumeroEconomico] = useState("");
+  const [modelo, setModelo] = useState("");
+  const [serie, setSerie] = useState("");
+  const [estatus, setEstatus] = useState("Activo");
 
-  const toggleModal = () => setIsModalOpen(!isModalOpen)
+  const toggleModal = () => setIsModalOpen(!isModalOpen);
 
   const clearForm = () => {
-    setTipoEquipo("")
-    setNumeroEconomico("")
-    setModelo("")
-    setSerie("")
-    setEstatus("Activo")
-    setEditId(null)
-  }
+    setTipoEquipo("");
+    setNumeroEconomico("");
+    setModelo("");
+    setSerie("");
+    setEstatus("Activo");
+    setEditId(null);
+  };
 
   const handleCloseModal = () => {
-    setIsEditing(false)
-    toggleModal()
-    clearForm()
-  }
+    setIsEditing(false);
+    toggleModal();
+    clearForm();
+  };
 
-  const fetchEquipos = () => {
-    setLoading(true)
-    // aquí cuando tengas tu API
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    const term = debouncedSearch.trim().toLowerCase()
-    const filtered = term
-      ? allEquipos.filter((e) =>
-          [e.tipoEquipo, e.numeroEconomico, e.modelo, e.serie, e.estatus]
-            .filter(Boolean)
-            .some((v) => v.toLowerCase().includes(term))
-        )
-      : allEquipos
-
-    const totalItems = filtered.length
-    const totalPages = limitOption === "all" ? 1 : Math.max(1, Math.ceil(totalItems / (limit || 1)))
-    const currentPage = Math.min(page, totalPages)
-
-    const start = limitOption === "all" ? 0 : (currentPage - 1) * limit
-    const pageItems = limitOption === "all" ? filtered : filtered.slice(start, start + limit)
-
-    setEquipos(pageItems)
-    setPagination({
-      currentPage,
-      totalPages,
-      hasNextPage: currentPage < totalPages,
-      hasPreviousPage: currentPage > 1,
-      totalItems,
-    })
-  }, [allEquipos, page, limit, limitOption, debouncedSearch])
+  const fetchEquipos = async () => {
+    setLoading(true);
+    try {
+      const response = await listEquipos({ page, limit: limitOption, search: debouncedSearch });
+      setEquipos(response.data.data);
+      setPagination(response.data.meta);
+    } catch (err) {
+      Swal.fire("Error", "Fallo al cargar equipos", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setPage(1)
-  }, [debouncedSearch, limitOption])
 
-  useEffect(() => {
-    fetchEquipos()
-  }, [])
+    fetchEquipos();
+  }, [page, limitOption, debouncedSearch]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    const payload = { tipoEquipo, numeroEconomico, modelo, serie, estatus }
+    e.preventDefault();
+    const payload = { equipo: tipoEquipo, no_economico: numeroEconomico, modelo, serie };
 
     try {
       if (isEditing) {
-        setAllEquipos(prev => prev.map(eq => (eq.id === editId ? { ...eq, ...payload } : eq)))
-        Swal.fire("Actualizado", "Equipo actualizado con éxito", "success")
+        await updateEquipo(editId, payload);
+        Swal.fire("Actualizado", "Equipo actualizado con éxito", "success");
       } else {
-        setAllEquipos(prev => [{ id: Date.now(), ...payload }, ...prev])
-        Swal.fire("Registrado", "Equipo agregado con éxito", "success")
+        const { data: newEquipo } = await createEquipo(payload);
+        setEquipos((prev) => [newEquipo, ...prev]);
+        Swal.fire("Registrado", "Equipo agregado con éxito", "success");
       }
-      handleCloseModal()
+      handleCloseModal();
+      fetchEquipos();
     } catch (err) {
-      Swal.fire("Error", err.message || "Ocurrió un error", "error")
+      Swal.fire("Error", err.message || "Ocurrió un error", "error");
     }
-  }
+  };
 
-  const handleEdit = (equipo) => {
-    setIsEditing(true)
-    setEditId(equipo.id)
-    setTipoEquipo(equipo.tipoEquipo || "")
-    setNumeroEconomico(equipo.numeroEconomico || "")
-    setModelo(equipo.modelo || "")
-    setSerie(equipo.serie || "")
-    setEstatus(equipo.estatus || "Activo")
-    toggleModal()
-  }
+  const handleEdit = async (equipo) => {
+    setIsEditing(true);
+    setEditId(equipo.id);
+    setTipoEquipo(equipo.equipo);
+    setNumeroEconomico(equipo.no_economico);
+    setModelo(equipo.modelo);
+    setSerie(equipo.serie);
+    setEstatus(equipo.isActive ? "Activo" : "Caído");
+    toggleModal();
+  };
 
   const handleDelete = async (id) => {
     const result = await Swal.fire({
@@ -140,40 +117,42 @@ function EquiposPage() {
       cancelButtonColor: "#6b7280",
       confirmButtonText: "Sí, eliminar",
       cancelButtonText: "Cancelar",
-    })
-    if (!result.isConfirmed) return
-    setAllEquipos(prev => prev.filter(eq => eq.id !== id))
-    Swal.fire("Eliminado", "Equipo eliminado con éxito", "success")
-  }
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await deleteEquipo(id);
+      setEquipos((prev) => prev.filter(e => e.id !== id));
+      Swal.fire("Eliminado", "Equipo eliminado con éxito", "success");
+    } catch (err) {
+      Swal.fire("Error", "Fallo al eliminar equipo", "error");
+    }
+  };
 
-  const handleSearchChange = (e) => setSearchTerm(e.target.value)
+  const handleSearchChange = (e) => setSearchTerm(e.target.value);
 
-  // --------- Helpers para mostrar estatus ----------
   const renderEstatus = (estatus) => {
     switch (estatus) {
       case "Activo":
-        return <span className="flex items-center gap-1 text-green-600"><CheckCircle2 className="w-4 h-4" /> Activo</span>
+        return <span className="flex items-center gap-1 text-green-600"><CheckCircle2 className="w-4 h-4" /> Activo</span>;
       case "En reparación":
-        return <span className="flex items-center gap-1 text-yellow-600"><Wrench className="w-4 h-4" /> Reparación</span>
+        return <span className="flex items-center gap-1 text-yellow-600"><Wrench className="w-4 h-4" /> Reparación</span>;
       case "Caído":
-        return <span className="flex items-center gap-1 text-red-600"><AlertTriangle className="w-4 h-4" /> Caído</span>
+        return <span className="flex items-center gap-1 text-red-600"><AlertTriangle className="w-4 h-4" /> Caído</span>;
       default:
-        return estatus
+        return estatus;
     }
-  }
+  };
 
   // --------- Stats ----------
   const StatsSection = () => {
-    const activos = allEquipos.filter(e => e.estatus === "Activo").length
-    const reparacion = allEquipos.filter(e => e.estatus === "En reparación").length
-    const caidos = allEquipos.filter(e => e.estatus === "Caído").length
+    const activos = equipos.filter(e => e.isActive).length;
+    const caidos = equipos.filter(e => !e.isActive).length;
 
     const stats = [
       { title: "Total Equipos", value: pagination.totalItems, icon: Truck, color: "bg-blue-500", textColor: "text-blue-600" },
       { title: "Activos", value: activos, icon: CheckCircle2, color: "bg-green-500", textColor: "text-green-600" },
-      { title: "En reparación", value: reparacion, icon: Wrench, color: "bg-yellow-500", textColor: "text-yellow-600" },
       { title: "Caídos", value: caidos, icon: AlertTriangle, color: "bg-red-500", textColor: "text-red-600" },
-    ]
+    ];
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -191,8 +170,8 @@ function EquiposPage() {
           </div>
         ))}
       </div>
-    )
-  }
+    );
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -260,11 +239,11 @@ function EquiposPage() {
                 equipos.map((e) => (
                   <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-sm">{e.id}</td>
-                    <td className="px-6 py-4 text-sm">{e.tipoEquipo}</td>
-                    <td className="px-6 py-4 text-sm">{e.numeroEconomico}</td>
+                    <td className="px-6 py-4 text-sm">{e.equipo}</td>
+                    <td className="px-6 py-4 text-sm">{e.no_economico}</td>
                     <td className="px-6 py-4 text-sm">{e.modelo}</td>
                     <td className="px-6 py-4 text-sm">{e.serie}</td>
-                    <td className="px-6 py-4 text-sm">{renderEstatus(e.estatus)}</td>
+                    <td className="px-6 py-4 text-sm">{renderEstatus(e.isActive ? "Activo" : "Caído")}</td>
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
                         {canEditUsers && (
@@ -377,10 +356,7 @@ function EquiposPage() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default EquiposPage
-
-
-
+export default EquiposPage;
