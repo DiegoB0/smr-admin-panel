@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import Swal from "sweetalert2";
-import { useDebounce } from "../../hooks/customHooks"; 
+import { useDebounce } from "../../hooks/customHooks";
 
 const RequisicionesPage = () => {
   const { listRequisiciones } = useRequisiciones();
@@ -234,7 +234,7 @@ const RequisicionesPage = () => {
                     Precio
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Metodo de pago
+                    Tipo de requisicion
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Acciones
@@ -281,7 +281,9 @@ const RequisicionesPage = () => {
                           : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {r.metodo_pago || "N/A"}
+                        {
+                          r.requisicionType === "service" ? "Servicio" : "product" ? "Producto" : "N/A"
+                        }
                       </td>
                       <td className="px-6 py-4 text-sm flex space-x-2">
                         <button
@@ -392,9 +394,32 @@ const RequisicionesPage = () => {
                   </p>
                 </div>
                 <div>
+                  <p className="text-sm font-medium text-gray-500">Tipo de requisicion</p>
+                  <p className="text-gray-900">
+                    {
+                      selectedRequisicion.requisicionType
+                        === "service"
+                        ? "Servicio"
+                        : "product"
+                          ? "Producto"
+                          : "N/A"
+                    }
+                  </p>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Concepto</p>
                   <p className="text-gray-900">
                     {selectedRequisicion.concepto || "Sin concepto"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Metodo de pago</p>
+                  <p className="text-gray-900">
+                    {
+                      selectedRequisicion.metodo_pago
+                        ? "Sin pagar"
+                        : "N/A"
+                    }
                   </p>
                 </div>
                 <div>
@@ -408,10 +433,10 @@ const RequisicionesPage = () => {
 
                 <div>
                   <p className="text-sm font-medium text-gray-500">
-                    Equipo Serie
+                    no. Economico (Equipo)
                   </p>
                   <p className="text-gray-900">
-                    {selectedRequisicion.equipo?.serie || "N/A"}
+                    {selectedRequisicion.equipo?.no_economico || "N/A"}
                   </p>
                 </div>
 
@@ -460,28 +485,56 @@ const RequisicionesPage = () => {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Items
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Items</h3>
                 {selectedRequisicion.items?.length > 0 ? (
                   <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                          Producto
-                        </th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                          Cantidad
-                        </th>
+                        {selectedRequisicion.requisicionType === 'product' ? (
+                          <>
+                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+                              Producto
+                            </th>
+                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+                              Cantidad
+                            </th>
+                          </>
+                        ) : (
+                          <>
+                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+                              Descripción
+                            </th>
+                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+                              Cantidad
+                            </th>
+                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+                              Unidad
+                            </th>
+                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+                              Precio Unitario
+                            </th>
+                          </>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {selectedRequisicion.items.map((item, i) => (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-4 py-2">
-                            {item.producto?.name || "Sin nombre"}
-                          </td>
-                          <td className="px-4 py-2">{item.cantidadSolicitada}</td>
+                          {selectedRequisicion.requisicionType === 'product' ? (
+                            <>
+                              <td className="px-4 py-2">
+                                {item.producto?.name || 'Sin nombre'}
+                              </td>
+                              <td className="px-4 py-2">{item.cantidadSolicitada}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-4 py-2">{item.descripcion}</td>
+                              <td className="px-4 py-2">{item.cantidad}</td>
+                              <td className="px-4 py-2">{item.unidad}</td>
+                              <td className="px-4 py-2">{item.precio_unitario}</td>
+                            </>
+                          )}
                         </tr>
                       ))}
                     </tbody>
