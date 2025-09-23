@@ -42,7 +42,6 @@ function ReportesPage() {
     titulo: "",
     concepto: "",
     prioridad: "",
-    metodo_pago: "",
     requisicionType: "product",
   });
 
@@ -59,7 +58,6 @@ function ReportesPage() {
       titulo: "",
       concepto: "",
       prioridad: "",
-      metodo_pago: "",
       requisicionType: "product",
     });
     setSelectedPeticionId(null);
@@ -511,19 +509,6 @@ function ReportesPage() {
                   <option value="baja">Baja</option>
                   <option value="media">Media</option>
                   <option value="alta">Alta</option>
-                </select>
-
-                <select
-                  name="metodo_pago"
-                  value={requisicionData.metodo_pago}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="" disabled>-- Selecciona un método de pago --</option>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="tarjeta">Tarjeta</option>
                 </select>
 
                 <select
