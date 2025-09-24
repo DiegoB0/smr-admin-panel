@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PiTractorFill } from "react-icons/pi";
+import { PiHandshake, PiStorefront, PiTractorFill, PiUsers } from "react-icons/pi";
 import { HiCube } from "react-icons/hi2";
 import { FaHelmetSafety } from "react-icons/fa6";
 import { FaFileAlt } from "react-icons/fa";
@@ -124,6 +124,19 @@ function Sidebar() {
                         <PiTractorFill />
                       </span>
                       Equipos
+                    </Link>
+                  </li>
+
+                   <li>
+                    <Link
+                      to="/dashboard/proveedores"
+                      className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/proveedores' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                        }`}
+                    >
+                      <span className='mt-1'>
+                        <PiStorefront />
+                      </span>
+                      Proveedores
                     </Link>
                   </li>
                 </>
