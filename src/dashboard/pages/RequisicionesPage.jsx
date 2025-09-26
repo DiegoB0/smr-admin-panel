@@ -8,13 +8,16 @@ import {
   CircleX,
   CircleCheck,
   Search,
+  Plus,
+  Trash2,
+  ClipboardList,
 } from "lucide-react";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
 
 const RequisicionesPage = () => {
-  const { listRequisiciones } = useRequisiciones();
+  const { listRequisiciones, createServiceRequisicion } = useRequisiciones();
   const [requisiciones, setRequisiciones] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -33,31 +36,65 @@ const RequisicionesPage = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
 
+  // Modal de creación
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    rcp: "",
+    titulo: "",
+    prioridad: "alta",
+    concepto: "",
+    almacenCargoId: "",
+    requisicionType: "service",
+    items: [
+      {
+        cantidad: "",
+        unidad: "",
+        descripcion: "",
+        precio_unitario: "",
+      },
+    ],
+  });
+
+  const limit =
+    limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10);
+
   const fetchRequisiciones = () => {
     setLoading(true);
-    const limit = limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption);
     listRequisiciones({ page, limit, order: "DESC", search: debouncedSearch })
       .then((res) => {
         let data = res.data.data;
         if (statusFilter !== "ALL") {
-          data = data.filter((r) => r.status.toLowerCase() === statusFilter.toLowerCase());
+          data = data.filter(
+            (r) => (r.status || "").toLowerCase() === statusFilter.toLowerCase()
+          );
         }
         setRequisiciones(data);
         setPagination(res.data.meta);
       })
       .catch((err) => {
-        Swal.fire(
-          "Error",
-          err.message || "Error al cargar requisiciones",
-          "error"
-        );
+        const msg =
+          err?.response?.data?.message ||
+          err.message ||
+          "Error al cargar requisiciones";
+        Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchRequisiciones();
-  }, [page, limitOption, debouncedSearch, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, debouncedSearch, statusFilter]);
+
+  // Resetear a página 1 cuando cambie el término de búsqueda
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch]);
+
+  // Resetear a página 1 cuando cambie el límite por página
+  useEffect(() => {
+    setPage(1);
+  }, [limitOption]);
 
   const openDetailModal = (requisicion) => {
     setSelectedRequisicion(requisicion);
@@ -70,15 +107,17 @@ const RequisicionesPage = () => {
   };
 
   const pendingCount = requisiciones.filter(
-    (r) => r.status === "pendiente"
+    (r) => (r.status || "").toLowerCase() === "pendiente"
   ).length;
-
   const rechazadosCount = requisiciones.filter(
-    (r) => r.status === "rechazada"
+    (r) =>
+      (r.status || "").toLowerCase() === "rechazado" ||
+      (r.status || "").toLowerCase() === "rechazada"
   ).length;
-
   const aprobadoCount = requisiciones.filter(
-    (r) => r.status === "aprobada"
+    (r) =>
+      (r.status || "").toLowerCase() === "aprobado" ||
+      (r.status || "").toLowerCase() === "aprobada"
   ).length;
 
   const StatsSection = () => (
@@ -134,7 +173,6 @@ const RequisicionesPage = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 
@@ -147,6 +185,57 @@ const RequisicionesPage = () => {
     </div>
   );
 
+  // Helpers items
+  const addItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { cantidad: "", unidad: "", descripcion: "", precio_unitario: "" },
+      ],
+    }));
+  };
+
+  const removeItem = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateItem = (index, field, value) => {
+    setFormData((prev) => {
+      const next = [...prev.items];
+      next[index] = { ...next[index], [field]: value };
+      return { ...prev, items: next };
+    });
+  };
+
+  // Total estimado (UI)
+  const totalEstimado = formData.items.reduce((acc, it) => {
+    const q = Number(it.cantidad) || 0;
+    const p = Number(it.precio_unitario) || 0;
+    return acc + q * p;
+  }, 0);
+
+  // Helpers UI para el modal de detalles
+  const Detail = ({ label, value }) => (
+    <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <p className="text-sm text-gray-900 mt-0.5">{value || "N/A"}</p>
+    </div>
+  );
+
+  const Th = ({ children }) => (
+    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+      {children}
+    </th>
+  );
+
+  const Td = ({ children }) => (
+    <td className="px-4 py-2 text-sm text-gray-700">{children}</td>
+  );
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-8 flex justify-between items-center">
@@ -154,15 +243,14 @@ const RequisicionesPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             Gestión de Requisiciones
           </h1>
-          <p className="text-gray-600 mt-1">
-            Administra todas las requisiciones
-          </p>
+          <p className="text-gray-600 mt-1">Administra todas las requisiciones</p>
         </div>
+        <div />
       </div>
 
       <StatsSection />
 
-      {/* Filters Section */}
+      {/* Filtros */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -200,13 +288,14 @@ const RequisicionesPage = () => {
 
       <div className="flex justify-end mb-4">
         <button
-          onClick={() => console.log("Create Requisicion")}
+          onClick={() => setIsCreateModalOpen(true)}
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
         >
-          Crear Requisicion
+          Crear Requisición
         </button>
       </div>
 
+      {/* Tabla */}
       {loading ? (
         <LoadingSpinner />
       ) : (
@@ -234,7 +323,7 @@ const RequisicionesPage = () => {
                     Precio
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Tipo de requisicion
+                    Tipo de requisición
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Acciones
@@ -244,46 +333,49 @@ const RequisicionesPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {requisiciones.length > 0 ? (
                   requisiciones.map((r) => (
-                    <tr
-                      key={r.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
+                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.rcp || "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(r.fechaSolicitud).toLocaleDateString()}
+                        {r.fechaSolicitud
+                          ? new Date(r.fechaSolicitud).toLocaleDateString()
+                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.titulo || "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {r.prioridad}
+                        {r.prioridad || "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${r.status === "pendiente"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : r.status === "aprobado"
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            (r.status || "").toLowerCase() === "pendiente"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : (r.status || "").toLowerCase() === "aprobado" ||
+                                (r.status || "").toLowerCase() === "aprobada"
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                            }`}
+                          }`}
                         >
-                          {r.status}
+                          {r.status || "N/A"}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {r.cantidad_dinero
-                          ? new Intl.NumberFormat('en-US', {
-                            style: 'currency',
-                            currency: 'USD',
-                          }).format(r.cantidad_dinero)
+                        {typeof r.cantidad_dinero === "number"
+                          ? new Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                            }).format(r.cantidad_dinero)
                           : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {
-                          r.requisicionType === "service" ? "Servicio" : "product" ? "Producto" : "N/A"
-                        }
+                        {r.requisicionType === "service"
+                          ? "Servicio"
+                          : r.requisicionType === "product"
+                          ? "Producto"
+                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm flex space-x-2">
                         <button
@@ -312,9 +404,11 @@ const RequisicionesPage = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="px-6 py-12 text-center">
+                    <td colSpan={8} className="px-6 py-12 text-center">
                       <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron requisiciones</h3>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No se encontraron requisiciones
+                      </h3>
                       <p className="text-gray-600">
                         {searchTerm
                           ? "Intenta ajustar los filtros de búsqueda"
@@ -329,10 +423,11 @@ const RequisicionesPage = () => {
         </div>
       )}
 
+      {/* Paginación */}
       {pagination.totalPages > 1 && (
         <div className="flex justify-center items-center gap-4 mt-6">
           <button
-            onClick={() => setPage((prev) => prev - 1)}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             disabled={!pagination.hasPreviousPage}
             className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
           >
@@ -353,201 +448,591 @@ const RequisicionesPage = () => {
         </div>
       )}
 
-      {isDetailModalOpen && selectedRequisicion && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      {/* Modal de creación (sin cambios relevantes) */}
+      {isCreateModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setIsCreateModalOpen(false)}
+        >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Detalles de la Requisición
-              </h2>
-              <button
-                onClick={closeDetailModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <span className="text-gray-400 hover:text-gray-600 text-xl">
-                  &times;
-                </span>
-              </button>
-            </div>
-
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">RCP</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.rcp || "N/A"}
-                  </p>
+            {/* Header */}
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-green-50 text-green-600">
+                  <Plus className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">HRM</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.hrm || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Título</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.titulo || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Tipo de requisicion</p>
-                  <p className="text-gray-900">
-                    {
-                      selectedRequisicion.requisicionType
-                        === "service"
-                        ? "Servicio"
-                        : "product"
-                          ? "Producto"
-                          : "N/A"
-                    }
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Concepto</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.concepto || "Sin concepto"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Metodo de pago</p>
-                  <p className="text-gray-900">
-                    {
-                      selectedRequisicion.metodo_pago
-                        ? "Sin pagar"
-                        : "N/A"
-                    }
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Equipo
-                  </p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.equipo?.equipo || "N/A"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    no. Economico (Equipo)
-                  </p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.equipo?.no_economico || "N/A"}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Almacen Destino
-                  </p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.almacenDestino?.name || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">
-                    Almacen Cargo
-                  </p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.almacenCargo?.name || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Pedido Por</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.pedidoPor?.name || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Revisado Por</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.revisadoPor?.name || "N/A"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Fecha creacion</p>
-                  <p className="text-gray-900">
-                    {new Date(selectedRequisicion.fechaSolicitud).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Fecha revision</p>
-                  <p className="text-gray-900">
-                    {selectedRequisicion.fechaRevision
-                      ? new Date(selectedRequisicion.fechaRevision).toLocaleDateString()
-                      : "N/A"}
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Nueva Requisición de Servicio
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Completa los campos para crear la requisición
                   </p>
                 </div>
               </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Items</h3>
+            {/* Form */}
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+
+                const payload = {
+                  ...formData,
+                  rcp:
+                    formData.rcp === "" || formData.rcp === null
+                      ? null
+                      : Number(formData.rcp),
+                  almacenCargoId:
+                    formData.almacenCargoId === "" ||
+                    formData.almacenCargoId === null
+                      ? null
+                      : Number(formData.almacenCargoId),
+                  items: formData.items.map((it) => ({
+                    ...it,
+                    cantidad:
+                      it.cantidad === "" || it.cantidad === null
+                        ? null
+                        : Number(it.cantidad),
+                    precio_unitario:
+                      it.precio_unitario === "" || it.precio_unitario === null
+                        ? null
+                        : Number(it.precio_unitario),
+                  })),
+                };
+
+                if (
+                  !payload.almacenCargoId ||
+                  Number.isNaN(payload.almacenCargoId) ||
+                  payload.almacenCargoId <= 0
+                ) {
+                  Swal.fire(
+                    "Error",
+                    "almacenCargoId debe ser un número positivo",
+                    "error"
+                  );
+                  return;
+                }
+
+                const invalidItem = payload.items.find(
+                  (it) =>
+                    !it.cantidad ||
+                    Number.isNaN(it.cantidad) ||
+                    Number(it.cantidad) <= 0 ||
+                    !it.precio_unitario ||
+                    Number.isNaN(it.precio_unitario) ||
+                    Number(it.precio_unitario) < 0
+                );
+                if (invalidItem) {
+                  Swal.fire(
+                    "Error",
+                    "Verifica cantidad (> 0) y precio_unitario (>= 0) en los items",
+                    "error"
+                  );
+                  return;
+                }
+
+                try {
+                  await createServiceRequisicion(payload);
+                  Swal.fire("Éxito", "Requisición creada correctamente", "success");
+                  setIsCreateModalOpen(false);
+                  fetchRequisiciones();
+                } catch (err) {
+                  const msg =
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Error al crear requisición";
+                  Swal.fire(
+                    "Error",
+                    Array.isArray(msg) ? msg.join(", ") : msg,
+                    "error"
+                  );
+                }
+              }}
+              className="px-6 py-5 space-y-8"
+            >
+              {/* Sección: Datos generales */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-green-600" />
+                  Datos generales
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* RCP */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      RCP <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ej. 12345"
+                      value={formData.rcp}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          rcp: e.target.value === "" ? "" : Number(e.target.value),
+                        }))
+                      }
+                      required
+                      min={1}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Número de requisición de compra.
+                    </p>
+                  </div>
+
+                  {/* Título */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Título <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Mantenimiento de bomba hidráulica"
+                      value={formData.titulo}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, titulo: e.target.value }))
+                      }
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                    />
+                  </div>
+
+                  {/* Prioridad */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Prioridad
+                    </label>
+                    <select
+                      value={formData.prioridad}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          prioridad: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
+                    >
+                      <option value="alta">Alta</option>
+                      <option value="media">Media</option>
+                      <option value="baja">Baja</option>
+                    </select>
+                  </div>
+
+                  {/* Almacén Cargo */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ID Almacén Cargo <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ej. 7"
+                      value={formData.almacenCargoId}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          almacenCargoId:
+                            e.target.value === "" ? "" : Number(e.target.value),
+                        }))
+                      }
+                      required
+                      min={1}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Almacén que cubrirá el gasto.
+                    </p>
+                  </div>
+
+                  {/* Concepto */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Concepto <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Descripción general del servicio solicitado"
+                      value={formData.concepto}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, concepto: e.target.value }))
+                      }
+                      required
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                    />
+                  </div>
+
+                  {/* Tipo (fijo service) */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tipo de requisición
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+                        Servicio
+                      </span>
+                      <p className="text-xs text-gray-500">
+                        Este formulario está configurado para requisiciones de
+                        servicio.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Sección: Items */}
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-green-600" />
+                    Items del servicio
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Agregar item
+                  </button>
+                </div>
+
+                {formData.items.length === 0 && (
+                  <p className="text-sm text-gray-500 mb-2">
+                    Agrega al menos un item para describir el servicio.
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  {formData.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="relative border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      {/* Botón eliminar item */}
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="absolute -top-3 -right-3 p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow"
+                        title="Eliminar item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Cantidad <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={item.cantidad}
+                            onChange={(e) =>
+                              updateItem(index, "cantidad", e.target.value)
+                            }
+                            required
+                            min={1}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Unidad <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ej. hr, día, pieza"
+                            value={item.unidad}
+                            onChange={(e) =>
+                              updateItem(index, "unidad", e.target.value)
+                            }
+                            required
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Descripción <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Describe el servicio (ej. mantenimiento correctivo)"
+                            value={item.descripcion}
+                            onChange={(e) =>
+                              updateItem(index, "descripcion", e.target.value)
+                            }
+                            required
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Precio unitario <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={item.precio_unitario}
+                            onChange={(e) =>
+                              updateItem(index, "precio_unitario", e.target.value)
+                            }
+                            required
+                            min={0}
+                            step="0.01"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Moneda: USD (ajusta si tu backend usa otra).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 -mx-6 px-6 py-4 rounded-b-xl flex items-center justify-end gap-2">
+                <span className="mr-auto text-sm text-gray-700">
+                  Total estimado:{" "}
+                  {new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(totalEstimado)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Detalles */}
+      {isDetailModalOpen && selectedRequisicion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={closeDetailModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Detalles de la Requisición
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Vista resumen con información clave
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeDetailModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-8">
+              {/* Encabezado con badges */}
+              <section className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 text-gray-700 border-gray-200">
+                  RCP: {selectedRequisicion.rcp || "N/A"}
+                </span>
+
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
+                  {selectedRequisicion.requisicionType === "service"
+                    ? "Servicio"
+                    : selectedRequisicion.requisicionType === "product"
+                    ? "Producto"
+                    : "Tipo N/A"}
+                </span>
+
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                    (selectedRequisicion.status || "").toLowerCase() ===
+                      "aprobado" ||
+                    (selectedRequisicion.status || "").toLowerCase() === "aprobada"
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : (selectedRequisicion.status || "").toLowerCase() ===
+                        "pendiente"
+                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  {selectedRequisicion.status || "Sin status"}
+                </span>
+              </section>
+
+              {/* Grid datos principales */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Información general
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Título" value={selectedRequisicion.titulo} />
+                  <Detail label="HRM" value={selectedRequisicion.hrm} />
+                  <Detail
+                    label="Concepto"
+                    value={selectedRequisicion.concepto || "Sin concepto"}
+                  />
+                  <Detail
+                    label="Método de pago"
+                    value={selectedRequisicion.metodo_pago}
+                  />
+                  <Detail label="Prioridad" value={selectedRequisicion.prioridad} />
+                  <Detail
+                    label="Fecha creación"
+                    value={
+                      selectedRequisicion.fechaSolicitud
+                        ? new Date(
+                            selectedRequisicion.fechaSolicitud
+                          ).toLocaleDateString()
+                        : "N/A"
+                    }
+                  />
+                  <Detail
+                    label="Fecha revisión"
+                    value={
+                      selectedRequisicion.fechaRevision
+                        ? new Date(
+                            selectedRequisicion.fechaRevision
+                          ).toLocaleDateString()
+                        : "N/A"
+                    }
+                  />
+                </div>
+              </section>
+
+              {/* Relacionados */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Relacionados
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Pedido por" value={selectedRequisicion.pedidoPor?.name} />
+                  <Detail label="Revisado por" value={selectedRequisicion.revisadoPor?.name} />
+                  <Detail
+                    label="Almacén Destino"
+                    value={selectedRequisicion.almacenDestino?.name}
+                  />
+                  <Detail label="Almacén Cargo" value={selectedRequisicion.almacenCargo?.name} />
+                </div>
+              </section>
+
+              {/* Equipo */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Equipo</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Equipo" value={selectedRequisicion.equipo?.equipo} />
+                  <Detail
+                    label="No. Económico"
+                    value={selectedRequisicion.equipo?.no_economico}
+                  />
+                </div>
+              </section>
+
+              {/* Items */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-blue-600" />
+                  Items
+                </h3>
+
                 {selectedRequisicion.items?.length > 0 ? (
-                  <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {selectedRequisicion.requisicionType === 'product' ? (
-                          <>
-                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                              Producto
-                            </th>
-                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                              Cantidad
-                            </th>
-                          </>
-                        ) : (
-                          <>
-                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                              Descripción
-                            </th>
-                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                              Cantidad
-                            </th>
-                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                              Unidad
-                            </th>
-                            <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
-                              Precio Unitario
-                            </th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {selectedRequisicion.items.map((item, i) => (
-                        <tr key={i} className="hover:bg-gray-50">
-                          {selectedRequisicion.requisicionType === 'product' ? (
+                  <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          {selectedRequisicion.requisicionType === "product" ? (
                             <>
-                              <td className="px-4 py-2">
-                                {item.producto?.name || 'Sin nombre'}
-                              </td>
-                              <td className="px-4 py-2">{item.cantidadSolicitada}</td>
+                              <Th>Producto</Th>
+                              <Th>Cantidad</Th>
                             </>
                           ) : (
                             <>
-                              <td className="px-4 py-2">{item.descripcion}</td>
-                              <td className="px-4 py-2">{item.cantidad}</td>
-                              <td className="px-4 py-2">{item.unidad}</td>
-                              <td className="px-4 py-2">{item.precio_unitario}</td>
+                              <Th>Descripción</Th>
+                              <Th>Cantidad</Th>
+                              <Th>Unidad</Th>
+                              <Th>Precio Unitario</Th>
                             </>
                           )}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {selectedRequisicion.items.map((item, i) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            {selectedRequisicion.requisicionType === "product" ? (
+                              <>
+                                <Td>{item.producto?.name || "Sin nombre"}</Td>
+                                <Td>{item.cantidadSolicitada ?? item.cantidad ?? "N/A"}</Td>
+                              </>
+                            ) : (
+                              <>
+                                <Td>{item.descripcion || "N/A"}</Td>
+                                <Td>{item.cantidad || "N/A"}</Td>
+                                <Td>{item.unidad || "N/A"}</Td>
+                                <Td>
+                                  {typeof item.precio_unitario === "number" ||
+                                  (typeof item.precio_unitario === "string" &&
+                                    item.precio_unitario !== "")
+                                    ? item.precio_unitario
+                                    : "N/A"}
+                                </Td>
+                              </>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <p className="text-gray-600">
                     No hay items registrados en esta requisición
                   </p>
                 )}
-              </div>
+              </section>
             </div>
 
-            <div className="flex justify-end gap-2 p-6 border-t border-gray-200">
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
               <button
                 onClick={closeDetailModal}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
