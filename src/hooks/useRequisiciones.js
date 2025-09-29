@@ -51,7 +51,6 @@ export function useRequisiciones() {
 
   const updateReporte = (id, data) =>
     api.patch(`requisiciones/reportes/update_report/${id}`, data);
-
   const approveReporte = (id) =>
     api.patch(`requisiciones/reportes/${id}/approve`);
 

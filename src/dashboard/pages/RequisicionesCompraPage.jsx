@@ -15,7 +15,6 @@ import Swal from "sweetalert2";
 import { exportRequisicionPDF } from "../../utils/exportPdf";
 import { printRequisicion } from "../../utils/printPdf";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
-
 const lower = (s) => (s || "").toLowerCase();
 const currency = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -101,6 +100,7 @@ const RequisicionesCompraPage = () => {
   const pageItems =
     limitOption === "all" ? filtered : filtered.slice(start, end);
 
+
   // Stats
   const stats = useMemo(() => {
     const total = filtered.length;
@@ -141,6 +141,7 @@ const RequisicionesCompraPage = () => {
       );
       Swal.fire("Listo", "Requisición marcada como comprada", "success");
     } catch {
+
       Swal.fire("Error", "No se pudo marcar como comprada", "error");
     } finally {
       setLoading(false);
@@ -155,7 +156,6 @@ const RequisicionesCompraPage = () => {
     setIsDetailModalOpen(false);
     setSelectedRequisicion(null);
   };
-
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center py-12">
       <div className="flex flex-col items-center">
@@ -192,7 +192,6 @@ const RequisicionesCompraPage = () => {
   const Td = ({ children }) => (
     <td className="px-4 py-2 text-sm text-gray-700">{children}</td>
   );
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -337,8 +336,8 @@ const RequisicionesCompraPage = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-
                           {!isPurchased ? (
+
                             <button
                               onClick={() => handleMarkPurchased(r)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
@@ -348,6 +347,7 @@ const RequisicionesCompraPage = () => {
                               Marcar
                             </button>
                           ) : (
+
                             <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 className="w-4 h-4" />
                               Comprada
@@ -398,7 +398,6 @@ const RequisicionesCompraPage = () => {
           </button>
         </div>
       )}
-
       {/* Modal Detalles + plantilla oculta para PDF/print */}
       {isDetailModalOpen && selectedRequisicion && (
         <div
@@ -632,6 +631,7 @@ const RequisicionesCompraPage = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
