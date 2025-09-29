@@ -15,6 +15,8 @@ import {
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
+import { exportRequisicionPDF } from "../../utils/exportPdf";
+import { printRequisicion } from "../../utils/printPdf";
 
 const RequisicionesPage = () => {
   const { listRequisiciones, createServiceRequisicion } = useRequisiciones();
@@ -86,12 +88,10 @@ const RequisicionesPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, debouncedSearch, statusFilter]);
 
-  // Resetear a página 1 cuando cambie el término de búsqueda
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
 
-  // Resetear a página 1 cuando cambie el límite por página
   useEffect(() => {
     setPage(1);
   }, [limitOption]);
@@ -109,16 +109,14 @@ const RequisicionesPage = () => {
   const pendingCount = requisiciones.filter(
     (r) => (r.status || "").toLowerCase() === "pendiente"
   ).length;
-  const rechazadosCount = requisiciones.filter(
-    (r) =>
-      (r.status || "").toLowerCase() === "rechazado" ||
-      (r.status || "").toLowerCase() === "rechazada"
-  ).length;
-  const aprobadoCount = requisiciones.filter(
-    (r) =>
-      (r.status || "").toLowerCase() === "aprobado" ||
-      (r.status || "").toLowerCase() === "aprobada"
-  ).length;
+  const rechazadosCount = requisiciones.filter((r) => {
+    const s = (r.status || "").toLowerCase();
+    return s === "rechazado" || s === "rechazada";
+  }).length;
+  const aprobadoCount = requisiciones.filter((r) => {
+    const s = (r.status || "").toLowerCase();
+    return s === "aprobado" || s === "aprobada";
+  }).length;
 
   const StatsSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -154,7 +152,9 @@ const RequisicionesPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600 mb-1">Pendientes</p>
-            <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+            <p className="text-2xl font-bold text-yellow-600">
+              {pendingCount}
+            </p>
           </div>
           <div className="p-3 rounded-lg bg-yellow-500">
             <AlertTriangle className="w-6 h-6 text-white" />
@@ -218,7 +218,6 @@ const RequisicionesPage = () => {
     return acc + q * p;
   }, 0);
 
-  // Helpers UI para el modal de detalles
   const Detail = ({ label, value }) => (
     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
       <p className="text-xs font-medium text-gray-500">{label}</p>
@@ -243,7 +242,9 @@ const RequisicionesPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             Gestión de Requisiciones
           </h1>
-          <p className="text-gray-600 mt-1">Administra todas las requisiciones</p>
+          <p className="text-gray-600 mt-1">
+            Administra todas las requisiciones
+          </p>
         </div>
         <div />
       </div>
@@ -253,7 +254,7 @@ const RequisicionesPage = () => {
       {/* Filtros */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Buscar requisiciones..."
@@ -448,7 +449,7 @@ const RequisicionesPage = () => {
         </div>
       )}
 
-      {/* Modal de creación (sin cambios relevantes) */}
+      {/* Modal de creación */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
@@ -958,7 +959,7 @@ const RequisicionesPage = () => {
               </section>
 
               {/* Equipo */}
-              <section>
+              <section className="print:break-inside-avoid">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Equipo</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Detail label="Equipo" value={selectedRequisicion.equipo?.equipo} />
@@ -1031,8 +1032,239 @@ const RequisicionesPage = () => {
               </section>
             </div>
 
+            {/* Contenido oculto para exportar (layout imprimible) */}
+            <div id={`req-print-${selectedRequisicion.id}`} className="hidden">
+              <div className="pdf-card">
+                {/* Header tipo Excel */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    marginBottom: 8,
+                  }}
+                >
+                  <div>
+                    <div className="pdf-label">NO. RCP</div>
+                    <div className="pdf-value">
+                      {String(selectedRequisicion.rcp || "N/A")}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">FECHA</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.fechaSolicitud
+                        ? new Date(
+                            selectedRequisicion.fechaSolicitud
+                          ).toLocaleDateString("es-MX")
+                        : "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">PRIORIDAD</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.prioridad || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">ESTATUS</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.status || "N/A"}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="pdf-grid"
+                  style={{ gridTemplateColumns: "1fr 1fr 1fr", marginTop: 4 }}
+                >
+                  <div>
+                    <div className="pdf-label">PROVEEDOR</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.proveedor?.name || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">OBRA/UBICACIÓN</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.almacenDestino?.name || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">CON CARGO A</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.almacenCargo?.name || "N/A"}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="pdf-grid"
+                  style={{ gridTemplateColumns: "1fr 1fr 1fr", marginTop: 8 }}
+                >
+                  <div>
+                    <div className="pdf-label">EQUIPO</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.equipo?.equipo || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">NO. ECONÓMICO</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.equipo?.no_economico || "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="pdf-label">SOLICITA</div>
+                    <div className="pdf-value">
+                      {selectedRequisicion.pedidoPor?.name || "N/A"}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 8 }}>
+                  <div className="pdf-label">CONCEPTO</div>
+                  <div className="pdf-value">
+                    {selectedRequisicion.concepto || "N/A"}
+                  </div>
+                </div>
+
+                {/* Tabla de items */}
+                <div style={{ marginTop: 12 }}>
+                  <table className="pdf-table">
+                    <thead>
+                      <tr>
+                        {selectedRequisicion.requisicionType === "product" ? (
+                          <>
+                            <th>NO.</th>
+                            <th>PRODUCTO</th>
+                            <th>CANTIDAD</th>
+                          </>
+                        ) : (
+                          <>
+                            <th>NO.</th>
+                            <th>CANTIDAD</th>
+                            <th>UNIDAD</th>
+                            <th>DESCRIPCIÓN</th>
+                            <th>PRECIO UNITARIO</th>
+                            <th>SUBTOTAL</th>
+                          </>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(selectedRequisicion.items || []).map((it, idx) => {
+                        if (selectedRequisicion.requisicionType === "product") {
+                          const qty = it.cantidadSolicitada ?? it.cantidad ?? "";
+                          return (
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td>{(it.producto && it.producto.name) || "N/A"}</td>
+                              <td>{qty}</td>
+                            </tr>
+                          );
+                        } else {
+                          const qty = Number(it.cantidad) || 0;
+                          const pu =
+                            typeof it.precio_unitario === "number"
+                              ? it.precio_unitario
+                              : Number(it.precio_unitario) || 0;
+                          const st = qty * pu;
+                          return (
+                            <tr key={idx}>
+                              <td>{idx + 1}</td>
+                              <td>{qty || ""}</td>
+                              <td>{it.unidad || ""}</td>
+                              <td>{it.descripcion || ""}</td>
+                              <td>
+                                {pu
+                                  ? new Intl.NumberFormat("es-MX", {
+                                      style: "currency",
+                                      currency: "MXN",
+                                    }).format(pu)
+                                  : ""}
+                              </td>
+                              <td>
+                                {st
+                                  ? new Intl.NumberFormat("es-MX", {
+                                      style: "currency",
+                                      currency: "MXN",
+                                    }).format(st)
+                                  : ""}
+                              </td>
+                            </tr>
+                          );
+                        }
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Totales */}
+                {selectedRequisicion.requisicionType !== "product" && (
+                  <div
+                    style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}
+                  >
+                    <div>
+                      <div className="pdf-label" style={{ textAlign: "right" }}>
+                        IMPORTE TOTAL
+                      </div>
+                      <div className="pdf-value" style={{ textAlign: "right" }}>
+                        {(() => {
+                          const total = (selectedRequisicion.items || []).reduce(
+                            (acc, it) => {
+                              const q = Number(it.cantidad) || 0;
+                              const p =
+                                typeof it.precio_unitario === "number"
+                                  ? it.precio_unitario
+                                  : Number(it.precio_unitario) || 0;
+                              return acc + q * p;
+                            },
+                            0
+                          );
+                          return new Intl.NumberFormat("es-MX", {
+                            style: "currency",
+                            currency: "MXN",
+                          }).format(total);
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Firmas */}
+                <div className="pdf-footer">
+                  <div className="pdf-sign">SOLICITA</div>
+                  <div className="pdf-sign">AUTORIZA</div>
+                  <div className="pdf-sign">VO. BO.</div>
+                </div>
+              </div>
+            </div>
+
             {/* Footer */}
-            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
+              <button
+                onClick={() =>
+                  exportRequisicionPDF(
+                    `req-print-${selectedRequisicion.id}`,
+                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}.pdf`
+                  )
+                }
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Descargar PDF
+              </button>
+              <button
+                onClick={() =>
+                  printRequisicion(
+                    `req-print-${selectedRequisicion.id}`,
+                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
+                  )
+                }
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+              >
+                Imprimir / Guardar PDF
+              </button>
               <button
                 onClick={closeDetailModal}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
