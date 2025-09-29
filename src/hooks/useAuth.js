@@ -28,6 +28,7 @@ export function useAuthFlags() {
   const isAdmin = useSelector(s => hasRole(s, Roles.ADMIN));
   const isAdminWeb = useSelector(s => hasRole(s, Roles.ADMIN_WEB))
   const isAdminAlmacen = useSelector(s => hasRole(s, Roles.ADMIN_ALMACEN))
+  const isAdminCompras = useSelector(s => hasRole(s, Roles.ADMIN_COMPRAS))
 
   return {
     canCreatePost,
@@ -41,6 +42,7 @@ export function useAuthFlags() {
     isAdmin,
     isAdminWeb,
     isAdminAlmacen,
+    isAdminCompras,
     isBlogger,
     isOperador
   }
