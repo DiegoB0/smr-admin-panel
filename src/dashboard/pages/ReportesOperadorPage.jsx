@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { Eye, Award, FileText, Package, ClipboardList, Hash, Search, CircleCheck, CircleX, Timer } from "lucide-react"
+import { Truck, Eye, Award, FileText, Package, ClipboardList, Hash, Search, CircleCheck, CircleX, Timer } from "lucide-react"
 import { FaCirclePlus } from "react-icons/fa6"
 import Swal from "sweetalert2"
+import { COMPONENTE_KEYS, FASE_KEYS } from "../../types/reportes.types"
 import { useDebounce } from "../../hooks/customHooks"
 import { useRequisiciones } from "../../hooks/useRequisiciones"
 import { useProductos } from "../../hooks/useProductos"
@@ -28,6 +29,9 @@ function ReportesOperadorPage() {
   const [statusFilter, setStatusFilter] = useState("ALL")
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearch = useDebounce(searchTerm, 500)
+
+  const [selectedComponentes, setSelectedComponentes] = React.useState([]);
+  const [selectedFases, setSelectedFases] = React.useState([]);
 
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -56,12 +60,74 @@ function ReportesOperadorPage() {
   const clearForm = () => {
     setObservaciones("")
     setEquipoId("")
+    setSelectedComponentes([]);
+    setSelectedFases([]);
     setItems([{ productoId: "", cantidad: "" }])
   }
 
   const handleCloseFormModal = () => {
     setIsFormModalOpen(false)
     clearForm()
+  }
+
+
+  function CheckboxPill({ label, checked, onChange }) {
+    return (
+      <label
+        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border cursor-pointer select-none ${checked
+          ? 'bg-blue-50 border-blue-300 text-blue-700'
+          : 'bg-white border-gray-300 text-gray-700'
+          }`}
+      >
+        <input
+          type="checkbox"
+          className="hidden"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span
+          className={`w-4 h-4 inline-flex items-center justify-center rounded-full border ${checked
+            ? 'bg-blue-600 border-blue-600 text-white'
+            : 'bg-white border-gray-300 text-transparent'
+            }`}
+        >
+          ✓
+        </span>
+        <span className="text-sm">{label}</span>
+      </label>
+    );
+  }
+
+  function formatDate(isoString) {
+    if (!isoString) return "-"
+    const date = new Date(isoString)
+    return date.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+  }
+
+
+  function Th({ children }) {
+    return (
+      <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">
+        {children}
+      </th>
+    );
+  }
+
+  function Td({ children }) {
+    return <td className="px-4 py-2 text-sm text-gray-900">{children}</td>;
+  }
+
+  function Detail({ label, value }) {
+    return (
+      <div className="rounded-lg border border-gray-200 p-3">
+        <p className="text-xs font-medium text-gray-500">{label}</p>
+        <p className="text-sm text-gray-900">{value ?? "N/A"}</p>
+      </div>
+    );
   }
 
   const fetchReportes = () => {
@@ -146,10 +212,23 @@ function ReportesOperadorPage() {
       return
     }
 
+    if (!selectedComponentes.length) {
+      Swal.fire('Error', 'Selecciona al menos un componente', 'error');
+      return;
+    }
+
+    if (!selectedFases.length) {
+      Swal.fire('Error', 'Selecciona al menos una fase', 'error');
+      return;
+    }
+
     if (items.length === 0) {
       Swal.fire("Error", "Debes agregar al menos un item", "error")
       return
     }
+
+    console.log('sending componentes:', selectedComponentes);
+    console.log('sending fases:', selectedFases);
 
     for (let i = 0; i < items.length; i++) {
       const { productoId, cantidad } = items[i]
@@ -166,6 +245,8 @@ function ReportesOperadorPage() {
     const payload = {
       observaciones,
       equipoId,
+      componentes: selectedComponentes,
+      fases: selectedFases,
       items: items.map((i) => ({
         productoId: String(i.productoId),
         cantidad: Number(i.cantidad),
@@ -477,6 +558,55 @@ function ReportesOperadorPage() {
                 </select>
               </div>
 
+              {/* Componentes */}
+              <div>
+                <p className="block text-sm font-medium text-gray-700 mb-2">
+                  Componentes (al menos uno) *
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {COMPONENTE_KEYS.map((k) => {
+                    const checked = selectedComponentes.includes(k);
+                    return (
+                      <CheckboxPill
+                        key={k}
+                        label={k.replace(/_/g, ' ')}
+                        checked={checked}
+                        onChange={(next) => {
+                          setSelectedComponentes((prev) =>
+                            next ? [...prev, k] : prev.filter((x) => x !== k)
+                          );
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Fases */}
+              <div>
+                <p className="block text-sm font-medium text-gray-700 mb-2">
+                  Fases (al menos una) *
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {FASE_KEYS.map((k) => {
+                    const checked = selectedFases.includes(k);
+                    return (
+                      <CheckboxPill
+                        key={k}
+                        label={k.replace(/_/g, ' ')}
+                        checked={checked}
+                        onChange={(next) => {
+                          setSelectedFases((prev) =>
+                            next ? [...prev, k] : prev.filter((x) => x !== k)
+                          );
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+
+
               {/* Items */}
               {items.map((item, index) => (
                 <div key={index} className="flex gap-4 items-end">
@@ -558,94 +688,167 @@ function ReportesOperadorPage() {
 
       {/* Modal Detalle */}
       {isDetailModalOpen && selectedReporte && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={closeDetailModal}
+        >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">Detalle del Reporte</h2>
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Detalle del Reporte</h2>
+                  <p className="text-xs text-gray-500">Vista resumen con información clave</p>
+                </div>
+              </div>
               <button
                 onClick={closeDetailModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
               >
-                <span className="text-gray-400 hover:text-gray-600 text-xl">&times;</span>
+                <span className="text-2xl leading-none">&times;</span>
               </button>
             </div>
 
-            {/* Content */}
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Observaciones</p>
-                  <p className="text-gray-900">{selectedReporte.observaciones || "Sin observaciones"}</p>
+            {/* Body */}
+            <div className="px-6 py-5 space-y-8">
+              {/* Badges */}
+              <section className="flex flex-wrap items-center gap-2">
+
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${selectedReporte.status === "APROBADO"
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : selectedReporte.status === "PENDIENTE"
+                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      : selectedReporte.status === "PROCESADO"
+                        ? "bg-gray-50 text-gray-700 border-gray-200"
+                        : "bg-red-50 text-red-700 border-red-200"
+                    }`}
+                >
+                  {selectedReporte.status}
+                </span>
+
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
+                  Almacén: {selectedReporte.almacen?.name || "N/A"}
+                </span>
+              </section>
+
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-blue-600" />
+                  Equipo
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Equipo" value={selectedReporte.equipo || "Sin equipo"} />
+                  <Detail label="Horometro" value={selectedReporte.horometro || "N/A"} />
+                  <Detail label="Modelo" value={selectedReporte.modelo || "N/A"} />
+                  <Detail label="Serie" value={selectedReporte.serie || "N/A"}
+                  />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Equipo</p>
-                  <p className="text-gray-900">{selectedReporte.equipo || "Sin equipo"}</p>
+              </section>
+
+              {/* Información general */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Información general
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Observaciones" value={selectedReporte.observaciones || "Sin observaciones"} />
+                  <Detail label="Revisado por" value={selectedReporte.revisadoPor?.email || "Pendiente"} />
+                  <Detail label="Fecha creación" value={formatDate(selectedReporte.fechaCreacion)} />
+                  <Detail
+                    label="Fecha revisión"
+                    value={selectedReporte.fechaRevision ? formatDate(selectedReporte.fechaRevision) : "N/A"}
+                  />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Estatus</p>
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${selectedReporte.status === "PENDIENTE"
-                      ? "bg-yellow-100 text-yellow-800"
-                      : selectedReporte.status === "APROBADO"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                      }`}
-                  >
-                    {selectedReporte.status}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Revisado por</p>
-                  <p className="text-gray-900">{selectedReporte.revisadoPor?.email || "Pendiente"}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Fecha creación</p>
-                  <p className="text-gray-900">{formatDate(selectedReporte.fechaCreacion || selectedReporte.createdAt)}</p>
-                </div>
-                {selectedReporte.fechaRevision && (
+              </section>
+
+              {/* Componentes y Fases */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Clasificación</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Fecha revisión</p>
-                    <p className="text-gray-900">{formatDate(selectedReporte.fechaRevision)}</p>
+                    <p className="text-xs font-medium text-gray-500 mb-2">Componentes</p>
+                    {selectedReporte.componentes?.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedReporte.componentes.map((c, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
+                          >
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">Sin componentes</p>
+                    )}
                   </div>
-                )}
-              </div>
+
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-2">Fases</p>
+                    {selectedReporte.fases?.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedReporte.fases.map((f, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100"
+                          >
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600">Sin fases</p>
+                    )}
+                  </div>
+                </div>
+              </section>
 
               {/* Items */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Items</h3>
-                {selectedReporte.items?.length > 0 ? (
-                  <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Producto</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Cantidad</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {selectedReporte.items.map((item, i) => (
-                        <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-4 py-2">
-                            {item.producto
-                              ? `${item.producto.id} - ${item.producto.name || "Sin nombre"}`
-                              : item.productoId}
-                          </td>
-                          <td className="px-4 py-2">{item.cantidad}</td>
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-blue-600" />
+                  Refacciones
+                </h3>
+                {selectedReporte.items?.length ? (
+                  <div className="rounded-lg border border-gray-200 overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <Th>Producto</Th>
+                          <Th>Cantidad</Th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {selectedReporte.items.map((item, i) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            <Td>
+                              {item.producto
+                                ? `${item.producto.id} - ${item.producto.name || "Sin nombre"}`
+                                : item.productoId}
+                            </Td>
+                            <Td>{item.cantidad}</Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
                   <p className="text-gray-600">No hay items registrados en este reporte</p>
                 )}
-              </div>
+              </section>
             </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-2 p-6 border-t border-gray-200">
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
               <button
                 onClick={closeDetailModal}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
@@ -656,6 +859,7 @@ function ReportesOperadorPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }

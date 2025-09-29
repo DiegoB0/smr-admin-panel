@@ -69,7 +69,7 @@ function RouteLoader() {
         <Route path="entradas" element={isAuthenticated ? <EntradasPage /> : <Navigate to={"/auth/login"} />}></Route>
         <Route path="salidas" element={isAuthenticated ? <SalidasPage /> : <Navigate to={"/auth/login"} />}></Route>
         <Route path="historial" element={isAuthenticated ? <HistorialPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="compras" element={isAuthenticated ? <RequisicionesCompraPage /> : <Navigate to={"/auth/login"} />}></Route>
+        <Route path="requisiciones/compras" element={isAuthenticated ? <RequisicionesCompraPage /> : <Navigate to={"/auth/login"} />}></Route>
 
       </Route>
 

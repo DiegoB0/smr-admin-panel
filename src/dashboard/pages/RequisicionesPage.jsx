@@ -18,6 +18,8 @@ import { useDebounce } from "../../hooks/customHooks";
 import { exportRequisicionPDF } from "../../utils/exportPdf";
 import { printRequisicion } from "../../utils/printPdf";
 import { useAuthFlags } from "../../hooks/useAuth";
+import { useProveedores } from "../../hooks/useProveedores"
+import { useAlmacenes } from "../../hooks/useAlmacenes";
 
 const RequisicionesPage = () => {
   const {
@@ -41,6 +43,10 @@ const RequisicionesPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
 
+  const [proveedores, setProveedores] = useState([])
+
+  const [almacenes, setAlmacenes] = useState([])
+
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
 
@@ -52,6 +58,7 @@ const RequisicionesPage = () => {
     prioridad: "alta",
     concepto: "",
     almacenCargoId: "",
+    proveedorId: "",
     requisicionType: "service",
     items: [
       {
@@ -64,6 +71,9 @@ const RequisicionesPage = () => {
   });
   // Admin flags
   const { isAdmin } = useAuthFlags();
+
+  const { listProveedores } = useProveedores()
+  const { listAlmacenes } = useAlmacenes()
 
   // Pestañas de historial para admin
   const [adminTab, setAdminTab] = useState("all"); // all | aprobadas | rechazadas
@@ -92,6 +102,39 @@ const RequisicionesPage = () => {
       })
       .finally(() => setLoading(false));
   };
+
+
+  const fetchProveedores = () => {
+    listProveedores({ page: 1, limit: 100, order: "ASC" })
+      .then((res) => {
+        console.log(res.data)
+        setProveedores(res.data)
+      })
+      .catch((err) => {
+        console.error("Error cargando productos:", err)
+      })
+  }
+
+
+  useEffect(() => {
+    fetchProveedores()
+  }, [])
+
+
+  const fetchAlmacenes = () => {
+    listAlmacenes({ page: 1, limit: 100, order: "ASC" })
+      .then((res) => {
+        setAlmacenes(res.data.data)
+      })
+      .catch((err) => {
+        console.error("Error cargando productos:", err)
+      })
+  }
+
+
+  useEffect(() => {
+    fetchAlmacenes()
+  }, [])
 
   useEffect(() => {
     fetchRequisiciones();
@@ -171,18 +214,47 @@ const RequisicionesPage = () => {
     ["aprobado", "aprobada"].includes(lower(r.status))
   ).length;
 
+
   // Data a render según pestaña de admin
   const filteredByAdminTab = !isAdmin
     ? requisiciones
     : adminTab === "aprobadas"
-    ? requisiciones.filter((r) =>
+      ? requisiciones.filter((r) =>
         ["aprobado", "aprobada"].includes(lower(r.status))
       )
-    : adminTab === "rechazadas"
-    ? requisiciones.filter((r) =>
-        ["rechazado", "rechazada"].includes(lower(r.status))
-      )
-    : requisiciones;
+      : adminTab === "rechazadas"
+        ? requisiciones.filter((r) =>
+          ["rechazado", "rechazada"].includes(lower(r.status))
+        )
+        : requisiciones;
+
+
+  const r = selectedRequisicion || null;
+
+  function formatDate(value) {
+    if (!value) return "N/A";
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? "N/A" : d.toLocaleDateString();
+  }
+
+  function humanizeTipo(tipo) {
+    if (tipo === "service") return "Servicio";
+    if (tipo === "product") return "Refacciones";
+    return "N/A";
+  }
+
+  function statusClasses(status) {
+    switch (status) {
+      case "pendiente":
+        return "bg-yellow-100 text-yellow-800";
+      case "aprobado":
+        return "bg-green-100 text-green-800";
+      case "rechazado":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  }
 
   const StatsSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -363,31 +435,28 @@ const RequisicionesPage = () => {
         <div className="mb-4 flex gap-2">
           <button
             onClick={() => setAdminTab("all")}
-            className={`px-3 py-1.5 rounded-lg border ${
-              adminTab === "all"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-300"
-            }`}
+            className={`px-3 py-1.5 rounded-lg border ${adminTab === "all"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+              }`}
           >
             Todas
           </button>
           <button
             onClick={() => setAdminTab("aprobadas")}
-            className={`px-3 py-1.5 rounded-lg border ${
-              adminTab === "aprobadas"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-300"
-            }`}
+            className={`px-3 py-1.5 rounded-lg border ${adminTab === "aprobadas"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+              }`}
           >
             Aprobadas ({aprobadoCount})
           </button>
           <button
             onClick={() => setAdminTab("rechazadas")}
-            className={`px-3 py-1.5 rounded-lg border ${
-              adminTab === "rechazadas"
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-700 border-gray-300"
-            }`}
+            className={`px-3 py-1.5 rounded-lg border ${adminTab === "rechazadas"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+              }`}
           >
             Rechazadas ({rechazadosCount})
           </button>
@@ -448,13 +517,12 @@ const RequisicionesPage = () => {
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            lower(r.status) === "pendiente"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : ["aprobado", "aprobada"].includes(lower(r.status))
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${lower(r.status) === "pendiente"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : ["aprobado", "aprobada"].includes(lower(r.status))
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                            }`}
                         >
                           {r.status || "N/A"}
                         </span>
@@ -462,17 +530,19 @@ const RequisicionesPage = () => {
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {typeof r.cantidad_dinero === "number"
                           ? new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(r.cantidad_dinero)
+                            style: "currency",
+                            currency: "USD",
+                          }).format(r.cantidad_dinero)
                           : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.requisicionType === "service"
                           ? "Servicio"
                           : r.requisicionType === "product"
-                          ? "Producto"
-                          : "N/A"}
+                            ? "Producto"
+                            : r.requisicionType === "consumibles"
+                              ? "Consumibles"
+                              : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm flex space-x-2">
                         <button
@@ -572,6 +642,7 @@ const RequisicionesPage = () => {
                     Completa los campos para crear la requisición
                   </p>
                 </div>
+
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
@@ -595,9 +666,12 @@ const RequisicionesPage = () => {
                       : Number(formData.rcp),
                   almacenCargoId:
                     formData.almacenCargoId === "" ||
-                    formData.almacenCargoId === null
+                      formData.almacenCargoId === null
                       ? null
                       : Number(formData.almacenCargoId),
+                  proveedorId:
+                    formData.proveedorId === "" ||
+                      formData.proveedorId === null ? null : Number(formData.proveedorId),
                   items: formData.items.map((it) => ({
                     ...it,
                     cantidad:
@@ -717,7 +791,7 @@ const RequisicionesPage = () => {
                   {/* Prioridad */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Prioridad
+                      Prioridad <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={formData.prioridad}
@@ -737,9 +811,8 @@ const RequisicionesPage = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       ID Almacén Cargo <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="number"
-                      placeholder="Ej. 7"
+                    <select
+                      name="almacenCargoId"
                       value={formData.almacenCargoId}
                       onChange={(e) =>
                         setFormData((prev) => ({
@@ -748,13 +821,44 @@ const RequisicionesPage = () => {
                             e.target.value === "" ? "" : Number(e.target.value),
                         }))
                       }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
-                      min={1}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                    />
+                    >
+                      <option value="" disabled>-- Selecciona un almacén --</option>
+                      {almacenes.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
                     <p className="text-xs text-gray-500 mt-1">
                       Almacén que cubrirá el gasto.
                     </p>
+                  </div>
+
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Proveedor <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="proveedorId"
+                      value={formData.proveedorId === null ? "" : String(formData.proveedorId)}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, proveedorId: e.target.value }))
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="" disabled>
+                        -- Selecciona un proveedor --
+                      </option>
+                      {proveedores.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Concepto */}
@@ -981,18 +1085,17 @@ const RequisicionesPage = () => {
                   {selectedRequisicion.requisicionType === "service"
                     ? "Servicio"
                     : selectedRequisicion.requisicionType === "product"
-                    ? "Producto"
-                    : "Tipo N/A"}
+                      ? "Producto"
+                      : "Tipo N/A"}
                 </span>
 
                 <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    ["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : lower(selectedRequisicion.status) === "pendiente"
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
+                    ? "bg-green-50 text-green-700 border-green-200"
+                    : lower(selectedRequisicion.status) === "pendiente"
                       ? "bg-yellow-50 text-yellow-700 border-yellow-200"
                       : "bg-red-50 text-red-700 border-red-200"
-                  }`}
+                    }`}
                 >
                   {selectedRequisicion.status || "Sin status"}
                 </span>
@@ -1021,8 +1124,8 @@ const RequisicionesPage = () => {
                     value={
                       selectedRequisicion.fechaSolicitud
                         ? new Date(
-                            selectedRequisicion.fechaSolicitud
-                          ).toLocaleDateString()
+                          selectedRequisicion.fechaSolicitud
+                        ).toLocaleDateString()
                         : "N/A"
                     }
                   />
@@ -1031,8 +1134,8 @@ const RequisicionesPage = () => {
                     value={
                       selectedRequisicion.fechaRevision
                         ? new Date(
-                            selectedRequisicion.fechaRevision
-                          ).toLocaleDateString()
+                          selectedRequisicion.fechaRevision
+                        ).toLocaleDateString()
                         : "N/A"
                     }
                   />
@@ -1075,58 +1178,68 @@ const RequisicionesPage = () => {
                   Items
                 </h3>
 
-                {selectedRequisicion.items?.length > 0 ? (
-                  <div className="rounded-lg border border-gray-200 overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {selectedRequisicion.requisicionType === "product" ? (
-                            <>
-                              <Th>Producto</Th>
-                              <Th>Cantidad</Th>
-                            </>
-                          ) : (
-                            <>
-                              <Th>Descripción</Th>
-                              <Th>Cantidad</Th>
-                              <Th>Unidad</Th>
-                              <Th>Precio Unitario</Th>
-                            </>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {selectedRequisicion.items.map((item, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{selectedRequisicion.requisicionType === "service" ? "Servicio" : "product" ? "Refacciones" : "Consumibles"}</h3>
+                  {selectedRequisicion.items?.length > 0 ? (
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
                             {selectedRequisicion.requisicionType === "product" ? (
                               <>
-                                <Td>{item.producto?.name || "Sin nombre"}</Td>
-                                <Td>{item.cantidadSolicitada ?? item.cantidad ?? "N/A"}</Td>
+                                <Th>Producto ID</Th>
+                                <Th>Descripción</Th>
+                                <Th>Unidad</Th>
+                                <Th>Cantidad</Th>
+                                <Th>Precio Unitario</Th>
                               </>
                             ) : (
                               <>
-                                <Td>{item.descripcion || "N/A"}</Td>
-                                <Td>{item.cantidad || "N/A"}</Td>
-                                <Td>{item.unidad || "N/A"}</Td>
-                                <Td>
-                                  {typeof item.precio_unitario === "number" ||
-                                  (typeof item.precio_unitario === "string" &&
-                                    item.precio_unitario !== "")
-                                    ? item.precio_unitario
-                                    : "N/A"}
-                                </Td>
+                                <Th>Descripción</Th>
+                                <Th>Cantidad</Th>
+                                <Th>Unidad</Th>
+                                <Th>Precio Unitario</Th>
                               </>
                             )}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-gray-600">
-                    No hay items registrados en esta requisición
-                  </p>
-                )}
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedRequisicion.items.map((item, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              {selectedRequisicion.requisicionType === "product" ? (
+                                <>
+                                  <Td>{item.producto?.id || "N/A"}</Td>
+                                  <Td>{item.producto?.name || "Sin nombre"}</Td>
+                                  <Td>{item.producto?.unidad || "Sin unidad"}</Td>
+                                  <Td>{item.cantidadSolicitada ?? item.cantidad ?? "N/A"}</Td>
+                                  <Td>{item.producto?.precio || "N/A"}</Td>
+                                </>
+                              ) : (
+                                <>
+                                  <Td>{item.descripcion || "N/A"}</Td>
+                                  <Td>{item.cantidad || "N/A"}</Td>
+                                  <Td>{item.unidad || "N/A"}</Td>
+                                  <Td>
+                                    {typeof item.precio_unitario === "number" ||
+                                      (typeof item.precio_unitario === "string" &&
+                                        item.precio_unitario !== "")
+                                      ? item.precio_unitario
+                                      : "N/A"}
+                                  </Td>
+                                </>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">
+                      No hay items registrados en esta requisición
+                    </p>
+                  )}
+
+                </div>
               </section>
             </div>
             {/* Contenido oculto para exportar (layout imprimible) */}
