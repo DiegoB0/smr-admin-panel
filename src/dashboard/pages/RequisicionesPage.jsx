@@ -15,9 +15,17 @@ import {
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
+import { exportRequisicionPDF } from "../../utils/exportPdf";
+import { printRequisicion } from "../../utils/printPdf";
+import { useAuthFlags } from "../../hooks/useAuth";
 
 const RequisicionesPage = () => {
-  const { listRequisiciones, createServiceRequisicion } = useRequisiciones();
+  const {
+    listRequisiciones,
+    createServiceRequisicion,
+    approveRequisicion,
+    rejectRequisicion,
+  } = useRequisiciones();
   const [requisiciones, setRequisiciones] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -54,7 +62,11 @@ const RequisicionesPage = () => {
       },
     ],
   });
+  // Admin flags
+  const { isAdmin } = useAuthFlags();
 
+  // Pestañas de historial para admin
+  const [adminTab, setAdminTab] = useState("all"); // all | aprobadas | rechazadas
   const limit =
     limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10);
 
@@ -85,13 +97,9 @@ const RequisicionesPage = () => {
     fetchRequisiciones();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, debouncedSearch, statusFilter]);
-
-  // Resetear a página 1 cuando cambie el término de búsqueda
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
-
-  // Resetear a página 1 cuando cambie el límite por página
   useEffect(() => {
     setPage(1);
   }, [limitOption]);
@@ -106,19 +114,75 @@ const RequisicionesPage = () => {
     setSelectedRequisicion(null);
   };
 
+  // Acciones aprobar/rechazar
+  const handleApprove = async (id) => {
+    try {
+      const confirm = await Swal.fire({
+        title: "Aprobar requisición",
+        text: "¿Confirmas aprobar esta requisición?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, aprobar",
+        cancelButtonText: "Cancelar",
+      });
+      if (!confirm.isConfirmed) return;
+
+      await approveRequisicion(id);
+      Swal.fire("Éxito", "Requisición aprobada", "success");
+      fetchRequisiciones();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "No se pudo aprobar";
+      Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
+    }
+  };
+
+  const handleReject = async (id) => {
+    try {
+      const { isConfirmed } = await Swal.fire({
+        title: "Rechazar requisición",
+        text: "¿Confirmas rechazar esta requisición?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Rechazar",
+        cancelButtonText: "Cancelar",
+      });
+      if (!isConfirmed) return;
+
+      await rejectRequisicion(id /*, { motivo } si tu API lo soporta */);
+      Swal.fire("Listo", "Requisición rechazada", "success");
+      fetchRequisiciones();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message || err?.message || "No se pudo rechazar";
+      Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
+    }
+  };
+
+  // Metrics
+  const lower = (s) => (s || "").toLowerCase();
   const pendingCount = requisiciones.filter(
-    (r) => (r.status || "").toLowerCase() === "pendiente"
+    (r) => lower(r.status) === "pendiente"
   ).length;
-  const rechazadosCount = requisiciones.filter(
-    (r) =>
-      (r.status || "").toLowerCase() === "rechazado" ||
-      (r.status || "").toLowerCase() === "rechazada"
+  const rechazadosCount = requisiciones.filter((r) =>
+    ["rechazado", "rechazada"].includes(lower(r.status))
   ).length;
-  const aprobadoCount = requisiciones.filter(
-    (r) =>
-      (r.status || "").toLowerCase() === "aprobado" ||
-      (r.status || "").toLowerCase() === "aprobada"
+  const aprobadoCount = requisiciones.filter((r) =>
+    ["aprobado", "aprobada"].includes(lower(r.status))
   ).length;
+
+  // Data a render según pestaña de admin
+  const filteredByAdminTab = !isAdmin
+    ? requisiciones
+    : adminTab === "aprobadas"
+    ? requisiciones.filter((r) =>
+        ["aprobado", "aprobada"].includes(lower(r.status))
+      )
+    : adminTab === "rechazadas"
+    ? requisiciones.filter((r) =>
+        ["rechazado", "rechazada"].includes(lower(r.status))
+      )
+    : requisiciones;
 
   const StatsSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -154,7 +218,9 @@ const RequisicionesPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-600 mb-1">Pendientes</p>
-            <p className="text-2xl font-bold text-yellow-600">{pendingCount}</p>
+            <p className="text-2xl font-bold text-yellow-600">
+              {pendingCount}
+            </p>
           </div>
           <div className="p-3 rounded-lg bg-yellow-500">
             <AlertTriangle className="w-6 h-6 text-white" />
@@ -217,8 +283,6 @@ const RequisicionesPage = () => {
     const p = Number(it.precio_unitario) || 0;
     return acc + q * p;
   }, 0);
-
-  // Helpers UI para el modal de detalles
   const Detail = ({ label, value }) => (
     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
       <p className="text-xs font-medium text-gray-500">{label}</p>
@@ -253,7 +317,7 @@ const RequisicionesPage = () => {
       {/* Filtros */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Buscar requisiciones..."
@@ -294,7 +358,41 @@ const RequisicionesPage = () => {
           Crear Requisición
         </button>
       </div>
-
+      {/* Pestañas de historial para Admin */}
+      {isAdmin && (
+        <div className="mb-4 flex gap-2">
+          <button
+            onClick={() => setAdminTab("all")}
+            className={`px-3 py-1.5 rounded-lg border ${
+              adminTab === "all"
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-300"
+            }`}
+          >
+            Todas
+          </button>
+          <button
+            onClick={() => setAdminTab("aprobadas")}
+            className={`px-3 py-1.5 rounded-lg border ${
+              adminTab === "aprobadas"
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-300"
+            }`}
+          >
+            Aprobadas ({aprobadoCount})
+          </button>
+          <button
+            onClick={() => setAdminTab("rechazadas")}
+            className={`px-3 py-1.5 rounded-lg border ${
+              adminTab === "rechazadas"
+                ? "bg-gray-900 text-white border-gray-900"
+                : "bg-white text-gray-700 border-gray-300"
+            }`}
+          >
+            Rechazadas ({rechazadosCount})
+          </button>
+        </div>
+      )}
       {/* Tabla */}
       {loading ? (
         <LoadingSpinner />
@@ -331,8 +429,8 @@ const RequisicionesPage = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {requisiciones.length > 0 ? (
-                  requisiciones.map((r) => (
+                {filteredByAdminTab.length > 0 ? (
+                  filteredByAdminTab.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.rcp || "N/A"}
@@ -351,10 +449,9 @@ const RequisicionesPage = () => {
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            (r.status || "").toLowerCase() === "pendiente"
+                            lower(r.status) === "pendiente"
                               ? "bg-yellow-100 text-yellow-800"
-                              : (r.status || "").toLowerCase() === "aprobado" ||
-                                (r.status || "").toLowerCase() === "aprobada"
+                              : ["aprobado", "aprobada"].includes(lower(r.status))
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
                           }`}
@@ -385,20 +482,25 @@ const RequisicionesPage = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => console.log("Aprobar", r.id)}
-                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                          title="Aprobar"
-                        >
-                          <CircleCheck className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => console.log("Rechazar", r.id)}
-                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                          title="Rechazar"
-                        >
-                          <CircleX className="w-4 h-4" />
-                        </button>
+
+                        {isAdmin && lower(r.status) === "pendiente" && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(r.id)}
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="Aprobar"
+                            >
+                              <CircleCheck className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleReject(r.id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Rechazar"
+                            >
+                              <CircleX className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -447,8 +549,6 @@ const RequisicionesPage = () => {
           </button>
         </div>
       )}
-
-      {/* Modal de creación (sin cambios relevantes) */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
@@ -544,7 +644,11 @@ const RequisicionesPage = () => {
 
                 try {
                   await createServiceRequisicion(payload);
-                  Swal.fire("Éxito", "Requisición creada correctamente", "success");
+                  Swal.fire(
+                    "Éxito",
+                    "Requisición creada correctamente",
+                    "success"
+                  );
                   setIsCreateModalOpen(false);
                   fetchRequisiciones();
                 } catch (err) {
@@ -618,10 +722,7 @@ const RequisicionesPage = () => {
                     <select
                       value={formData.prioridad}
                       onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          prioridad: e.target.value,
-                        }))
+                        setFormData((prev) => ({ ...prev, prioridad: e.target.value }))
                       }
                       className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
                     >
@@ -886,12 +987,9 @@ const RequisicionesPage = () => {
 
                 <span
                   className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    (selectedRequisicion.status || "").toLowerCase() ===
-                      "aprobado" ||
-                    (selectedRequisicion.status || "").toLowerCase() === "aprobada"
+                    ["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
                       ? "bg-green-50 text-green-700 border-green-200"
-                      : (selectedRequisicion.status || "").toLowerCase() ===
-                        "pendiente"
+                      : lower(selectedRequisicion.status) === "pendiente"
                       ? "bg-yellow-50 text-yellow-700 border-yellow-200"
                       : "bg-red-50 text-red-700 border-red-200"
                   }`}
@@ -958,7 +1056,8 @@ const RequisicionesPage = () => {
               </section>
 
               {/* Equipo */}
-              <section>
+              <section className="print:break-inside-avoid">
+
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Equipo</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Detail label="Equipo" value={selectedRequisicion.equipo?.equipo} />
@@ -1030,9 +1129,35 @@ const RequisicionesPage = () => {
                 )}
               </section>
             </div>
+            {/* Contenido oculto para exportar (layout imprimible) */}
+            <div id={`req-print-${selectedRequisicion.id}`} className="hidden">
+              <div className="pdf-card">{/* tu layout imprimible aquí */}</div>
+            </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
+              <button
+                onClick={() =>
+                  exportRequisicionPDF(
+                    `req-print-${selectedRequisicion.id}`,
+                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}.pdf`
+                  )
+                }
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Descargar PDF
+              </button>
+              <button
+                onClick={() =>
+                  printRequisicion(
+                    `req-print-${selectedRequisicion.id}`,
+                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
+                  )
+                }
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+              >
+                Imprimir / Guardar PDF
+              </button>
               <button
                 onClick={closeDetailModal}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"

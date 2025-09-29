@@ -1,0 +1,73 @@
+/* src/styles/pdf.css */
+.pdf-card {
+  box-sizing: border-box;
+  width: 794px; /* A4 ancho aprox @96dpi */
+  padding: 16px;
+  background: #ffffff;
+  color: #111827;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 12px;
+  line-height: 1.4;
+  border: 1px solid #e5e7eb;
+}
+
+.pdf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+
+.pdf-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 11px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.pdf-value {
+  color: #111827;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+.pdf-table th,
+.pdf-table td {
+  border: 1px solid #d1d5db;
+  padding: 6px 8px;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.pdf-table th {
+  background: #f3f4f6;
+  color: #111827;
+  font-weight: 700;
+  text-align: left;
+}
+
+.pdf-footer {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pdf-sign {
+  height: 64px;
+  border-top: 1px solid #9ca3af;
+  text-align: center;
+  padding-top: 8px;
+  font-weight: 600;
+  color: #374151;
+}
