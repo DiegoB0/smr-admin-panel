@@ -401,9 +401,32 @@ const RequisicionesPage = () => {
                         === "service"
                         ? "Servicio"
                         : "product"
-                          ? "Producto"
+                          ? "Refacciones"
                           : "N/A"
                     }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <p className="text-gray-900">
+                    <span
+                      className={` py-1 rounded-full text-sm font-semibold ${selectedRequisicion.status === "pendiente"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : selectedRequisicion.status === "aprobado"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                        }`}
+                    >
+                      {selectedRequisicion.status}
+                    </span>
+
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Proveedor</p>
+                  <p className="text-gray-900">
+                    N/A
                   </p>
                 </div>
                 <div>
@@ -450,7 +473,7 @@ const RequisicionesPage = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">
-                    Almacen Cargo
+                    Con cargo a
                   </p>
                   <p className="text-gray-900">
                     {selectedRequisicion.almacenCargo?.name || "N/A"}
@@ -485,7 +508,7 @@ const RequisicionesPage = () => {
               </div>
 
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Items</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">{selectedRequisicion.requisicionType === "service" ? "Servicio" : "product" ? "Refacciones" : "Consumibles"}</h3>
                 {selectedRequisicion.items?.length > 0 ? (
                   <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
                     <thead className="bg-gray-50">

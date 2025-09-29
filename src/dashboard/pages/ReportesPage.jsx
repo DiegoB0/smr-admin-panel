@@ -6,10 +6,12 @@ import Swal from "sweetalert2"
 import { useDebounce } from "../../hooks/customHooks"
 import { useRequisiciones } from "../../hooks/useRequisiciones"
 import { useAlmacenes } from "../../hooks/useAlmacenes"
+import { useProveedores } from "../../hooks/useProveedores"
 
 function ReportesPage() {
   const { listReportes, approveReporte, rejectReporte, createRequisicion } = useRequisiciones()
   const { listAlmacenes } = useAlmacenes()
+  const { listProveedores } = useProveedores()
 
   const [reportes, setReportes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -24,6 +26,8 @@ function ReportesPage() {
 
   const [almacenes, setAlmacenes] = useState([])
 
+  const [proveedores, setProveedores] = useState([])
+
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -36,9 +40,10 @@ function ReportesPage() {
   const [isRequisicionModalOpen, setIsRequisicionModalOpen] = useState(false);
   const [selectedPeticionId, setSelectedPeticionId] = useState(null);
   const [requisicionData, setRequisicionData] = useState({
-    almacenCargoId: 2,
-    hrm: "",
-    rcp: "",
+    almacenCargoId: null,
+    proveedorId: null,
+    hrm: null,
+    rcp: null,
     titulo: "",
     concepto: "",
     prioridad: "",
@@ -69,6 +74,22 @@ function ReportesPage() {
     setSelectedPeticionId(null);
   };
 
+  const fetchProveedores = () => {
+    listProveedores({ page: 1, limit: 100, order: "ASC" })
+      .then((res) => {
+        console.log(res.data)
+        setProveedores(res.data)
+      })
+      .catch((err) => {
+        console.error("Error cargando productos:", err)
+      })
+  }
+
+
+  useEffect(() => {
+    fetchProveedores()
+  }, [])
+
 
   const fetchAlmacenes = () => {
     listAlmacenes({ page: 1, limit: 100, order: "ASC" })
@@ -85,9 +106,22 @@ function ReportesPage() {
     fetchAlmacenes()
   }, [])
 
+  const numericFields = new Set([
+    "proveedorId",
+    "almacenCargoId",
+    "hrm",
+    "rcp",
+  ]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setRequisicionData({ ...requisicionData, [name]: value });
+    setRequisicionData((prev) => ({
+      ...prev,
+      [name]:
+        numericFields.has(name)
+          ? value ? parseInt(value, 10) : null
+          : value,
+    }));
   };
 
   const handleSubmit = async () => {
@@ -526,6 +560,24 @@ function ReportesPage() {
                   ))}
                 </select>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                <select
+                  name="proveedorId"
+                  value={requisicionData.proveedorId ?? ""}  // ensure "" when empty
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                >
+                  <option value="" disabled>
+                    -- Selecciona un proveedor --
+                  </option>
+                  {proveedores.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end space-x-2">
@@ -572,8 +624,24 @@ function ReportesPage() {
                   <p className="text-gray-900">{selectedReporte.observaciones || "Sin observaciones"}</p>
                 </div>
                 <div>
+                  <p className="text-sm font-medium text-gray-500">RCP</p>
+                  <p className="text-gray-900">N/A</p>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-gray-500">Equipo</p>
                   <p className="text-gray-900">{selectedReporte.equipo || "Sin equipo"}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Serie</p>
+                  <p className="text-gray-900">N/A</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Marca</p>
+                  <p className="text-gray-900">N/A</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Horometro</p>
+                  <p className="text-gray-900">N/A</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-500">Estatus</p>
@@ -608,7 +676,53 @@ function ReportesPage() {
 
               {/* Items */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Items</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Componente</h3>
+                {selectedReporte.items?.length > 0 ? (
+                  <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Componentes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {selectedReporte.items.map((item, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-4 py-2">
+                            N/A
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-gray-600">No hay items registrados en este reporte</p>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Fase</h3>
+                {selectedReporte.items?.length > 0 ? (
+                  <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-600">Items</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {selectedReporte.items.map((item, i) => (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-4 py-2">
+                            N/A
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-gray-600">No hay items registrados en este reporte</p>
+                )}
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Refacciones</h3>
                 {selectedReporte.items?.length > 0 ? (
                   <table className="min-w-full divide-y divide-gray-200 border rounded-lg overflow-hidden">
                     <thead className="bg-gray-50">
