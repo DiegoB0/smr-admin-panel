@@ -89,13 +89,15 @@ function Sidebar() {
                 <li>
                   <Link
                     to="/dashboard/requisiciones/compras"
-                    className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/proveedores' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                    className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === "/dashboard/compras"
+                      ? "border-l-2 text-red-400 font-semibold bg-gray-800"
+                      : ""
                       }`}
                   >
-                    <span className='mt-1'>
-                      <FaFileAlt />
+                    <span className="mt-1">
+                      <PiHandshake />
                     </span>
-                    Requisiciones
+                    Compras
                   </Link>
                 </li>
 
@@ -161,21 +163,7 @@ function Sidebar() {
               )
             }
 
-            <li>
-  <Link
-    to="/dashboard/compras"
-    className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${
-      location.pathname === "/dashboard/compras"
-        ? "border-l-2 text-red-400 font-semibold bg-gray-800"
-        : ""
-    }`}
-  >
-    <span className="mt-1">
-      <PiHandshake />
-    </span>
-    Compras
-  </Link>
-</li>
+
             {
               (isAdminAlmacen || isAdmin) && (
                 <li>
