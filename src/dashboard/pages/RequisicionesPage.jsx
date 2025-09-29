@@ -26,7 +26,6 @@ const RequisicionesPage = () => {
     approveRequisicion,
     rejectRequisicion,
   } = useRequisiciones();
-
   const [requisiciones, setRequisiciones] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -63,13 +62,11 @@ const RequisicionesPage = () => {
       },
     ],
   });
-
   // Admin flags
   const { isAdmin } = useAuthFlags();
 
   // Pestañas de historial para admin
   const [adminTab, setAdminTab] = useState("all"); // all | aprobadas | rechazadas
-
   const limit =
     limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10);
 
@@ -100,11 +97,9 @@ const RequisicionesPage = () => {
     fetchRequisiciones();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, debouncedSearch, statusFilter]);
-
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
-
   useEffect(() => {
     setPage(1);
   }, [limitOption]);
@@ -288,7 +283,6 @@ const RequisicionesPage = () => {
     const p = Number(it.precio_unitario) || 0;
     return acc + q * p;
   }, 0);
-
   const Detail = ({ label, value }) => (
     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
       <p className="text-xs font-medium text-gray-500">{label}</p>
@@ -313,9 +307,7 @@ const RequisicionesPage = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             Gestión de Requisiciones
           </h1>
-          <p className="text-gray-600 mt-1">
-            Administra todas las requisiciones
-          </p>
+          <p className="text-gray-600 mt-1">Administra todas las requisiciones</p>
         </div>
         <div />
       </div>
@@ -366,7 +358,6 @@ const RequisicionesPage = () => {
           Crear Requisición
         </button>
       </div>
-
       {/* Pestañas de historial para Admin */}
       {isAdmin && (
         <div className="mb-4 flex gap-2">
@@ -402,7 +393,6 @@ const RequisicionesPage = () => {
           </button>
         </div>
       )}
-
       {/* Tabla */}
       {loading ? (
         <LoadingSpinner />
@@ -559,8 +549,6 @@ const RequisicionesPage = () => {
           </button>
         </div>
       )}
-
-      {/* Modal de creación */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
@@ -1069,6 +1057,7 @@ const RequisicionesPage = () => {
 
               {/* Equipo */}
               <section className="print:break-inside-avoid">
+
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Equipo</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Detail label="Equipo" value={selectedRequisicion.equipo?.equipo} />
@@ -1140,7 +1129,6 @@ const RequisicionesPage = () => {
                 )}
               </section>
             </div>
-
             {/* Contenido oculto para exportar (layout imprimible) */}
             <div id={`req-print-${selectedRequisicion.id}`} className="hidden">
               <div className="pdf-card">{/* tu layout imprimible aquí */}</div>

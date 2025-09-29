@@ -28,6 +28,7 @@ import SalidasPage from "../dashboard/pages/SalidasPage";
 import HistorialPage from "../dashboard/pages/HistorialPage";
 import RequisicionesCompraPage from "../dashboard/pages/RequisicionesCompraPage";
 
+
 function AppRoutes() {
   return (
     <Router>
