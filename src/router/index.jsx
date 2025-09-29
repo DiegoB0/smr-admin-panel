@@ -26,6 +26,7 @@ import ProveedoresPage from "../dashboard/pages/ProveedoresPage";
 import EntradasPage from "../dashboard/pages/EntradasPage";
 import SalidasPage from "../dashboard/pages/SalidasPage";
 import HistorialPage from "../dashboard/pages/HistorialPage";
+import RequisicionesCompraPage from "../dashboard/pages/RequisicionesCompraPage";
 
 function AppRoutes() {
   return (
@@ -67,6 +68,7 @@ function RouteLoader() {
         <Route path="entradas" element={isAuthenticated ? <EntradasPage /> : <Navigate to={"/auth/login"} />}></Route>
         <Route path="salidas" element={isAuthenticated ? <SalidasPage /> : <Navigate to={"/auth/login"} />}></Route>
         <Route path="historial" element={isAuthenticated ? <HistorialPage /> : <Navigate to={"/auth/login"} />}></Route>
+        <Route path="compras" element={isAuthenticated ? <RequisicionesCompraPage /> : <Navigate to={"/auth/login"} />}></Route>
 
       </Route>
 
