@@ -38,9 +38,19 @@ export function useRequisiciones() {
     return api.get("requisiciones/all_requisiciones", { params });
   };
 
+  // NUEVO: solo aprobadas (según tu imagen)
+  const listAprovedRequisiciones = ({
+    page = 1,
+    limit = 10,
+    search = "",
+    order = "ASC",
+  }) => {
+    const params = { page, limit, search, order };
+    return api.get("requisiciones/aproved_requisiciones", { params });
+  };
+
   const updateReporte = (id, data) =>
     api.patch(`requisiciones/reportes/update_report/${id}`, data);
-
   const approveReporte = (id) =>
     api.patch(`requisiciones/reportes/${id}/approve`);
 
@@ -68,5 +78,6 @@ export function useRequisiciones() {
     // nuevos
     approveRequisicion,
     rejectRequisicion,
+    listAprovedRequisiciones, // <-- exportado
   };
 }
