@@ -12,9 +12,10 @@ import {
   ClipboardList,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { exportRequisicionPDF } from "../../utils/exportPdf";
-import { printRequisicion } from "../../utils/printPdf";
+import { printRequisicion } from "../../utils/printPdf"; // Asegúrate de que esta utilidad esté disponible y funcione correctamente
 import { useRequisiciones } from "../../hooks/useRequisiciones";
+import PrintableRequisicion from "./PrintableRequisicion"; // Importa el componente que genera el formato deseado
+
 const lower = (s) => (s || "").toLowerCase();
 const currency = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
@@ -100,7 +101,6 @@ const RequisicionesCompraPage = () => {
   const pageItems =
     limitOption === "all" ? filtered : filtered.slice(start, end);
 
-
   // Stats
   const stats = useMemo(() => {
     const total = filtered.length;
@@ -141,7 +141,6 @@ const RequisicionesCompraPage = () => {
       );
       Swal.fire("Listo", "Requisición marcada como comprada", "success");
     } catch {
-
       Swal.fire("Error", "No se pudo marcar como comprada", "error");
     } finally {
       setLoading(false);
@@ -337,7 +336,6 @@ const RequisicionesCompraPage = () => {
                             <Eye className="w-4 h-4" />
                           </button>
                           {!isPurchased ? (
-
                             <button
                               onClick={() => handleMarkPurchased(r)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
@@ -347,7 +345,6 @@ const RequisicionesCompraPage = () => {
                               Marcar
                             </button>
                           ) : (
-
                             <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 className="w-4 h-4" />
                               Comprada
@@ -516,100 +513,11 @@ const RequisicionesCompraPage = () => {
               </section>
             </div>
 
-            {/* Contenido oculto para exportar/print */}
-            <div id={`req-print-${selectedRequisicion.id}`} className="hidden">
-              <div className="pdf-card p-4">
-                <div
-                  className="pdf-grid"
-                  style={{ gridTemplateColumns: "1fr 1fr 1fr", marginBottom: 8 }}
-                >
-                  <div>
-                    <div className="pdf-label">NO. RCP</div>
-                    <div className="pdf-value">
-                      {selectedRequisicion.rcp ?? "N/A"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="pdf-label">FECHA</div>
-                    <div className="pdf-value">
-                      {selectedRequisicion.fechaSolicitud
-                        ? new Date(
-                            selectedRequisicion.fechaSolicitud
-                          ).toLocaleDateString("es-MX")
-                        : "N/A"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="pdf-label">ESTATUS</div>
-                    <div className="pdf-value">
-                      {lower(selectedRequisicion.status) === "comprado"
-                        ? "Comprado"
-                        : "Aprobado"}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 8 }}>
-                  <div className="pdf-label">TÍTULO</div>
-                  <div className="pdf-value">{selectedRequisicion.titulo}</div>
-                </div>
-                <div style={{ marginTop: 8 }}>
-                  <div className="pdf-label">CONCEPTO</div>
-                  <div className="pdf-value">
-                    {selectedRequisicion.concepto || "N/A"}
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  <table className="pdf-table">
-                    <thead>
-                      <tr>
-                        <th>NO.</th>
-                        <th>DESCRIPCIÓN / PRODUCTO</th>
-                        <th>CANTIDAD</th>
-                        <th>UNIDAD</th>
-                        <th>PRECIO UNITARIO</th>
-                        <th>SUBTOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(selectedRequisicion.items || []).map((it, idx) => {
-                        const q = Number(it.cantidad) || 0;
-                        const pu =
-                          typeof it.precio_unitario === "number"
-                            ? it.precio_unitario
-                            : Number(it.precio_unitario) || 0;
-                        const st = q * pu;
-                        return (
-                          <tr key={idx}>
-                            <td>{idx + 1}</td>
-                            <td>{it.descripcion || it.producto?.name || ""}</td>
-                            <td>{q || ""}</td>
-                            <td>{it.unidad || (it.producto ? "pz" : "")}</td>
-                            <td>{pu ? currency(pu) : ""}</td>
-                            <td>{st ? currency(st) : ""}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            {/* Contenido oculto para exportar (layout imprimible) */}
+            <PrintableRequisicion requisicion={selectedRequisicion} />
 
             {/* Footer modal */}
             <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
-              <button
-                onClick={() =>
-                  exportRequisicionPDF(
-                    `req-print-${selectedRequisicion.id}`,
-                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}.pdf`
-                  )
-                }
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Descargar PDF
-              </button>
               <button
                 onClick={() =>
                   printRequisicion(
@@ -631,7 +539,6 @@ const RequisicionesCompraPage = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

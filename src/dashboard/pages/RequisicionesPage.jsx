@@ -20,6 +20,7 @@ import { printRequisicion } from "../../utils/printPdf";
 import { useAuthFlags } from "../../hooks/useAuth";
 import { useProveedores } from "../../hooks/useProveedores"
 import { useAlmacenes } from "../../hooks/useAlmacenes";
+import PrintableRequisicion from "./PrintableRequisicion";
 
 const RequisicionesPage = () => {
   const {
@@ -1243,23 +1244,9 @@ const RequisicionesPage = () => {
               </section>
             </div>
             {/* Contenido oculto para exportar (layout imprimible) */}
-            <div id={`req-print-${selectedRequisicion.id}`} className="hidden">
-              <div className="pdf-card">{/* tu layout imprimible aquí */}</div>
-            </div>
-
+            <PrintableRequisicion requisicion={selectedRequisicion} />
             {/* Footer */}
             <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
-              <button
-                onClick={() =>
-                  exportRequisicionPDF(
-                    `req-print-${selectedRequisicion.id}`,
-                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}.pdf`
-                  )
-                }
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Descargar PDF
-              </button>
               <button
                 onClick={() =>
                   printRequisicion(

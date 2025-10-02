@@ -11,6 +11,10 @@ import { useDebounce } from "../../hooks/customHooks"
 import { useRequisiciones } from "../../hooks/useRequisiciones"
 import { useAlmacenes } from "../../hooks/useAlmacenes"
 import { useProveedores } from "../../hooks/useProveedores"
+// imports al inicio
+import { useRef } from "react";
+
+
 
 function ReportesPage() {
   const { listReportes, approveReporte, rejectReporte, createRequisicion } = useRequisiciones()
