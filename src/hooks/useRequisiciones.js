@@ -1,3 +1,4 @@
+// Updated useRequisiciones.js
 import { api } from "../api/api";
 
 export function useRequisiciones() {
@@ -65,6 +66,9 @@ export function useRequisiciones() {
   const approveRequisicion = (id) => api.patch(`requisiciones/${id}/approve`);
   const rejectRequisicion = (id) => api.patch(`requisiciones/${id}/reject`);
 
+  // NUEVO: endpoint para pagar (basado en la imagen proporcionada)
+  const pagarRequisicion = (id, data) => api.patch(`requisiciones/${id}/pagar`, data);
+
   return {
     createReporte,
     createRequisicion,
@@ -79,5 +83,6 @@ export function useRequisiciones() {
     approveRequisicion,
     rejectRequisicion,
     listAprovedRequisiciones, // <-- exportado
+    pagarRequisicion, // <-- nuevo exportado
   };
 }

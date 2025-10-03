@@ -12,18 +12,18 @@ import {
   ClipboardList,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { printRequisicion } from "../../utils/printPdf"; // Asegúrate de que esta utilidad esté disponible y funcione correctamente
+import { printRequisicion } from "../../utils/printPdf";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
-import PrintableRequisicion from "./PrintableRequisicion"; // Importa el componente que genera el formato deseado
+import PrintableRequisicion from "./PrintableRequisicion";
 
 const lower = (s) => (s || "").toLowerCase();
 const currency = (n) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(
     n || 0
   );
 
 const RequisicionesCompraPage = () => {
-  const { listAprovedRequisiciones } = useRequisiciones();
+  const { listAprovedRequisiciones, pagarRequisicion } = useRequisiciones();
 
   // Estado base
   const [allItems, setAllItems] = useState([]);
@@ -32,11 +32,20 @@ const RequisicionesCompraPage = () => {
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
 
-  // Modal
+  // Modal detalles
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
 
-  // Cargar desde backend real (solo aprobadas)
+  // Modal pago
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [currentReq, setCurrentReq] = useState(null);
+  const [payForm, setPayForm] = useState({
+    metodo_pago: "orden de compra",
+    observaciones: "",
+    fechaEsperada: "",
+  });
+
+  // Cargar desde backend
   const limit =
     limitOption === "all" ? undefined : parseInt(limitOption, 10) || 10;
 
@@ -44,17 +53,14 @@ const RequisicionesCompraPage = () => {
     setLoading(true);
     listAprovedRequisiciones({
       page,
-      limit: limit ?? 999999, // si "all", pide muchas
+      limit: limit ?? 999999,
       order: "DESC",
       search: searchTerm,
     })
       .then((res) => {
         const data = res?.data?.data || [];
-        // Asegurar solo aprobadas/compradas
-        const visibles = data.filter((r) =>
-          ["aprobado", "aprobada", "comprado"].includes(lower(r.status))
-        );
-        setAllItems(visibles);
+       console.log(data)
+        setAllItems(data);
       })
       .catch((err) => {
         const msg =
@@ -71,7 +77,7 @@ const RequisicionesCompraPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limitOption, searchTerm]);
 
-  // Paginación client-side si usas "all"
+  // Filtros y paginación
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return allItems;
@@ -104,49 +110,18 @@ const RequisicionesCompraPage = () => {
   // Stats
   const stats = useMemo(() => {
     const total = filtered.length;
-    const compradas = filtered.filter((r) => lower(r.status) === "comprado")
-      .length;
-    const pendientesCompra = filtered.filter((r) =>
+    const pagadas = filtered.filter((r) => lower(r.status) === "pagada").length;
+    const pendientesPago = filtered.filter((r) =>
       ["aprobado", "aprobada"].includes(lower(r.status))
     ).length;
     const monto = filtered.reduce((acc, r) => {
       const n = typeof r.cantidad_dinero === "number" ? r.cantidad_dinero : 0;
       return acc + n;
     }, 0);
-    return { total, compradas, pendientesCompra, monto };
+    return { total, pagadas, pendientesPago, monto };
   }, [filtered]);
 
-  // Acciones
-  const handleMarkPurchased = async (req) => {
-    try {
-      const confirm = await Swal.fire({
-        title: "Marcar como comprada",
-        html: `<div class="text-left">
-          <p class="text-sm text-gray-600">RCP: <b>${req.rcp ?? "N/A"}</b></p>
-          <p class="text-sm text-gray-600 mt-1">¿Confirmas marcar esta requisición como <b>comprada</b>?</p>
-        </div>`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Sí, marcar",
-        cancelButtonText: "Cancelar",
-      });
-      if (!confirm.isConfirmed) return;
-
-      setLoading(true);
-      // TODO: cuando tengas endpoint real de "purchase", llámalo aquí.
-      await new Promise((r) => setTimeout(r, 350));
-      // actualizar local
-      setAllItems((prev) =>
-        prev.map((x) => (x.id === req.id ? { ...x, status: "comprado" } : x))
-      );
-      Swal.fire("Listo", "Requisición marcada como comprada", "success");
-    } catch {
-      Swal.fire("Error", "No se pudo marcar como comprada", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Abrir detalle
   const openDetailModal = (r) => {
     setSelectedRequisicion(r);
     setIsDetailModalOpen(true);
@@ -155,6 +130,37 @@ const RequisicionesCompraPage = () => {
     setIsDetailModalOpen(false);
     setSelectedRequisicion(null);
   };
+
+  // Abrir modal pago
+  const openPayModal = (req) => {
+    setCurrentReq(req);
+    setIsPayModalOpen(true);
+  };
+
+  // Confirmar pago
+  const submitPayForm = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      await pagarRequisicion(currentReq.id, payForm);
+      const updatedItems = allItems.map((x) =>
+        x.id === currentReq.id ? { ...x, status: "pagado" } : x
+      );
+      setAllItems(updatedItems);
+      setIsPayModalOpen(false);
+      Swal.fire("Listo", "Requisición marcada como pagada", "success");
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Error al marcar como pagada";
+      Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // UI helpers
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center py-12">
       <div className="flex flex-col items-center">
@@ -191,6 +197,7 @@ const RequisicionesCompraPage = () => {
   const Td = ({ children }) => (
     <td className="px-4 py-2 text-sm text-gray-700">{children}</td>
   );
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -207,20 +214,20 @@ const RequisicionesCompraPage = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
-          title="Total (aprobadas + compradas)"
+          title="Total (aprobadas + pagadas)"
           value={stats.total}
           color={{ text: "text-blue-600", bg: "bg-blue-500/90" }}
           icon={<FileText className="w-6 h-6 text-white" />}
         />
         <StatCard
-          title="Pendientes de compra"
-          value={stats.pendientesCompra}
+          title="Pendientes de pago"
+          value={stats.pendientesPago}
           color={{ text: "text-amber-600", bg: "bg-amber-500/90" }}
           icon={<Filter className="w-6 h-6 text-white" />}
         />
         <StatCard
-          title="Marcadas como compradas"
-          value={stats.compradas}
+          title="Marcadas como pagadas"
+          value={stats.pagadas}
           color={{ text: "text-emerald-600", bg: "bg-emerald-500/90" }}
           icon={<CheckCircle2 className="w-6 h-6 text-white" />}
         />
@@ -294,7 +301,7 @@ const RequisicionesCompraPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {pageItems.length > 0 ? (
                   pageItems.map((r) => {
-                    const isPurchased = lower(r.status) === "comprado";
+                    const isPagado = lower(r.status) === "pagada";
                     return (
                       <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-600">
@@ -314,12 +321,12 @@ const RequisicionesCompraPage = () => {
                         <td className="px-6 py-4 text-sm">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              isPurchased
+                              isPagado
                                 ? "bg-emerald-100 text-emerald-800"
                                 : "bg-blue-100 text-blue-800"
                             }`}
                           >
-                            {isPurchased ? "Comprado" : "Aprobado"}
+                            {isPagado ? "Pagado" : "Aprobado"}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
@@ -335,19 +342,19 @@ const RequisicionesCompraPage = () => {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          {!isPurchased ? (
+                          {!isPagado ? (
                             <button
-                              onClick={() => handleMarkPurchased(r)}
+                              onClick={() => openPayModal(r)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                              title="Marcar como comprada"
+                              title="Pagar"
                             >
                               <ShoppingCart className="w-4 h-4" />
-                              Marcar
+                              Pagar
                             </button>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 className="w-4 h-4" />
-                              Comprada
+                              Pagado
                             </span>
                           )}
                         </td>
@@ -395,7 +402,8 @@ const RequisicionesCompraPage = () => {
           </button>
         </div>
       )}
-      {/* Modal Detalles + plantilla oculta para PDF/print */}
+
+      {/* Modal de Detalles */}
       {isDetailModalOpen && selectedRequisicion && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
@@ -437,13 +445,13 @@ const RequisicionesCompraPage = () => {
                 </span>
                 <span
                   className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    lower(selectedRequisicion.status) === "comprado"
+                    lower(selectedRequisicion.status) === "pagado"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                       : "bg-blue-50 text-blue-700 border-blue-200"
                   }`}
                 >
-                  {lower(selectedRequisicion.status) === "comprado"
-                    ? "Comprado"
+                  {lower(selectedRequisicion.status) === "pagado"
+                    ? "Pagado"
                     : "Aprobado"}
                 </span>
               </section>
@@ -476,7 +484,77 @@ const RequisicionesCompraPage = () => {
                 </div>
               </section>
 
-              <section>
+               <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-blue-600" />
+                  Items
+                </h3>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{selectedRequisicion.requisicionType === "service" ? "Servicio" : "product" ? "Refacciones" : "Consumibles"}</h3>
+                  {selectedRequisicion.items?.length > 0 ? (
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            {selectedRequisicion.requisicionType === "product" ? (
+                              <>
+                                <Th>Producto ID</Th>
+                                <Th>Descripción</Th>
+                                <Th>Unidad</Th>
+                                <Th>Cantidad</Th>
+                                <Th>Precio Unitario</Th>
+                              </>
+                            ) : (
+                              <>
+                                <Th>Descripción</Th>
+                                <Th>Cantidad</Th>
+                                <Th>Unidad</Th>
+                                <Th>Precio Unitario</Th>
+                              </>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedRequisicion.items.map((item, i) => (
+                            <tr key={i} className="hover:bg-gray-50">
+                              {selectedRequisicion.requisicionType === "product" ? (
+                                <>
+                                  <Td>{item.producto?.id || "N/A"}</Td>
+                                  <Td>{item.producto?.name || "Sin nombre"}</Td>
+                                  <Td>{item.producto?.unidad || "Sin unidad"}</Td>
+                                  <Td>{item.cantidadSolicitada ?? item.cantidad ?? "N/A"}</Td>
+                                  <Td>{item.producto?.precio || "N/A"}</Td>
+                                </>
+                              ) : (
+                                <>
+                                  <Td>{item.descripcion || "N/A"}</Td>
+                                  <Td>{item.cantidad || "N/A"}</Td>
+                                  <Td>{item.unidad || "N/A"}</Td>
+                                  <Td>
+                                    {typeof item.precio_unitario === "number" ||
+                                      (typeof item.precio_unitario === "string" &&
+                                        item.precio_unitario !== "")
+                                      ? item.precio_unitario
+                                      : "N/A"}
+                                  </Td>
+                                </>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">
+                      No hay items registrados en esta requisición
+                    </p>
+                  )}
+
+                </div>
+              </section>
+
+              {/* <section>
                 <h3 className="text-sm font-medium text-gray-700 mb-3">
                   Items
                 </h3>
@@ -510,10 +588,9 @@ const RequisicionesCompraPage = () => {
                 ) : (
                   <p className="text-gray-600">No hay items registrados.</p>
                 )}
-              </section>
+              </section> */}
             </div>
 
-            {/* Contenido oculto para exportar (layout imprimible) */}
             <PrintableRequisicion requisicion={selectedRequisicion} />
 
             {/* Footer modal */}
@@ -539,8 +616,114 @@ const RequisicionesCompraPage = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Pago */}
+      {isPayModalOpen && currentReq && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setIsPayModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Pagar Requisición
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Completa la información del pago
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsPayModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={submitPayForm} className="px-6 py-5 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Método de Pago <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={payForm.metodo_pago}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, metodo_pago: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
+                >
+                  <option value="orden de compra">Orden de Compra</option>
+                  <option value="pago">Pago</option>
+                  <option value="pago sin factura">Pago sin Factura</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Observaciones
+                </label>
+                <textarea
+                  value={payForm.observaciones}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, observaciones: e.target.value }))
+                  }
+                  rows="3"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 resize-y"
+                ></textarea>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha Esperada <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={payForm.fechaEsperada}
+                  onChange={(e) =>
+                    setPayForm((p) => ({ ...p, fechaEsperada: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  required
+                />
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setIsPayModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                >
+                  Confirmar Pago
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default RequisicionesCompraPage;
+
+
+
