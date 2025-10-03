@@ -12,9 +12,9 @@ import {
   ClipboardList,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { printRequisicion } from "../../utils/printPdf"; // Asegúrate de que esta utilidad esté disponible y funcione correctamente
+import { printRequisicion } from "../../utils/printPdf";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
-import PrintableRequisicion from "./PrintableRequisicion"; // Importa el componente que genera el formato deseado
+import PrintableRequisicion from "./PrintableRequisicion";
 
 const lower = (s) => (s || "").toLowerCase();
 const currency = (n) =>
@@ -23,7 +23,7 @@ const currency = (n) =>
   );
 
 const RequisicionesCompraPage = () => {
-  const { listAprovedRequisiciones } = useRequisiciones();
+  const { listAprovedRequisiciones, pagarRequisicion } = useRequisiciones();
 
   // Estado base
   const [allItems, setAllItems] = useState([]);
@@ -31,10 +31,14 @@ const RequisicionesCompraPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
-
-  // Modal
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
+  const [purchaseForm, setPurchaseForm] = useState({
+    metodo_pago: "orden de compra",
+    observaciones: "",
+    fechaEsperada: "",
+  });
 
   // Cargar desde backend real (solo aprobadas)
   const limit =
@@ -44,17 +48,14 @@ const RequisicionesCompraPage = () => {
     setLoading(true);
     listAprovedRequisiciones({
       page,
-      limit: limit ?? 999999, // si "all", pide muchas
+      limit: limit ?? 999999,
       order: "DESC",
       search: searchTerm,
     })
       .then((res) => {
         const data = res?.data?.data || [];
-        // Asegurar solo aprobadas/compradas
-        const visibles = data.filter((r) =>
-          ["aprobado", "aprobada", "comprado"].includes(lower(r.status))
-        );
-        setAllItems(visibles);
+        console.log("Fetched requisitions:", data); // Debug requisition states
+        setAllItems(data);
       })
       .catch((err) => {
         const msg =
@@ -68,7 +69,6 @@ const RequisicionesCompraPage = () => {
 
   useEffect(() => {
     fetchApproved();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limitOption, searchTerm]);
 
   // Paginación client-side si usas "all"
@@ -104,7 +104,7 @@ const RequisicionesCompraPage = () => {
   // Stats
   const stats = useMemo(() => {
     const total = filtered.length;
-    const compradas = filtered.filter((r) => lower(r.status) === "comprado")
+    const compradas = filtered.filter((r) => lower(r.status) === "pagada")
       .length;
     const pendientesCompra = filtered.filter((r) =>
       ["aprobado", "aprobada"].includes(lower(r.status))
@@ -117,31 +117,60 @@ const RequisicionesCompraPage = () => {
   }, [filtered]);
 
   // Acciones
-  const handleMarkPurchased = async (req) => {
-    try {
-      const confirm = await Swal.fire({
-        title: "Marcar como comprada",
-        html: `<div class="text-left">
-          <p class="text-sm text-gray-600">RCP: <b>${req.rcp ?? "N/A"}</b></p>
-          <p class="text-sm text-gray-600 mt-1">¿Confirmas marcar esta requisición como <b>comprada</b>?</p>
-        </div>`,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonText: "Sí, marcar",
-        cancelButtonText: "Cancelar",
-      });
-      if (!confirm.isConfirmed) return;
+  const openPurchaseModal = (req) => {
+    setSelectedRequisicion(req);
+    setPurchaseForm({
+      metodo_pago: "orden de compra",
+      observaciones: "",
+      fechaEsperada: "",
+    });
+    setIsPurchaseModalOpen(true);
+  };
 
+  const closePurchaseModal = () => {
+    setIsPurchaseModalOpen(false);
+    setSelectedRequisicion(null);
+  };
+
+  const handleMarkPurchased = async () => {
+    if (!selectedRequisicion) {
+      Swal.fire("Error", "No se seleccionó ninguna requisición", "error");
+      return;
+    }
+    if (!purchaseForm.fechaEsperada) {
+      Swal.fire("Error", "La fecha esperada es obligatoria", "error");
+      return;
+    }
+    const allowedMetodos = ["orden de compra", "pago", "pago sin factura", "-"];
+    if (!allowedMetodos.includes(purchaseForm.metodo_pago)) {
+      Swal.fire("Error", "Método de pago no válido", "error");
+      return;
+    }
+
+    const payload = {
+      metodo_pago: purchaseForm.metodo_pago,
+      observaciones: purchaseForm.observaciones || "",
+      fechaEsperada: purchaseForm.fechaEsperada,
+    };
+
+    console.log("Payload enviado a pagarRequisicion:", payload);
+
+    try {
       setLoading(true);
-      // TODO: cuando tengas endpoint real de "purchase", llámalo aquí.
-      await new Promise((r) => setTimeout(r, 350));
-      // actualizar local
+      await pagarRequisicion(selectedRequisicion.id, payload);
+      Swal.fire("Listo", "Requisición marcada como pagada", "success");
       setAllItems((prev) =>
-        prev.map((x) => (x.id === req.id ? { ...x, status: "comprado" } : x))
+        prev.map((x) => (x.id === selectedRequisicion.id ? { ...x, status: "pagada" } : x))
       );
-      Swal.fire("Listo", "Requisición marcada como comprada", "success");
-    } catch {
-      Swal.fire("Error", "No se pudo marcar como comprada", "error");
+      closePurchaseModal();
+      fetchApproved();
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "No se pudo marcar como pagada";
+      Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
+      console.error("Error en pagarRequisicion:", err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -151,10 +180,12 @@ const RequisicionesCompraPage = () => {
     setSelectedRequisicion(r);
     setIsDetailModalOpen(true);
   };
+
   const closeDetailModal = () => {
     setIsDetailModalOpen(false);
     setSelectedRequisicion(null);
   };
+
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center py-12">
       <div className="flex flex-col items-center">
@@ -188,9 +219,11 @@ const RequisicionesCompraPage = () => {
       {children}
     </th>
   );
+
   const Td = ({ children }) => (
     <td className="px-4 py-2 text-sm text-gray-700">{children}</td>
   );
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -294,7 +327,7 @@ const RequisicionesCompraPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {pageItems.length > 0 ? (
                   pageItems.map((r) => {
-                    const isPurchased = lower(r.status) === "comprado";
+                    const isPurchased = lower(r.status) === "pagada";
                     return (
                       <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-600">
@@ -319,7 +352,7 @@ const RequisicionesCompraPage = () => {
                                 : "bg-blue-100 text-blue-800"
                             }`}
                           >
-                            {isPurchased ? "Comprado" : "Aprobado"}
+                            {isPurchased ? "Pagada" : "Aprobada"}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
@@ -337,7 +370,7 @@ const RequisicionesCompraPage = () => {
                           </button>
                           {!isPurchased ? (
                             <button
-                              onClick={() => handleMarkPurchased(r)}
+                              onClick={() => openPurchaseModal(r)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
                               title="Marcar como comprada"
                             >
@@ -347,7 +380,7 @@ const RequisicionesCompraPage = () => {
                           ) : (
                             <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
                               <CheckCircle2 className="w-4 h-4" />
-                              Comprada
+                              Pagada
                             </span>
                           )}
                         </td>
@@ -395,6 +428,7 @@ const RequisicionesCompraPage = () => {
           </button>
         </div>
       )}
+
       {/* Modal Detalles + plantilla oculta para PDF/print */}
       {isDetailModalOpen && selectedRequisicion && (
         <div
@@ -437,14 +471,14 @@ const RequisicionesCompraPage = () => {
                 </span>
                 <span
                   className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    lower(selectedRequisicion.status) === "comprado"
+                    lower(selectedRequisicion.status) === "pagada"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                       : "bg-blue-50 text-blue-700 border-blue-200"
                   }`}
                 >
-                  {lower(selectedRequisicion.status) === "comprado"
-                    ? "Comprado"
-                    : "Aprobado"}
+                  {lower(selectedRequisicion.status) === "pagada"
+                    ? "Pagada"
+                    : "Aprobada"}
                 </span>
               </section>
 
@@ -534,6 +568,107 @@ const RequisicionesCompraPage = () => {
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Marcar como Pagada */}
+      {isPurchaseModalOpen && selectedRequisicion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={closePurchaseModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Marcar como Pagada
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    RCP: {selectedRequisicion.rcp || "N/A"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closePurchaseModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Método de Pago
+                </label>
+                <select
+                  value={purchaseForm.metodo_pago}
+                  onChange={(e) =>
+                    setPurchaseForm({ ...purchaseForm, metodo_pago: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                >
+                  <option value="orden de compra">Orden de Compra</option>
+                  <option value="pago">Pago</option>
+                  <option value="pago sin factura">Pago sin Factura</option>
+                  <option value="-">-</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Observaciones
+                </label>
+                <textarea
+                  value={purchaseForm.observaciones}
+                  onChange={(e) =>
+                    setPurchaseForm({ ...purchaseForm, observaciones: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  rows="4"
+                  placeholder="Ingresa observaciones"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Fecha Esperada
+                </label>
+                <input
+                  type="date"
+                  value={purchaseForm.fechaEsperada}
+                  onChange={(e) =>
+                    setPurchaseForm({ ...purchaseForm, fechaEsperada: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex gap-2 justify-end">
+              <button
+                onClick={closePurchaseModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleMarkPurchased}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                disabled={loading}
+              >
+                Confirmar
               </button>
             </div>
           </div>
