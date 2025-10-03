@@ -15,311 +15,11 @@ import {
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
-
-// ========== CONFIG ==========
-const PERSISTIR_EN_STORAGE = false; // pon true si quieres que persista entre recargas
-
-// ========== MOCKS BASE ==========
-const MOCK_REQUIS_BASE = [
-  {
-    id: 1,
-    rcp: 1001,
-    titulo: "Material eléctrico nave A",
-    fechaSolicitud: "2025-09-01T00:00:00Z",
-    items: [
-      {
-        id: 11,
-        producto: { id: 100, name: "Cable THHN 12 AWG" },
-        cantidadSolicitada: 200,
-        cantidadRecibidaAcumulada: 0,
-      },
-      {
-        id: 12,
-        producto: { id: 101, name: "Tubing EMT 3/4" },
-        cantidadSolicitada: 120,
-        cantidadRecibidaAcumulada: 50,
-      },
-    ],
-  },
-  {
-    id: 2,
-    rcp: 1002,
-    titulo: "Ferretería obra sur",
-    fechaSolicitud: "2025-08-20T00:00:00Z",
-    items: [
-      {
-        id: 21,
-        producto: { id: 200, name: 'Tornillo 1/4" x 2"' },
-        cantidadSolicitada: 500,
-        cantidadRecibidaAcumulada: 500,
-      },
-      {
-        id: 22,
-        producto: { id: 201, name: 'Taquetes 1/4"' },
-        cantidadSolicitada: 300,
-        cantidadRecibidaAcumulada: 200,
-      },
-    ],
-  },
-  {
-    id: 3,
-    rcp: 1003,
-    titulo: "Pinturas fachada",
-    fechaSolicitud: "2025-09-10T00:00:00Z",
-    items: [
-      {
-        id: 31,
-        producto: { id: 300, name: "Pintura exterior 19L blanco" },
-        cantidadSolicitada: 12,
-        cantidadRecibidaAcumulada: 0,
-      },
-    ],
-  },
-];
-
-// ========== STORAGE KEYS ==========
-const STORAGE_KEY_REQ = "mock_requis_entradas";
-const STORAGE_KEY_HIST = "mock_hist_entradas";
-
-// ========== HELPERS STORAGE ==========
-const resetMocks = () => {
-  if (PERSISTIR_EN_STORAGE) {
-    localStorage.setItem(STORAGE_KEY_REQ, JSON.stringify(MOCK_REQUIS_BASE));
-    localStorage.setItem(STORAGE_KEY_HIST, JSON.stringify([]));
-  }
-};
-
-const loadRequis = () => {
-  if (!PERSISTIR_EN_STORAGE) {
-    // No persistimos: siempre partimos del base en memoria
-    return JSON.parse(JSON.stringify(MOCK_REQUIS_BASE));
-  }
-  let data = JSON.parse(localStorage.getItem(STORAGE_KEY_REQ) || "null");
-  if (!data) {
-    data = MOCK_REQUIS_BASE;
-    localStorage.setItem(STORAGE_KEY_REQ, JSON.stringify(data));
-  }
-  return data;
-};
-
-const saveRequis = (data) => {
-  if (PERSISTIR_EN_STORAGE) {
-    localStorage.setItem(STORAGE_KEY_REQ, JSON.stringify(data));
-  }
-};
-
-const loadHist = () => {
-  if (!PERSISTIR_EN_STORAGE) return [];
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_HIST) || "[]");
-};
-
-const saveHist = (hist) => {
-  if (PERSISTIR_EN_STORAGE) {
-    localStorage.setItem(STORAGE_KEY_HIST, JSON.stringify(hist));
-  }
-};
-
-// ========== SERVICIOS MOCK ==========
-const mockListRequis = async ({
-  page,
-  limit,
-  search,
-  order,
-  statusFilter,
-  sourceData,
-}) => {
-  await new Promise((r) => setTimeout(r, 150));
-
-  // Usa sourceData (estado de la página) como "DB" cuando no persistimos
-  let data = sourceData ? JSON.parse(JSON.stringify(sourceData)) : loadRequis();
-
-  // search simple
-  const s = (search || "").toLowerCase().trim();
-  if (s) {
-    data = data.filter((r) => {
-      const rcpStr = String(r.rcp || "");
-      return rcpStr.includes(s) || (r.titulo || "").toLowerCase().includes(s);
-    });
-  }
-
-  // calcular status y totales
-  const calcStatus = (items) => {
-    if (!items || items.length === 0) return "Pendiente";
-    let completos = 0;
-    let conEntrada = 0;
-    for (const it of items) {
-      const solic = Number(it.cantidadSolicitada) || 0;
-      const rec = Number(it.cantidadRecibidaAcumulada) || 0;
-      if (solic > 0 && rec >= solic) completos++;
-      if (rec > 0) conEntrada++;
-    }
-    if (completos === items.length) return "Completa";
-    if (conEntrada > 0) return "Parcial";
-    return "Pendiente";
-  };
-
-  data = data.map((r) => {
-    const items = r.items || [];
-    const totalSolic = items.reduce(
-      (a, it) => a + (Number(it.cantidadSolicitada) || 0),
-      0
-    );
-    const totalRec = items.reduce(
-      (a, it) => a + (Number(it.cantidadRecibidaAcumulada) || 0),
-      0
-    );
-    const completos = items.filter(
-      (it) =>
-        Number(it.cantidadSolicitada) > 0 &&
-        Number(it.cantidadRecibidaAcumulada) >=
-          Number(it.cantidadSolicitada)
-    ).length;
-    return {
-      ...r,
-      _statusLocal: calcStatus(r.items),
-      _totales: {
-        itemsCompletos: completos,
-        itemsTotales: items.length,
-        piezasRecibidas: totalRec,
-        piezasSolicitadas: totalSolic,
-      },
-    };
-  });
-
-  if (statusFilter && statusFilter !== "ALL") {
-    data = data.filter((r) => r._statusLocal === statusFilter);
-  }
-
-  data = [...data].sort((a, b) => {
-    const da = new Date(a.fechaSolicitud).getTime();
-    const db = new Date(b.fechaSolicitud).getTime();
-    return order === "ASC" ? da - db : db - da;
-  });
-
-  // paginación
-  const totalItems = data.length;
-  const totalPages = limit ? Math.max(1, Math.ceil(totalItems / limit)) : 1;
-  const currentPage = limit ? Math.min(page, totalPages) : 1;
-  const start = limit ? (currentPage - 1) * limit : 0;
-  const end = limit ? start + limit : undefined;
-  const slice = limit ? data.slice(start, end) : data;
-
-  return {
-    data: {
-      data: slice,
-      meta: {
-        currentPage,
-        totalPages,
-        hasNextPage: currentPage < totalPages,
-        hasPreviousPage: currentPage > 1,
-        totalItems,
-      },
-      // Para el modo no persistente devolvemos el dataset completo actualizado
-      full: data,
-    },
-  };
-};
-
-const mockRegistrarEntrada = async ({
-  requisicionId,
-  items,
-  sourceData,
-  setSourceData,
-  addToLocalHist,
-}) => {
-  await new Promise((r) => setTimeout(r, 120));
-
-  // Modo no persistente: actualiza el estado local (sourceData)
-  if (!PERSISTIR_EN_STORAGE) {
-    const data = JSON.parse(JSON.stringify(sourceData));
-    const idx = data.findIndex((r) => r.id === requisicionId);
-    if (idx === -1) throw new Error("Requisición no encontrada");
-
-    const req = data[idx];
-    const map = new Map((req.items || []).map((i) => [i.id, { ...i }]));
-    const now = new Date().toISOString();
-
-    for (const e of items) {
-      const it = map.get(e.itemId);
-      if (!it) continue;
-      const solic = Number(it.cantidadSolicitada) || 0;
-      const recAcum = Number(it.cantidadRecibidaAcumulada) || 0;
-      const plus = Number(e.cantidadRecibida) || 0;
-      const nuevo = Math.min(recAcum + plus, solic);
-      const delta = Math.max(0, nuevo - recAcum);
-      if (delta > 0) {
-        // En modo no persistente, solo mantenemos historial en memoria (state)
-        addToLocalHist({
-          id: `${requisicionId}-${e.itemId}-${now}-${Math.random()
-            .toString(36)
-            .slice(2, 7)}`,
-          requisicionId,
-          itemId: e.itemId,
-          rcp: req.rcp,
-          titulo: req.titulo,
-          productoName: it.producto?.name || "Producto",
-          cantidadRecibida: delta,
-          fecha: now,
-        });
-      }
-      it.cantidadRecibidaAcumulada = nuevo;
-      map.set(e.itemId, it);
-    }
-
-    data[idx] = { ...req, items: [...map.values()] };
-    setSourceData(data);
-    return { data: { ok: true } };
-  }
-
-  // Modo persistente: actualiza localStorage
-  const data = loadRequis();
-  const idx = data.findIndex((r) => r.id === requisicionId);
-  if (idx === -1) throw new Error("Requisición no encontrada");
-
-  const req = data[idx];
-  const map = new Map((req.items || []).map((i) => [i.id, { ...i }]));
-  const now = new Date().toISOString();
-  const hist = loadHist();
-
-  for (const e of items) {
-    const it = map.get(e.itemId);
-    if (!it) continue;
-    const solic = Number(it.cantidadSolicitada) || 0;
-    const recAcum = Number(it.cantidadRecibidaAcumulada) || 0;
-    const plus = Number(e.cantidadRecibida) || 0;
-    const nuevo = Math.min(recAcum + plus, solic);
-    const delta = Math.max(0, nuevo - recAcum);
-    if (delta > 0) {
-      hist.push({
-        id: `${requisicionId}-${e.itemId}-${now}-${Math.random()
-          .toString(36)
-          .slice(2, 7)}`,
-        requisicionId,
-        itemId: e.itemId,
-        rcp: req.rcp,
-        titulo: req.titulo,
-        productoName: it.producto?.name || "Producto",
-        cantidadRecibida: delta,
-        fecha: now,
-      });
-    }
-    it.cantidadRecibidaAcumulada = nuevo;
-    map.set(e.itemId, it);
-  }
-
-  data[idx] = { ...req, items: [...map.values()] };
-  saveRequis(data);
-  saveHist(hist);
-
-  return { data: { ok: true } };
-};
+import { useEntradas } from "../../hooks/useEntradas";
 
 // ========== PAGE ==========
 const EntradasPage = () => {
-  // "DB" en memoria cuando no persistimos
-  const [dbInMemory, setDbInMemory] = useState([]);
-  const [histLocal, setHistLocal] = useState([]); // historial en memoria
-
+  const { listEntradas, recibirEntradas } = useEntradas();
   const [requis, setRequis] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -328,87 +28,76 @@ const EntradasPage = () => {
     hasPreviousPage: false,
     totalItems: 0,
   });
-
+  const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
-
   const [openRows, setOpenRows] = useState({});
   const [capture, setCapture] = useState({});
-
-  // Historial modal
   const [histModalOpen, setHistModalOpen] = useState(false);
-  const [historial, setHistorial] = useState([]);
 
   const limit =
     limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10);
 
-  // Init datos al montar
-  useEffect(() => {
-    if (PERSISTIR_EN_STORAGE) {
-      // Si persiste: si no hay datos, inicializa; si hay, respétalos
-      const existing = localStorage.getItem(STORAGE_KEY_REQ);
-      if (!existing) resetMocks();
-      setDbInMemory(loadRequis()); // también guardamos una copia para consultas
-      setHistorial(loadHist());
-    } else {
-      // No persistimos: siempre reiniciamos base y vaciamos historial
-      setDbInMemory(JSON.parse(JSON.stringify(MOCK_REQUIS_BASE)));
-      setHistorial([]); // historial arranca vacío cada reload
-    }
-  }, []);
-
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true);
-    mockListRequis({
-      page,
-      limit: limitOption === "all" ? undefined : limit,
-      search: debouncedSearch,
-      order: "DESC",
-      statusFilter,
-      sourceData: dbInMemory, // importante para modo no persistente
-    })
-      .then((res) => {
-        setRequis(res.data.data);
-        setPagination(res.data.meta);
-        if (!PERSISTIR_EN_STORAGE && res.data.full) {
-          // mantener full ordenado/filtrado en memoria si hace falta
-          // (no es estrictamente necesario para este UI)
-        }
-      })
-      .catch((err) => {
-        const msg = err?.message || "Error al cargar requisiciones (mock)";
-        Swal.fire("Error", msg, "error");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const response = await listEntradas({
+        page,
+        limit: limitOption === "all" ? undefined : limit,
+        search: debouncedSearch,
+        order: "DESC",
+      });
+      const data = response.data.data.map((r) => {
+        const items = r.items || [];
+        const totalSolic = items.reduce(
+          (a, it) => a + (Number(it.cantidadEsperada) || 0),
+          0
+        );
+        const totalRec = items.reduce(
+          (a, it) => a + (Number(it.cantidadRecibida) || 0),
+          0
+        );
+        const completos = items.filter(
+          (it) =>
+            Number(it.cantidadEsperada) > 0 &&
+            Number(it.cantidadRecibida) >= Number(it.cantidadEsperada)
+        ).length;
+        const status = !items || items.length === 0 ? "Pendiente"
+          : completos === items.length ? "Completa"
+          : totalRec > 0 ? "Parcial"
+          : "Pendiente";
+        return {
+          ...r,
+          _statusLocal: status,
+          _totales: {
+            itemsCompletos: completos,
+            itemsTotales: items.length,
+            piezasRecibidas: totalRec,
+            piezasSolicitadas: totalSolic,
+          },
+        };
+      });
+      setRequis(data);
+      setPagination(response.data.meta);
+    } catch (err) {
+      const msg = err?.message || "Error al cargar requisiciones";
+      Swal.fire("Error", msg, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    if (dbInMemory.length === 0 && !PERSISTIR_EN_STORAGE) return;
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limitOption, debouncedSearch, statusFilter, dbInMemory]);
+  }, [page, limitOption, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, limitOption, statusFilter]);
-
-  useEffect(() => {
-    // cargar historial para el modal
-    if (PERSISTIR_EN_STORAGE) setHistorial(loadHist());
-    else setHistorial(histLocal);
-  }, [histModalOpen, histLocal]);
-
-  const addToLocalHist = (entry) => {
-    if (PERSISTIR_EN_STORAGE) {
-      // ya lo maneja mockRegistrarEntrada cuando persiste
-      return;
-    }
-    setHistLocal((prev) => [entry, ...prev]);
-  };
 
   const toggleRow = (id) =>
     setOpenRows((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -465,14 +154,13 @@ const EntradasPage = () => {
       return;
     }
 
-    // validaciones
     const itemsById = new Map((requisicion.items || []).map((i) => [i.id, i]));
     const errores = [];
     for (const e of entradas) {
       const it = itemsById.get(e.itemId);
       if (!it) continue;
-      const solic = Number(it.cantidadSolicitada) || 0;
-      const recAcum = Number(it.cantidadRecibidaAcumulada) || 0;
+      const solic = Number(it.cantidadEsperada) || 0;
+      const recAcum = Number(it.cantidadRecibida) || 0;
       if (e.cantidadRecibida < 0) {
         errores.push(`Item ${e.itemId}: cantidad negativa`);
       } else if (recAcum + e.cantidadRecibida > solic) {
@@ -487,47 +175,38 @@ const EntradasPage = () => {
     }
 
     try {
-      await mockRegistrarEntrada({
-        requisicionId: requisicion.id,
-        items: entradas,
-        sourceData: dbInMemory,
-        setSourceData: setDbInMemory,
-        addToLocalHist,
-      });
-      Swal.fire("Éxito", "Entrada registrada (mock)", "success");
+      await recibirEntradas(requisicion.id, { items: entradas });
+      Swal.fire("Éxito", "Entrada registrada", "success");
       limpiarCaptura(requisicion.id);
-      // refresh tabla
       fetchData();
     } catch (err) {
-      const msg = err?.message || "Error al registrar (mock)";
+      const msg = err?.message || "Error al registrar entrada";
       Swal.fire("Error", msg, "error");
     }
   };
 
-  // Stats globales sobre los datos paginados actuales
-  const { completas, parciales, pendientes, totPzasSol, totPzasRec } =
-    useMemo(() => {
-      let comp = 0,
-        parc = 0,
-        pend = 0,
-        pzsSol = 0,
-        pzsRec = 0;
-      for (const r of requis) {
-        const st = r._statusLocal || "Pendiente";
-        if (st === "Completa") comp++;
-        else if (st === "Parcial") parc++;
-        else pend++;
-        pzsSol += r._totales?.piezasSolicitadas || 0;
-        pzsRec += r._totales?.piezasRecibidas || 0;
-      }
-      return {
-        completas: comp,
-        parciales: parc,
-        pendientes: pend,
-        totPzasSol: pzsSol,
-        totPzasRec: pzsRec,
-      };
-    }, [requis]);
+  const { completas, parciales, pendientes, totPzasSol, totPzasRec } = useMemo(() => {
+    let comp = 0,
+      parc = 0,
+      pend = 0,
+      pzsSol = 0,
+      pzsRec = 0;
+    for (const r of requis) {
+      const st = r._statusLocal || "Pendiente";
+      if (st === "Completa") comp++;
+      else if (st === "Parcial") parc++;
+      else pend++;
+      pzsSol += r._totales?.piezasSolicitadas || 0;
+      pzsRec += r._totales?.piezasRecibidas || 0;
+    }
+    return {
+      completas: comp,
+      parciales: parc,
+      pendientes: pend,
+      totPzasSol: pzsSol,
+      totPzasRec: pzsRec,
+    };
+  }, [requis]);
 
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center py-12">
@@ -665,10 +344,10 @@ const EntradasPage = () => {
                     RCP
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Título
+                    Almacén
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Fecha Solicitud
+                    Fecha Creación
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Estatus
@@ -709,14 +388,14 @@ const EntradasPage = () => {
                             </button>
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-700">
-                            {r.rcp ?? "N/A"}
+                            {r.requisicion?.rcp ?? "N/A"}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-700">
-                            {r.titulo ?? "N/A"}
+                            {r.almacenDestino?.name ?? "N/A"}
                           </td>
                           <td className="px-6 py-4 text-sm text-gray-500">
-                            {r.fechaSolicitud
-                              ? new Date(r.fechaSolicitud).toLocaleDateString()
+                            {r.fechaCreacion
+                              ? new Date(r.fechaCreacion).toLocaleDateString()
                               : "N/A"}
                           </td>
                           <td className="px-6 py-4 text-sm">
@@ -770,13 +449,12 @@ const EntradasPage = () => {
                                   </thead>
                                   <tbody className="divide-y divide-gray-100">
                                     {(r.items || []).map((it) => {
-                                      const solic = Number(it.cantidadSolicitada) || 0;
+                                      const solic = Number(it.cantidadEsperada) || 0;
                                       const recAcum =
-                                        Number(it.cantidadRecibidaAcumulada) || 0;
+                                        Number(it.cantidadRecibida) || 0;
                                       const restante = Math.max(solic - recAcum, 0);
                                       const curCapture =
                                         capture[r.id]?.[it.id] ?? "";
-
                                       const completo = solic > 0 && recAcum >= solic;
                                       return (
                                         <tr key={it.id} className="hover:bg-gray-50">
@@ -880,7 +558,7 @@ const EntradasPage = () => {
                       <p className="text-gray-600">
                         {searchTerm
                           ? "Ajusta tu búsqueda"
-                          : "No hay requisiciones pendientes de recepción (mock)"}
+                          : "No hay requisiciones pendientes de recepción"}
                       </p>
                     </td>
                   </tr>
@@ -936,9 +614,7 @@ const EntradasPage = () => {
                     Historial de entradas
                   </h2>
                   <p className="text-xs text-gray-500">
-                    {PERSISTIR_EN_STORAGE
-                      ? "Registros guardados en navegador (persistente)"
-                      : "Registros de esta sesión (se reinicia al recargar)"}
+                    Registros de esta sesión (no persistente)
                   </p>
                 </div>
               </div>
@@ -969,7 +645,7 @@ const EntradasPage = () => {
                             RCP
                           </th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">
-                            Requisición
+                            Almacén
                           </th>
                           <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">
                             Producto
@@ -996,7 +672,7 @@ const EntradasPage = () => {
                                 {h.rcp}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-700">
-                                {h.titulo}
+                                {h.almacen}
                               </td>
                               <td className="px-4 py-2 text-sm text-gray-700">
                                 {h.productoName}
@@ -1018,22 +694,14 @@ const EntradasPage = () => {
                     onClick={() => {
                       Swal.fire({
                         title: "¿Borrar historial?",
-                        text: PERSISTIR_EN_STORAGE
-                          ? "Eliminará los registros del navegador."
-                          : "Eliminará los registros de esta sesión.",
+                        text: "Eliminará los registros de esta sesión.",
                         icon: "warning",
                         showCancelButton: true,
                         confirmButtonText: "Sí, borrar",
                         cancelButtonText: "Cancelar",
                       }).then((res) => {
                         if (res.isConfirmed) {
-                          if (PERSISTIR_EN_STORAGE) {
-                            saveHist([]);
-                            setHistorial([]);
-                          } else {
-                            setHistLocal([]);
-                            setHistorial([]);
-                          }
+                          setHistorial([]);
                           Swal.fire("Listo", "Historial borrado", "success");
                         }
                       });

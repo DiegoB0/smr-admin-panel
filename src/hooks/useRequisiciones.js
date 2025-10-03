@@ -64,6 +64,7 @@ export function useRequisiciones() {
   // NUEVO: endpoints para aprobar/rechazar requisiciones
   const approveRequisicion = (id) => api.patch(`requisiciones/${id}/approve`);
   const rejectRequisicion = (id) => api.patch(`requisiciones/${id}/reject`);
+  const pagarRequisicion = (id, data) => api.patch(`requisiciones/${id}/pagar`, data);
 
   return {
     createReporte,
@@ -78,6 +79,7 @@ export function useRequisiciones() {
     // nuevos
     approveRequisicion,
     rejectRequisicion,
+    pagarRequisicion,
     listAprovedRequisiciones, // <-- exportado
   };
 }
