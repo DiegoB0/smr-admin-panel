@@ -122,6 +122,7 @@ const RequisicionesCompraPage = () => {
   }, [filtered]);
 
   // Abrir detalle
+
   const openDetailModal = (r) => {
     setSelectedRequisicion(r);
     setIsDetailModalOpen(true);
@@ -343,6 +344,7 @@ const RequisicionesCompraPage = () => {
                             <Eye className="w-4 h-4" />
                           </button>
                           {!isPagado ? (
+
                             <button
                               onClick={() => openPayModal(r)}
                               className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
@@ -590,7 +592,6 @@ const RequisicionesCompraPage = () => {
                 )}
               </section> */}
             </div>
-
             <PrintableRequisicion requisicion={selectedRequisicion} />
 
             {/* Footer modal */}
