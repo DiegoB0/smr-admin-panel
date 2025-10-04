@@ -9,9 +9,10 @@ import {
   Filter,
   Eye,
   BadgeDollarSign,
-  ClipboardList,
+  XCircle,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import { debounce } from "lodash"; // Asegúrate de instalar lodash
 import { printRequisicion } from "../../utils/printPdf";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import PrintableRequisicion from "./PrintableRequisicion";
@@ -23,7 +24,7 @@ const currency = (n) =>
   );
 
 const RequisicionesCompraPage = () => {
-  const { listAprovedRequisiciones, pagarRequisicion } = useRequisiciones();
+  const { listRequisiciones, pagarRequisicion } = useRequisiciones();
 
   // Estado base
   const [allItems, setAllItems] = useState([]);
@@ -38,30 +39,43 @@ const RequisicionesCompraPage = () => {
     metodo_pago: "orden de compra",
     observaciones: "",
     fechaEsperada: "",
+    submitted: false, // Para manejar validaciones
   });
+  const [totalBackendItems, setTotalBackendItems] = useState(0);
 
-  // Cargar desde backend real (solo aprobadas)
+  // Debounce para la búsqueda
+  const debouncedSetSearchTerm = useMemo(
+    () => debounce((value) => setSearchTerm(value), 300),
+    []
+  );
+
+  // Cargar desde backend
   const limit =
-    limitOption === "all" ? undefined : parseInt(limitOption, 10) || 10;
+    limitOption === "all" ? 1000 : parseInt(limitOption, 10) || 10;
 
   const fetchApproved = () => {
     setLoading(true);
-    listAprovedRequisiciones({
+    const params = {
       page,
-      limit: limit ?? 999999,
+      limit,
       order: "DESC",
       search: searchTerm,
-    })
+    };
+    if (limitOption === "all") {
+      delete params.limit;
+    }
+    listRequisiciones(params)
       .then((res) => {
         const data = res?.data?.data || [];
-        console.log("Fetched requisitions:", data); // Debug requisition states
+        const total = res?.data?.pagination?.total || data.length;
         setAllItems(data);
+        setTotalBackendItems(total);
       })
       .catch((err) => {
         const msg =
           err?.response?.data?.message ||
           err?.message ||
-          "Error al cargar requisiciones aprobadas";
+          "Error al cargar requisiciones.";
         Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
       })
       .finally(() => setLoading(false));
@@ -71,29 +85,32 @@ const RequisicionesCompraPage = () => {
     fetchApproved();
   }, [page, limitOption, searchTerm]);
 
-  // Paginación client-side si usas "all"
+  // Filtrado client-side
   const filtered = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     if (!q) return allItems;
     return allItems.filter((r) => {
-      const hay =
+      return (
         String(r.rcp ?? "").toLowerCase().includes(q) ||
         String(r.titulo ?? "").toLowerCase().includes(q) ||
-        String(r.concepto ?? "").toLowerCase().includes(q);
-      return hay;
+        String(r.concepto ?? "").toLowerCase().includes(q)
+      );
     });
   }, [allItems, searchTerm]);
 
-  const totalItems = filtered.length;
+  // Paginación
+  const totalItems = limitOption === "all" ? filtered.length : totalBackendItems;
   const effectiveLimit =
-    limitOption === "all" ? totalItems || 0 : parseInt(limitOption, 10);
+    limitOption === "all" ? filtered.length || 0 : parseInt(limitOption, 10);
   const totalPages = effectiveLimit
     ? Math.max(1, Math.ceil(totalItems / effectiveLimit))
     : 1;
 
   useEffect(() => {
-    setPage(1);
-  }, [searchTerm, limitOption]);
+    if (page > totalPages) {
+      setPage(1);
+    }
+  }, [totalPages]);
 
   const currentPage = Math.min(page, totalPages);
   const start = effectiveLimit ? (currentPage - 1) * effectiveLimit : 0;
@@ -101,19 +118,20 @@ const RequisicionesCompraPage = () => {
   const pageItems =
     limitOption === "all" ? filtered : filtered.slice(start, end);
 
-  // Stats
+  // Estadísticas
   const stats = useMemo(() => {
     const total = filtered.length;
-    const compradas = filtered.filter((r) => lower(r.status) === "pagada")
-      .length;
-    const pendientesCompra = filtered.filter((r) =>
-      ["aprobado", "aprobada"].includes(lower(r.status))
+    const pendientes = filtered.filter((r) => lower(r.status) === "pendiente").length;
+    const aprobadas = filtered.filter((r) =>
+      ["aprobada", "aprobado"].includes(lower(r.status))
     ).length;
+    const pagadas = filtered.filter((r) => lower(r.status) === "pagada").length;
+    const rechazadas = filtered.filter((r) => lower(r.status) === "rechazada").length;
     const monto = filtered.reduce((acc, r) => {
       const n = typeof r.cantidad_dinero === "number" ? r.cantidad_dinero : 0;
       return acc + n;
     }, 0);
-    return { total, compradas, pendientesCompra, monto };
+    return { total, pendientes, aprobadas, pagadas, rechazadas, monto };
   }, [filtered]);
 
   // Acciones
@@ -123,6 +141,7 @@ const RequisicionesCompraPage = () => {
       metodo_pago: "orden de compra",
       observaciones: "",
       fechaEsperada: "",
+      submitted: false,
     });
     setIsPurchaseModalOpen(true);
   };
@@ -133,6 +152,7 @@ const RequisicionesCompraPage = () => {
   };
 
   const handleMarkPurchased = async () => {
+    setPurchaseForm((prev) => ({ ...prev, submitted: true }));
     if (!selectedRequisicion) {
       Swal.fire("Error", "No se seleccionó ninguna requisición", "error");
       return;
@@ -153,8 +173,6 @@ const RequisicionesCompraPage = () => {
       fechaEsperada: purchaseForm.fechaEsperada,
     };
 
-    console.log("Payload enviado a pagarRequisicion:", payload);
-
     try {
       setLoading(true);
       await pagarRequisicion(selectedRequisicion.id, payload);
@@ -170,7 +188,6 @@ const RequisicionesCompraPage = () => {
         err?.message ||
         "No se pudo marcar como pagada";
       Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
-      console.error("Error en pagarRequisicion:", err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -186,46 +203,131 @@ const RequisicionesCompraPage = () => {
     setSelectedRequisicion(null);
   };
 
+  const getStatusStyles = (status) => {
+    switch (lower(status)) {
+      case "pendiente":
+        return {
+          bg: "bg-gradient-to-r from-yellow-100 to-yellow-200",
+          text: "text-yellow-800",
+          border: "border-yellow-200",
+          label: "Pendiente",
+          icon: <Filter className="w-3 h-3" />,
+        };
+      case "aprobada":
+      case "aprobado":
+        return {
+          bg: "bg-gradient-to-r from-blue-100 to-blue-200",
+          text: "text-blue-800",
+          border: "border-blue-200",
+          label: "Aprobada",
+          icon: <CheckCircle2 className="w-3 h-3" />,
+        };
+      case "pagada":
+        return {
+          bg: "bg-gradient-to-r from-emerald-100 to-emerald-200",
+          text: "text-emerald-800",
+          border: "border-emerald-200",
+          label: "Pagada",
+          icon: <CheckCircle2 className="w-3 h-3" />,
+        };
+      case "rechazada":
+        return {
+          bg: "bg-gradient-to-r from-red-100 to-red-200",
+          text: "text-red-800",
+          border: "border-red-200",
+          label: "Rechazada",
+          icon: <XCircle className="w-3 h-3" />,
+        };
+      default:
+        return {
+          bg: "bg-gradient-to-r from-gray-100 to-gray-200",
+          text: "text-gray-800",
+          border: "border-gray-200",
+          label: status || "N/A",
+          icon: null,
+        };
+    }
+  };
+
   const LoadingSpinner = () => (
     <div className="flex items-center justify-center py-12">
       <div className="flex flex-col items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <svg
+          className="animate-spin h-12 w-12 text-blue-600"
+          viewBox="0 0 24 24"
+        >
+          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+          <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
+        </svg>
         <p className="mt-4 text-gray-600">Cargando requisiciones...</p>
       </div>
     </div>
   );
 
   const StatCard = ({ title, value, color, icon }) => (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 h-28 flex items-center transition-all duration-300 hover:shadow-md animate-fade-in">
+      <div className="flex items-center justify-between w-full">
         <div>
           <p className={`text-sm font-medium ${color.text} mb-1`}>{title}</p>
           <p className={`text-2xl font-bold ${color.text}`}>{value}</p>
         </div>
-        <div className={`p-3 rounded-lg ${color.bg}`}>{icon}</div>
+        <div className={`p-3 rounded-lg bg-gradient-to-br ${color.bg.replace('/90', '')} to-${color.bg.split('-')[1]}-600`}>
+          {icon}
+        </div>
       </div>
     </div>
   );
 
   const Detail = ({ label, value }) => (
-    <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
+    <div className="p-3 rounded-lg border border-gray-100 bg-gray-50">
       <p className="text-xs font-medium text-gray-500">{label}</p>
       <p className="text-sm text-gray-900 mt-0.5">{value || "N/A"}</p>
     </div>
   );
 
   const Th = ({ children }) => (
-    <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
       {children}
     </th>
   );
 
-  const Td = ({ children }) => (
-    <td className="px-4 py-2 text-sm text-gray-700">{children}</td>
+  const Td = ({ children, align = "left" }) => (
+    <td className={`px-6 py-5 text-sm text-gray-700 text-${align}`}>
+      {children}
+    </td>
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto font-inter">
+      {/* Estilo global para la fuente */}
+      <style jsx global>{`
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          letter-spacing: -0.01em;
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.3s ease-out;
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        [data-tooltip] {
+          position: relative;
+        }
+        [data-tooltip]:hover:after {
+          content: attr(data-tooltip);
+          @apply absolute bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 -translate-x-1/2 z-10;
+        }
+      `}</style>
+
       {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
@@ -238,50 +340,56 @@ const RequisicionesCompraPage = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-8">
         <StatCard
-          title="Total (aprobadas + compradas)"
+          title="Total requisiciones"
           value={stats.total}
           color={{ text: "text-blue-600", bg: "bg-blue-500/90" }}
-          icon={<FileText className="w-6 h-6 text-white" />}
+          icon={<FileText className="w-8 h-8 text-white" />}
         />
         <StatCard
-          title="Pendientes de compra"
-          value={stats.pendientesCompra}
-          color={{ text: "text-amber-600", bg: "bg-amber-500/90" }}
-          icon={<Filter className="w-6 h-6 text-white" />}
+          title="Pendientes"
+          value={stats.pendientes}
+          color={{ text: "text-yellow-600", bg: "bg-yellow-500/90" }}
+          icon={<Filter className="w-8 h-8 text-white" />}
         />
         <StatCard
-          title="Marcadas como compradas"
-          value={stats.compradas}
+          title="Aprobadas"
+          value={stats.aprobadas}
+          color={{ text: "text-blue-600", bg: "bg-blue-500/90" }}
+          icon={<CheckCircle2 className="w-8 h-8 text-white" />}
+        />
+        <StatCard
+          title="Pagadas"
+          value={stats.pagadas}
           color={{ text: "text-emerald-600", bg: "bg-emerald-500/90" }}
-          icon={<CheckCircle2 className="w-6 h-6 text-white" />}
+          icon={<CheckCircle2 className="w-8 h-8 text-white" />}
         />
         <StatCard
-          title="Monto estimado"
+          title="Monto total"
           value={currency(stats.monto)}
           color={{ text: "text-indigo-600", bg: "bg-indigo-500/90" }}
-          icon={<BadgeDollarSign className="w-6 h-6 text-white" />}
+          icon={<BadgeDollarSign className="w-8 h-8 text-white" />}
         />
       </div>
 
       {/* Filtros */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Buscar por RCP, título, concepto..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e) => debouncedSetSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
+            aria-label="Buscar requisiciones"
           />
         </div>
-
         <select
           value={limitOption}
           onChange={(e) => setLimitOption(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+          aria-label="Seleccionar elementos por página"
         >
           <option value="5">5 por página</option>
           <option value="10">10 por página</option>
@@ -292,98 +400,85 @@ const RequisicionesCompraPage = () => {
 
       {/* Tabla */}
       {loading ? (
-        <div className="bg-white rounded-lg shadow-md border overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
           <LoadingSpinner />
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-md border overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-100">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    RCP
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Fecha
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Título
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Concepto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Estatus
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Monto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Acciones
-                  </th>
+                  <Th>RCP</Th>
+                  <Th>Fecha</Th>
+                  <Th>Título</Th>
+                  <Th>Concepto</Th>
+                  <Th>Estatus</Th>
+                  <Th>Monto</Th>
+                  <Th>Acciones</Th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
                 {pageItems.length > 0 ? (
                   pageItems.map((r) => {
-                    const isPurchased = lower(r.status) === "pagada";
+                    const statusStyles = getStatusStyles(r.status);
+                    const canMarkAsPurchased = ["aprobada", "aprobado"].includes(lower(r.status));
                     return (
-                      <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-sm text-gray-600">
-                          {r.rcp ?? "N/A"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600">
+                      <tr
+                        key={r.id}
+                        className="hover:bg-gray-50 transition-colors duration-200 odd:bg-gray-50 animate-fade-in"
+                      >
+                        <Td>{r.rcp ?? "N/A"}</Td>
+                        <Td>
                           {r.fechaSolicitud
                             ? new Date(r.fechaSolicitud).toLocaleDateString()
                             : "N/A"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {r.titulo || "N/A"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-sm">
-                          {r.concepto || "—"}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
+                        </Td>
+                        <Td>{r.titulo || "N/A"}</Td>
+                        <Td className="truncate max-w-sm">{r.concepto || "—"}</Td>
+                        <Td>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              isPurchased
-                                ? "bg-emerald-100 text-emerald-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyles.bg} ${statusStyles.text}`}
                           >
-                            {isPurchased ? "Pagada" : "Aprobada"}
+                            {statusStyles.icon}
+                            {statusStyles.label}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
+                        </Td>
+                        <Td align="right">
                           {typeof r.cantidad_dinero === "number"
                             ? currency(r.cantidad_dinero)
                             : "N/A"}
-                        </td>
-                        <td className="px-6 py-4 text-sm flex items-center gap-2">
-                          <button
-                            onClick={() => openDetailModal(r)}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="Ver detalles"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          {!isPurchased ? (
+                        </Td>
+                        <Td>
+                          <div className="flex items-center gap-2">
                             <button
-                              onClick={() => openPurchaseModal(r)}
-                              className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                              title="Marcar como comprada"
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              aria-label={`Ver detalles de la requisición ${r.rcp || 'N/A'}`}
+                              data-tooltip="Ver detalles"
                             >
-                              <ShoppingCart className="w-4 h-4" />
-                              Marcar
+                              <Eye className="w-4 h-4" />
                             </button>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-4 h-4" />
-                              Pagada
-                            </span>
-                          )}
-                        </td>
+                            {canMarkAsPurchased ? (
+                              <button
+                                onClick={() => openPurchaseModal(r)}
+                                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                                aria-label={`Marcar como pagada la requisición ${r.rcp || 'N/A'}`}
+                                data-tooltip="Marcar como pagada"
+                              >
+                                <ShoppingCart className="w-4 h-4" />
+                                Marcar
+                              </button>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg ${statusStyles.bg} ${statusStyles.text} ${statusStyles.border}`}
+                              >
+                                {statusStyles.icon}
+                                {statusStyles.label}
+                              </span>
+                            )}
+                          </div>
+                        </Td>
                       </tr>
                     );
                   })
@@ -392,11 +487,17 @@ const RequisicionesCompraPage = () => {
                     <td colSpan={7} className="px-6 py-12 text-center">
                       <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        No hay requisiciones aprobadas
+                        No hay requisiciones
                       </h3>
-                      <p className="text-gray-600">
-                        Cuando existan requisiciones aprobadas aparecerán aquí.
+                      <p className="text-gray-600 mb-4">
+                        Cuando existan requisiciones, aparecerán aquí.
                       </p>
+                      <button
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        onClick={() => {/* Navegar a crear requisición */}}
+                      >
+                        Crear Nueva Requisición
+                      </button>
                     </td>
                   </tr>
                 )}
@@ -408,11 +509,20 @@ const RequisicionesCompraPage = () => {
 
       {/* Paginación */}
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 mt-6">
+        <div className="flex justify-center items-center gap-2 mt-6">
+          <button
+            onClick={() => setPage(1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
+            aria-label="Ir a la primera página"
+          >
+            1
+          </button>
           <button
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
             disabled={currentPage <= 1}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
+            aria-label="Página anterior"
           >
             Anterior
           </button>
@@ -422,25 +532,34 @@ const RequisicionesCompraPage = () => {
           <button
             onClick={() => setPage((prev) => prev + 1)}
             disabled={currentPage >= totalPages}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
+            aria-label="Página siguiente"
           >
             Siguiente
+          </button>
+          <button
+            onClick={() => setPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
+            aria-label="Ir a la última página"
+          >
+            Última
           </button>
         </div>
       )}
 
-      {/* Modal Detalles + plantilla oculta para PDF/print */}
+      {/* Modal Detalles */}
       {isDetailModalOpen && selectedRequisicion && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
           onClick={closeDetailModal}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-2xl w-full sm:max-w-3xl h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
                   <Eye className="w-5 h-5" />
@@ -456,8 +575,8 @@ const RequisicionesCompraPage = () => {
               </div>
               <button
                 onClick={closeDetailModal}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Cerrar"
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar modal de detalles"
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
@@ -470,15 +589,10 @@ const RequisicionesCompraPage = () => {
                   RCP: {selectedRequisicion.rcp || "N/A"}
                 </span>
                 <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    lower(selectedRequisicion.status) === "pagada"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                      : "bg-blue-50 text-blue-700 border-blue-200"
-                  }`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusStyles(selectedRequisicion.status).bg} ${getStatusStyles(selectedRequisicion.status).text} ${getStatusStyles(selectedRequisicion.status).border}`}
                 >
-                  {lower(selectedRequisicion.status) === "pagada"
-                    ? "Pagada"
-                    : "Aprobada"}
+                  {getStatusStyles(selectedRequisicion.status).icon}
+                  {getStatusStyles(selectedRequisicion.status).label}
                 </span>
               </section>
 
@@ -507,6 +621,14 @@ const RequisicionesCompraPage = () => {
                     label="Monto"
                     value={currency(selectedRequisicion.cantidad_dinero)}
                   />
+                  <Detail
+                    label="Prioridad"
+                    value={selectedRequisicion.prioridad || "N/A"}
+                  />
+                  <Detail
+                    label="Almacén Destino"
+                    value={selectedRequisicion.almacenDestino?.name || "N/A"}
+                  />
                 </div>
               </section>
 
@@ -515,8 +637,8 @@ const RequisicionesCompraPage = () => {
                   Items
                 </h3>
                 {selectedRequisicion.items?.length > 0 ? (
-                  <div className="rounded-lg border border-gray-200 overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-200">
+                  <div className="rounded-lg border border-gray-100 overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-100">
                       <thead className="bg-gray-50">
                         <tr>
                           <Th>Descripción / Producto</Th>
@@ -527,14 +649,14 @@ const RequisicionesCompraPage = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {selectedRequisicion.items.map((it, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-gray-50 transition-colors">
                             <Td>{it.descripcion || it.producto?.name || "N/A"}</Td>
-                            <Td>{it.cantidad ?? "N/A"}</Td>
-                            <Td>{it.unidad ?? (it.producto ? "pz" : "N/A")}</Td>
-                            <Td>
-                              {typeof it.precio_unitario === "number"
-                                ? currency(it.precio_unitario)
-                                : it.precio_unitario || "—"}
+                            <Td>{it.cantidadSolicitada ?? "N/A"}</Td>
+                            <Td>{it.producto?.unidad ?? "N/A"}</Td>
+                            <Td align="right">
+                              {typeof it.producto?.precio === "string"
+                                ? currency(parseFloat(it.producto.precio))
+                                : "N/A"}
                             </Td>
                           </tr>
                         ))}
@@ -547,11 +669,11 @@ const RequisicionesCompraPage = () => {
               </section>
             </div>
 
-            {/* Contenido oculto para exportar (layout imprimible) */}
+            {/* Contenido oculto para exportar */}
             <PrintableRequisicion requisicion={selectedRequisicion} />
 
             {/* Footer modal */}
-            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-100 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
               <button
                 onClick={() =>
                   printRequisicion(
@@ -559,13 +681,15 @@ const RequisicionesCompraPage = () => {
                     `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
                   )
                 }
-                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 transition-colors"
+                aria-label="Imprimir o guardar como PDF"
               >
                 Imprimir / Guardar PDF
               </button>
               <button
                 onClick={closeDetailModal}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                aria-label="Cerrar modal"
               >
                 Cerrar
               </button>
@@ -577,14 +701,14 @@ const RequisicionesCompraPage = () => {
       {/* Modal para Marcar como Pagada */}
       {isPurchaseModalOpen && selectedRequisicion && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
           onClick={closePurchaseModal}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[92vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-2xl w-full sm:max-w-md h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600">
                   <ShoppingCart className="w-5 h-5" />
@@ -600,8 +724,8 @@ const RequisicionesCompraPage = () => {
               </div>
               <button
                 onClick={closePurchaseModal}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Cerrar"
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar modal de pago"
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
@@ -617,7 +741,8 @@ const RequisicionesCompraPage = () => {
                   onChange={(e) =>
                     setPurchaseForm({ ...purchaseForm, metodo_pago: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
+                  aria-label="Seleccionar método de pago"
                 >
                   <option value="orden de compra">Orden de Compra</option>
                   <option value="pago">Pago</option>
@@ -634,10 +759,10 @@ const RequisicionesCompraPage = () => {
                   onChange={(e) =>
                     setPurchaseForm({ ...purchaseForm, observaciones: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                   rows="4"
                   placeholder="Ingresa observaciones"
-                  required
+                  aria-label="Observaciones"
                 />
               </div>
               <div>
@@ -650,25 +775,55 @@ const RequisicionesCompraPage = () => {
                   onChange={(e) =>
                     setPurchaseForm({ ...purchaseForm, fechaEsperada: e.target.value })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm ${
+                    purchaseForm.submitted && !purchaseForm.fechaEsperada
+                      ? "border-red-500"
+                      : "border-gray-200"
+                  }`}
                   required
+                  aria-label="Fecha esperada"
                 />
+                {purchaseForm.submitted && !purchaseForm.fechaEsperada && (
+                  <p className="text-xs text-red-500 mt-1">La fecha es obligatoria</p>
+                )}
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex gap-2 justify-end">
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-100 px-6 py-4 rounded-b-xl flex gap-2 justify-end">
               <button
                 onClick={closePurchaseModal}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                aria-label="Cancelar"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleMarkPurchased}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center gap-2"
                 disabled={loading}
+                aria-label="Confirmar pago"
               >
-                Confirmar
+                {loading ? (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                    />
+                  </svg>
+                ) : (
+                  "Confirmar"
+                )}
               </button>
             </div>
           </div>
