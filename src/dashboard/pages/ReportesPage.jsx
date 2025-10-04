@@ -648,7 +648,7 @@ function ReportesPage() {
                 onClick={closeRequisicionModal}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                 aria-label="Cancelar creación de requisición"
-                data-tooltip="Cancelar"
+        
               >
                 Cancelar
               </button>
@@ -656,7 +656,7 @@ function ReportesPage() {
                 onClick={handleSubmit}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                 aria-label="Crear requisición"
-                data-tooltip="Confirmar creación"
+                
               >
                 Crear
               </button>
