@@ -11,12 +11,12 @@ import {
   Eye,
   Printer,
   Download,
-  Package,
-  Box,
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
 import { useSalidas } from "../../hooks/useSalidas";
+import { useEquipos } from "../../hooks/useEquipos";
+import { useAlmacenes } from "../../hooks/useAlmacenes";
 
 function getApiErrorMessage(err) {
   const d = err?.response?.data;
@@ -31,16 +31,13 @@ function getApiErrorMessage(err) {
   }
 }
 
-// Helper: validación rápida de UUID v4 (relajada)
-const isUUID = (v) =>
-  typeof v === "string" &&
-  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-    v
-  );
-
 const SalidasPage = () => {
   const { listSalidas, crearSalida } = useSalidas();
-
+  const { listEquipos } = useEquipos();
+  const { getAlmacenProducts } = useAlmacenes();
+  const { almacenId: almacenIdParam } = useParams();
+  const almacenIdNum = Number(almacenIdParam);
+  const navigate = useNavigate();
 
   // Listado
   const [salidas, setSalidas] = useState([]);
@@ -53,29 +50,21 @@ const SalidasPage = () => {
   });
   const [loading, setLoading] = useState(false);
 
-
   // Filtros / paginado
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  // Almacén (contexto)
-  const [almacenId, setAlmacenId] = useState(5);
+  // Catalogs for form
+  const [equipos, setEquipos] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(false);
 
-  // Catálogos vistos
-  const [seen, setSeen] = useState({
-    almacenes: [],
-    usuarios: [],
-    productos: [],
-  });
-
-  // Crear salida
+  // Crear salida - UPDATED FORM STRUCTURE (removed almacenOrigenId)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [form, setForm] = useState({
-    almacenOrigenId: 5,
-    recibidaPorId: "",
-    autorizaId: "",
+    recibidaPor: "",
     equipoId: "",
     items: [{ productoId: "", cantidad: "" }],
   });
@@ -88,30 +77,25 @@ const SalidasPage = () => {
   const [selected, setSelected] = useState(null);
   const printableRef = useRef(null);
 
-  // Indexa lo visto
-  function indexSeen(rows) {
-    const aMap = new Map();
-    const uMap = new Map();
-    const pMap = new Map();
-    for (const s of rows) {
-      if (s?.almacenOrigen?.id)
-        aMap.set(s.almacenOrigen.id, s.almacenOrigen.name);
-      if (s?.recibidaPor?.id) uMap.set(s.recibidaPor.id, s.recibidaPor.name);
-      if (s?.authoriza?.id) uMap.set(s.authoriza.id, s.authoriza.name);
-      for (const it of s.items || []) {
-        if (it?.producto?.id) pMap.set(it.producto.id, it.producto.name);
-      }
-    }
-    setSeen({
-      almacenes: Array.from(aMap, ([id, name]) => ({ id, name })),
-      usuarios: Array.from(uMap, ([id, name]) => ({ id, name })),
-      productos: Array.from(pMap, ([id, name]) => ({ id, name })),
-    });
-  }
+  // Fetch catalogs for form
+  const fetchCatalogs = async () => {
+    setCatalogsLoading(true);
+    try {
+      const [equiposRes, productsRes] = await Promise.all([
+        listEquipos({ limit: 100 }),
+        getAlmacenProducts({ almacenId: almacenIdNum, limit: 100 })
+      ]);
+      console.log('Products response:', productsRes.data);
 
-  const { almacenId: almacenIdParam } = useParams();
-  const almacenIdNum = Number(almacenIdParam);
-  const navigate = useNavigate();
+      setEquipos(Array.isArray(equiposRes.data?.data) ? equiposRes.data.data : []);
+      setProducts(Array.isArray(productsRes.data?.data) ? productsRes.data.data : []);
+    } catch (err) {
+      console.error("Error fetching catalogs:", err);
+      Swal.fire("Error", "Error cargando catálogos", "error");
+    } finally {
+      setCatalogsLoading(false);
+    }
+  };
 
   async function fetchData() {
     setLoading(true);
@@ -141,8 +125,6 @@ const SalidasPage = () => {
         hasPreviousPage: !!meta.hasPreviousPage,
         totalItems: meta.totalItems ?? rows.length,
       });
-
-      indexSeen(rows);
     } catch (err) {
       Swal.fire("Error", getApiErrorMessage(err), "error");
     } finally {
@@ -152,16 +134,18 @@ const SalidasPage = () => {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limitOption, debouncedSearch, almacenId]);
+  }, [page, limitOption, debouncedSearch, almacenIdNum]);
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, limitOption, almacenId]);
+  }, [debouncedSearch, limitOption]);
 
+  // Fetch catalogs when modal opens
   useEffect(() => {
-    setForm((p) => ({ ...p, almacenOrigenId: almacenId }));
-  }, [almacenId]);
+    if (isCreateModalOpen) {
+      fetchCatalogs();
+    }
+  }, [isCreateModalOpen]);
 
   // Helpers form
   const addItem = () =>
@@ -181,18 +165,14 @@ const SalidasPage = () => {
     });
 
   const validateForm = () => {
-    if (!form.almacenOrigenId) return "Selecciona el almacén de origen";
-    if (!form.recibidaPorId) return "Selecciona a quién recibe";
-    if (!form.autorizaId) return "Selecciona quién autoriza";
-    if (!isUUID(form.recibidaPorId)) return "El campo 'Recibe' debe ser UUID válido";
-    if (!isUUID(form.autorizaId)) return "El campo 'Autoriza' debe ser UUID válido";
+    if (!form.recibidaPor.trim()) return "Campo 'Recibe' requerido";
     if (!form.equipoId || Number(form.equipoId) <= 0)
-      return "Selecciona el equipo/máquina (número)";
+      return "Selecciona un equipo";
     if (!Array.isArray(form.items) || form.items.length === 0)
-      return "Agrega al menos un renglón";
+      return "Agrega al menos un ítem";
     const bad = form.items.find((it) => {
       const c = Number(it.cantidad);
-      return !it.productoId || Number.isNaN(c) || c <= 0;
+      return !it.productoId.trim() || Number.isNaN(c) || c <= 0;
     });
     if (bad) return "Cada ítem requiere producto y cantidad (> 0)";
     return null;
@@ -206,12 +186,11 @@ const SalidasPage = () => {
     try {
       setLoading(true);
       const body = {
-        almacenOrigenId: Number(form.almacenOrigenId),
-        recibidaPorId: String(form.recibidaPorId),
-        authorizaId: String(form.autorizaId), // clave con h
+        almacenOrigenId: almacenIdNum, // Use almacenIdNum directly
+        recibidaPor: String(form.recibidaPor).trim(),
         equipoId: Number(form.equipoId),
         items: form.items.map((it) => ({
-          productoId: String(it.productoId),
+          productoId: String(it.productoId).trim(),
           cantidad: Number(it.cantidad),
         })),
       };
@@ -221,9 +200,7 @@ const SalidasPage = () => {
       Swal.fire("Éxito", "Salida registrada", "success");
       setIsCreateModalOpen(false);
       setForm({
-        almacenOrigenId: almacenId,
-        recibidaPorId: "",
-        autorizaId: "",
+        recibidaPor: "",
         equipoId: "",
         items: [{ productoId: "", cantidad: "" }],
       });
@@ -235,22 +212,25 @@ const SalidasPage = () => {
     }
   };
 
-  // Totales display
-  const { totalItems, totalPzas } = useMemo(() => {
-    let items = 0;
-    let pzas = 0;
-    for (const s of salidas) {
-      const arr = s.items || [];
-      items += arr.length;
-      pzas += arr.reduce(
-        (a, it) => a + Number(it.cantidadRetirada || it.cantidad || 0),
-        0
-      );
-    }
-    return { totalItems: items, totalPzas: pzas };
-  }, [salidas]);
+  // helper para mostrar folio legible
+  const displayFolio = (s) => {
+    if (!s) return "";
+    if (s.folio) return String(s.folio).padStart(5, "0");
+    if (s.folioNumero) return String(s.folioNumero).padStart(5, "0");
+    if (s.id) return String(s.id).slice(0, 8).toUpperCase();
+    if (s.createdAt) return new Date(s.createdAt).getTime();
+    return "—";
+  };
 
-  // Print / Download
+  // Data para tabla paginada localmente cuando limitOption !== "all"
+  const visibleRows =
+    limitOption === "all"
+      ? salidas
+      : salidas.slice(
+        (pagination.currentPage - 1) * limit,
+        (pagination.currentPage - 1) * limit + limit
+      );
+
   const openDetail = (s) => {
     setSelected(s);
     setIsDetailOpen(true);
@@ -280,7 +260,7 @@ const SalidasPage = () => {
             table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
             th, td { border: 1px solid #bbb; padding: 6px 8px; }
             th { background: #f5f5f5; text-transform: uppercase; font-weight: 600; font-size: 11px; }
-            .footer { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 24px; text-align: center; }
+            .footer { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; text-align: center; }
             .sign { border-top: 1px solid #333; padding-top: 6px; font-size: 12px; }
             .header { display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
             .folio { font-size: 18px; font-weight: bold; color: #c00; }
@@ -299,101 +279,27 @@ const SalidasPage = () => {
     handlePrint();
   };
 
-  // helper para mostrar folio legible
-  const displayFolio = (s) => {
-    if (!s) return "";
-    if (s.folio) return String(s.folio).padStart(5, "0");
-    if (s.folioNumero) return String(s.folioNumero).padStart(5, "0");
-    if (s.id) return String(s.id).slice(0, 8).toUpperCase();
-    if (s.createdAt) return new Date(s.createdAt).getTime();
-    return "—";
-  };
-
-  // Data para tabla paginada localmente cuando limitOption !== "all"
-  const visibleRows =
-    limitOption === "all"
-      ? salidas
-      : salidas.slice(
-        (pagination.currentPage - 1) * limit,
-        (pagination.currentPage - 1) * limit + limit
-      );
-
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto font-inter">
-      <style jsx global>{`
-        body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-          letter-spacing: -0.01em;
-        }
-        .animate-fade-in {
-          animation: fadeIn 0.5s ease-out;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-scale-in {
-          animation: scaleIn 0.3s ease-out;
-        }
-        @keyframes scaleIn {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-        [data-tooltip] {
-          position: relative;
-        }
-        [data-tooltip]:hover:after {
-          content: attr(data-tooltip);
-          @apply absolute bg-gray-800 text-white text-xs rounded py-1 px-2 -top-8 left-1/2 -translate-x-1/2 z-10;
-        }
-      `}</style>
-
-      <div className="mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Puedes agregar más tarjetas si tienes más datos */}
-        </div>
-      </div>
-
       <div className="mb-8 flex justify-between items-center">
         <div>
-          <button className="flex gap-2 items-center"
+          <button
+            className="flex gap-2 items-center mb-2"
             onClick={() => navigate(`/dashboard/almacenes/`)}
           >
-            <span className="text-gray-500">
-              <ChevronLeft />
-            </span>
-            <h1 className="text-gray-600 uppercase  text-lg">
-              Regresar</h1>
+            <ChevronLeft className="text-gray-500" />
+            <span className="text-gray-600 uppercase text-lg">Regresar</span>
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Salidas</h1>
-          <p className="text-gray-600 mt-1">Registra y emite vales de salida desde almacén</p>
+          <p className="text-gray-600 mt-1">Registra y emite vales de salida desde almacén {almacenIdNum}</p>
         </div>
-        <div className="flex gap-3">
-          <select
-            value={almacenId}
-            onChange={(e) => setAlmacenId(Number(e.target.value))}
-            className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-            aria-label="Seleccionar almacén"
-            data-tooltip="Cambiar almacén"
-          >
-            {seen.almacenes.length === 0 ? (
-              <option value={5}>Almacén 5</option>
-            ) : (
-              seen.almacenes.map((a) => (
-                <option key={a.id} value={Number(a.id)}>
-                  {a.name}
-                </option>
-              ))
-            )}
-          </select>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Nueva salida
-          </button>
-        </div>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          Nueva salida
+        </button>
       </div>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:gap-4">
@@ -405,15 +311,12 @@ const SalidasPage = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm transition-all"
-            aria-label="Buscar salidas"
           />
         </div>
         <select
           value={limitOption}
           onChange={(e) => setLimitOption(e.target.value)}
           className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-          aria-label="Seleccionar elementos por página"
-          data-tooltip="Ajustar elementos por página"
         >
           <option value="5">5 por página</option>
           <option value="10">10 por página</option>
@@ -425,7 +328,7 @@ const SalidasPage = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Folio
@@ -434,13 +337,10 @@ const SalidasPage = () => {
                   Fecha
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Almacén origen
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Recibe
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Autoriza
+                  Equipo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Ítems
@@ -453,7 +353,7 @@ const SalidasPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center py-12">
                       <div className="flex flex-col items-center">
                         <svg className="animate-spin h-12 w-12 text-green-600" viewBox="0 0 24 24">
@@ -467,10 +367,7 @@ const SalidasPage = () => {
                 </tr>
               ) : visibleRows.length ? (
                 visibleRows.map((s) => (
-                  <tr
-                    key={s.id}
-                    className="hover:bg-gray-50 transition-colors duration-200 odd:bg-gray-50 animate-fade-in"
-                  >
+                  <tr key={s.id} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="px-6 py-5 text-sm text-gray-700">
                       {displayFolio(s)}
                     </td>
@@ -482,13 +379,10 @@ const SalidasPage = () => {
                           : "-"}
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700">
-                      {s.almacenOrigen?.name ?? "-"}
+                      {s.recibidaPor?.name ?? s.recibidaPor ?? "-"}
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700">
-                      {s.recibidaPor?.name ?? "-"}
-                    </td>
-                    <td className="px-6 py-5 text-sm text-gray-700">
-                      {s.authoriza?.name ?? "-"}
+                      {s.equipoId ?? "-"}
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700 truncate max-w-sm">
                       {(s.items || [])
@@ -510,35 +404,21 @@ const SalidasPage = () => {
                         onClick={() => {
                           setSelected(s);
                           setIsDetailOpen(true);
-                          setTimeout(handlePrint, 0);
+                          setTimeout(handlePrint, 100);
                         }}
                         className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <Printer className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setSelected(s);
-                          setIsDetailOpen(true);
-                          setTimeout(handleDownload, 0);
-                        }}
-                        className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      Sin salidas
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Crea una nueva salida para comenzar
-                    </p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Sin salidas</h3>
+                    <p className="text-gray-600 mb-4">Crea una nueva salida para comenzar</p>
                     <button
                       onClick={() => setIsCreateModalOpen(true)}
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
@@ -559,8 +439,6 @@ const SalidasPage = () => {
             onClick={() => setPage(1)}
             disabled={pagination.currentPage === 1}
             className="px-3 py-2 bg-gray-900 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
-            aria-label="Ir a la primera página"
-            data-tooltip="Ir al inicio"
           >
             1
           </button>
@@ -568,8 +446,6 @@ const SalidasPage = () => {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={pagination.currentPage <= 1}
             className="px-4 py-2 bg-gray-900 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
-            aria-label="Página anterior"
-            data-tooltip="Página anterior"
           >
             Anterior
           </button>
@@ -580,8 +456,6 @@ const SalidasPage = () => {
             onClick={() => setPage((p) => p + 1)}
             disabled={!pagination.hasNextPage}
             className="px-4 py-2 bg-gray-900 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
-            aria-label="Página siguiente"
-            data-tooltip="Página siguiente"
           >
             Siguiente
           </button>
@@ -589,21 +463,20 @@ const SalidasPage = () => {
             onClick={() => setPage(pagination.totalPages)}
             disabled={pagination.currentPage === pagination.totalPages}
             className="px-3 py-2 bg-gray-900 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
-            aria-label="Ir a la última página"
-            data-tooltip="Ir al final"
           >
             Última
           </button>
         </div>
       )}
 
+      {/* CREATE MODAL - UPDATED WITH SELECTS */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
           onClick={() => setIsCreateModalOpen(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto transform animate-scale-in"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -620,150 +493,96 @@ const SalidasPage = () => {
                 <span className="text-2xl leading-none">&times;</span>
               </button>
             </div>
+
             <form onSubmit={onCreate} className="px-6 py-5 space-y-6">
               <section>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Encabezado</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Información general</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Almacén origen
+                      Equipo *
                     </label>
                     <select
-                      value={form.almacenOrigenId}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          almacenOrigenId: Number(e.target.value),
-                        }))
-                      }
+                      value={form.equipoId}
+                      onChange={(e) => setForm((p) => ({ ...p, equipoId: e.target.value }))}
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                      aria-label="Seleccionar almacén origen"
+                      required
+                      disabled={catalogsLoading}
                     >
-                      <option value="">Selecciona...</option>
-                      {seen.almacenes.map((a) => (
-                        <option key={a.id} value={Number(a.id)}>
-                          {a.name}
+                      <option value="">
+                        {catalogsLoading ? "Cargando equipos..." : "Selecciona un equipo"}
+                      </option>
+                      {equipos.map((equipo) => (
+                        <option key={equipo.id} value={equipo.id}>
+                          {equipo.equipo} - {equipo.no_economico}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Equipo/Máquina (ID)
+                      Recibe *
                     </label>
                     <input
-                      type="number"
-                      value={form.equipoId}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          equipoId: Number(e.target.value),
-                        }))
-                      }
-                      placeholder="Ej. 5"
+                      type="text"
+                      value={form.recibidaPor}
+                      onChange={(e) => setForm((p) => ({ ...p, recibidaPor: e.target.value }))}
+                      placeholder="Nombre de quien recibe"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                      aria-label="ID de equipo/máquina"
+                      required
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Recibe (usuario)
-                    </label>
-                    <select
-                      value={form.recibidaPorId}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          recibidaPorId: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                      aria-label="Seleccionar usuario que recibe"
-                    >
-                      <option value="">Selecciona...</option>
-                      {seen.usuarios.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Autoriza (usuario)
-                    </label>
-                    <select
-                      value={form.autorizaId}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          autorizaId: e.target.value,
-                        }))
-                      }
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                      aria-label="Seleccionar usuario que autoriza"
-                    >
-                      <option value="">Selecciona...</option>
-                      {seen.usuarios.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
               </section>
+
               <section>
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Ítems</h3>
                 <div className="space-y-4">
                   {form.items.map((it, idx) => (
-                    <div
-                      key={idx}
-                      className="relative border border-gray-200 rounded-lg p-4 bg-gray-50"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => removeItem(idx)}
-                        className="absolute -top-3 -right-3 p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div key={idx} className="relative border border-gray-200 rounded-lg p-4 bg-gray-50">
+                      {form.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeItem(idx)}
+                          className="absolute -top-3 -right-3 p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Producto
+                            Producto *
                           </label>
                           <select
                             value={it.productoId}
-                            onChange={(e) =>
-                              updateItem(idx, "productoId", e.target.value)
-                            }
+                            onChange={(e) => updateItem(idx, "productoId", e.target.value)}
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                            aria-label={`Seleccionar producto para el ítem ${idx + 1}`}
+                            required
+                            disabled={catalogsLoading}
                           >
-                            <option value="">Selecciona...</option>
-                            {seen.productos.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
+                            <option value="">
+                              {catalogsLoading ? "Cargando productos..." : "Selecciona un producto"}
+                            </option>
+                            {products.map((product) => (
+                              <option key={product.id} value={product.producto.id} className="text-black">
+                                {`ID ${product.producto.id} - ${product.producto.name}`}
                               </option>
                             ))}
                           </select>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Cantidad
+                            Cantidad *
                           </label>
                           <input
                             type="number"
                             min={1}
                             value={it.cantidad}
-                            onChange={(e) =>
-                              updateItem(idx, "cantidad", e.target.value)
-                            }
+                            onChange={(e) => updateItem(idx, "cantidad", e.target.value)}
+                            placeholder="10"
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                            aria-label={`Cantidad para el ítem ${idx + 1}`}
+                            required
                           />
                         </div>
                       </div>
@@ -777,10 +596,11 @@ const SalidasPage = () => {
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
-                    Agregar renglón
+                    Agregar ítem
                   </button>
                 </div>
               </section>
+
               <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-100 py-4 rounded-b-xl flex justify-end gap-2">
                 <button
                   type="button"
@@ -791,9 +611,10 @@ const SalidasPage = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-colors"
+                  disabled={loading || catalogsLoading}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-colors disabled:opacity-50"
                 >
-                  Guardar
+                  {loading ? "Guardando..." : "Guardar"}
                 </button>
               </div>
             </form>
@@ -801,13 +622,14 @@ const SalidasPage = () => {
         </div>
       )}
 
+      {/* DETAIL MODAL */}
       {isDetailOpen && selected && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
           onClick={closeDetail}
         >
           <div
-            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto transform animate-scale-in"
+            className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
@@ -816,9 +638,7 @@ const SalidasPage = () => {
                   <Eye className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Vale de salida
-                  </h2>
+                  <h2 className="text-lg font-semibold text-gray-900">Vale de salida</h2>
                   <p className="text-xs text-gray-500">
                     Folio {displayFolio(selected)} •{" "}
                     {selected.fecha
@@ -833,47 +653,31 @@ const SalidasPage = () => {
                 <button
                   onClick={handlePrint}
                   className="inline-flex items-center gap-1 px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 transition-colors"
-                  aria-label="Imprimir vale de salida"
-                  data-tooltip="Imprimir"
                 >
                   <Printer className="w-4 h-4" />
                   Imprimir
                 </button>
                 <button
-                  onClick={handleDownload}
-                  className="inline-flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  aria-label="Descargar PDF"
-                  data-tooltip="Descargar PDF"
-                >
-                  <Download className="w-4 h-4" />
-                  Descargar
-                </button>
-                <button
                   onClick={closeDetail}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                  aria-label="Cerrar vista de detalle"
-                  data-tooltip="Cerrar"
                 >
                   Cerrar
                 </button>
               </div>
             </div>
+
             <div className="px-6 py-5 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="rounded-lg border border-gray-100 p-3">
                   <p className="text-xs font-medium text-gray-500">Almacén</p>
-                  <p className="text-sm text-gray-900">{selected.almacenOrigen?.name ?? "-"}</p>
+                  <p className="text-sm text-gray-900">{selected.almacenOrigen?.name ?? almacenIdNum}</p>
                 </div>
                 <div className="rounded-lg border border-gray-100 p-3">
                   <p className="text-xs font-medium text-gray-500">Recibe</p>
-                  <p className="text-sm text-gray-900">{selected.recibidaPor?.name ?? "-"}</p>
+                  <p className="text-sm text-gray-900">{selected.recibidaPor?.name ?? selected.recibidaPor ?? "-"}</p>
                 </div>
                 <div className="rounded-lg border border-gray-100 p-3">
-                  <p className="text-xs font-medium text-gray-500">Autoriza</p>
-                  <p className="text-sm text-gray-900">{selected.authoriza?.name ?? "-"}</p>
-                </div>
-                <div className="rounded-lg border border-gray-100 p-3">
-                  <p className="text-xs font-medium text-gray-500">Equipo / Máquina</p>
+                  <p className="text-xs font-medium text-gray-500">Equipo</p>
                   <p className="text-sm text-gray-900">{selected.equipoId ?? "-"}</p>
                 </div>
               </div>
@@ -892,7 +696,7 @@ const SalidasPage = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {(selected.items || []).map((it, idx) => (
-                      <tr key={it.id ?? `${it.productoId}-${idx}`} className="hover:bg-gray-50 transition-colors duration-200">
+                      <tr key={idx} className="hover:bg-gray-50 transition-colors duration-200">
                         <td className="px-4 py-2 text-sm text-gray-700 text-right">
                           {it.cantidadRetirada ?? it.cantidad ?? "-"}
                         </td>
@@ -905,21 +709,18 @@ const SalidasPage = () => {
                 </table>
               </div>
 
+              {/* Print template */}
               <div ref={printableRef} className="hidden">
                 <div className="sheet">
                   <div className="header">
                     <div className="title">VALE DE SALIDA</div>
                     <div>
-                      <div className="label" style={{ textAlign: "right" }}>
-                        FECHA
-                      </div>
+                      <div className="label" style={{ textAlign: "right" }}>FECHA</div>
                       <div className="value" style={{ textAlign: "right" }}>
                         {selected.fecha
                           ? new Date(selected.fecha).toLocaleDateString("es-MX")
                           : selected.createdAt
-                            ? new Date(
-                              selected.createdAt
-                            ).toLocaleDateString("es-MX")
+                            ? new Date(selected.createdAt).toLocaleDateString("es-MX")
                             : "-"}
                       </div>
                       <div className="folio" style={{ textAlign: "right" }}>
@@ -932,29 +733,17 @@ const SalidasPage = () => {
                     <div className="row">
                       <div style={{ flex: 1 }}>
                         <div className="label">ALMACÉN</div>
-                        <div className="value">
-                          {selected.almacenOrigen?.name ?? "-"}
-                        </div>
+                        <div className="value">{selected.almacenOrigen?.name ?? almacenIdNum}</div>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div className="label">EQUIPO</div>
+                        <div className="value">{selected.equipoId ?? "-"}</div>
                       </div>
                     </div>
                     <div className="row">
                       <div style={{ flex: 1 }}>
                         <div className="label">RECIBE</div>
-                        <div className="value">
-                          {selected.recibidaPor?.name ?? "-"}
-                        </div>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div className="label">AUTORIZA</div>
-                        <div className="value">
-                          {selected.authoriza?.name ?? "-"}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="row">
-                      <div style={{ flex: 1 }}>
-                        <div className="label">EQUIPO / MÁQUINA</div>
-                        <div className="value">{selected.equipoId ?? "-"}</div>
+                        <div className="value">{selected.recibidaPor?.name ?? selected.recibidaPor ?? "-"}</div>
                       </div>
                     </div>
                   </div>
@@ -985,13 +774,8 @@ const SalidasPage = () => {
                   </table>
 
                   <div className="footer">
-                    <div className="sign">AUTORIZA</div>
-                    <div className="sign">
-                      ALMACÉN (ENTREGA): {selected.almacenOrigen?.name ?? "-"}
-                    </div>
-                    <div className="sign">
-                      RECIBE: {selected.recibidaPor?.name ?? "-"}
-                    </div>
+                    <div className="sign">ALMACÉN (ENTREGA)</div>
+                    <div className="sign">RECIBE: {selected.recibidaPor?.name ?? selected.recibidaPor ?? "-"}</div>
                   </div>
                 </div>
               </div>

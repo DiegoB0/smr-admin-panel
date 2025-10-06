@@ -19,6 +19,12 @@ export function useAlmacenes() {
     return api.get("almacenes/all_almacenes", { params })
   }
 
+  const getAlmacenProducts = ({ almacenId, page = 1, limit = 10, search = "", order = "ASC" } = {}) => {
+    const safeLimit = limit === 0 ? 100 : limit
+    const params = { almacenId, page, limit: safeLimit, search, order }
+    return api.get('almacenes/products/get_products', { params })
+  }
+
 
   const listAlmacenes = ({ page = 1, limit = 10, search = "", order = "ASC" } = {}) => {
     const safeLimit = limit === 0 ? 100 : limit
@@ -55,6 +61,7 @@ export function useAlmacenes() {
     listAlmacenes,
     listEncargados,
     getOneAlmacen,
+    getAlmacenProducts,
     deleteAlmacen,
     updateAlmacen,
   }
