@@ -1,11 +1,13 @@
+import React from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
-import { useSelector } from 'react-redux';
-import LoginPage from "../auth/LoginPage";
+import { useSelector } from "react-redux";
+
 import AuthLayout from "../auth/layouts/AuthLayout";
+import LoginPage from "../auth/LoginPage";
+
+import DashboardLayout from "../dashboard/layouts/DashboardLayout";
 import HomePage from "../dashboard/pages/HomePage";
 import SettingsPage from "../dashboard/pages/SettingsPage";
-import DashboardLayout from "../dashboard/layouts/DashboardLayout";
-import { NotFoundPage } from "../components/NotFoundPage";
 import UsersPage from "../dashboard/pages/usuarios/UsersPage";
 import BlogPage from "../dashboard/pages/BlogPage";
 import TestimonialsPage from "../dashboard/pages/TestimonialsPage";
@@ -15,7 +17,7 @@ import NotificationsPage from "../dashboard/pages/NotificationsPage";
 import ClientsPage from "../dashboard/pages/ClientsPage";
 import EmailsPage from "../dashboard/pages/EmailsPage";
 import RequisicionesPage from "../dashboard/pages/RequisicionesPage";
-import AlmacenesPage from "../dashboard/pages/AlmacenesPage"; 
+import AlmacenesPage from "../dashboard/pages/AlmacenesPage";
 import ProductosPage from "../dashboard/pages/ProductosPage";
 import AlmacenenInventarioPage from "../dashboard/pages/AlmacenenInventarioPage";
 import ReportesOperadorPage from "../dashboard/pages/ReportesOperadorPage";
@@ -28,7 +30,6 @@ import SalidasPage from "../dashboard/pages/SalidasPage";
 import HistorialPage from "../dashboard/pages/HistorialPage";
 import RequisicionesCompraPage from "../dashboard/pages/RequisicionesCompraPage";
 
-
 function AppRoutes() {
   return (
     <Router>
@@ -40,44 +41,55 @@ function AppRoutes() {
 function RouteLoader() {
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
 
+  const RootRedirect = () =>
+    isAuthenticated ? (
+      <Navigate to="/dashboard" replace />
+    ) : (
+      <Navigate to="/auth/login" replace />
+    );
+
   return (
     <Routes>
+      <Route path="/" element={<RootRedirect />} />
+
       <Route path="/auth" element={<AuthLayout />}>
         <Route path="login" element={<LoginPage />} />
       </Route>
 
-      <Route path="/dashboard" element={isAuthenticated ? <DashboardLayout /> : <Navigate to="/auth/login" />}>
-        <Route index element={isAuthenticated ? <HomePage /> : <Navigate to="/auth/login" />} />
-        <Route path="blogs" element={isAuthenticated ? <BlogPage /> : <Navigate to="/auth/login" />} />
-        <Route path="users" element={isAuthenticated ? <UsersPage /> : <Navigate to="/auth/login" />} />
-        <Route path="emails" element={isAuthenticated ? <EmailsPage /> : <Navigate to="/auth/login" />} />
-        <Route path="clients" element={isAuthenticated ? <ClientsPage /> : <Navigate to="/auth/login" />} />
-        <Route path="notifications" element={isAuthenticated ? <NotificationsPage /> : <Navigate to="/auth/login" />} />
-        <Route path="testimonials" element={isAuthenticated ? <TestimonialsPage /> : <Navigate to="/auth/login" />} />
-        <Route path="projects" element={isAuthenticated ? <ProjectsPage /> : <Navigate to="/auth/login" />} />
-        <Route path="services" element={isAuthenticated ? <ServicesPage /> : <Navigate to="/auth/login" />} />
-        <Route path="settings" element={isAuthenticated ? <SettingsPage /> : <Navigate to="/auth/login" />} />
-        <Route path="requisiciones" element={isAuthenticated ? <RequisicionesPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="reportes" element={isAuthenticated ? <ReportesPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="obras" element={isAuthenticated ? <ObrasPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="equipos" element={isAuthenticated ? <EquiposPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="almacenes" element={isAuthenticated ? <AlmacenesPage /> : <Navigate to="/auth/login" />} />
-        <Route path="productos" element={isAuthenticated ? <ProductosPage /> : <Navigate to="/auth/login" />} />
-        <Route path="almacenes/:id" element={isAuthenticated ? <AlmacenenInventarioPage /> : <Navigate to="/auth/login" />} />
-        <Route path="reportes/operadores" element={isAuthenticated ? <ReportesOperadorPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="proveedores" element={isAuthenticated ? <ProveedoresPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="entradas" element={isAuthenticated ? <EntradasPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="salidas" element={isAuthenticated ? <SalidasPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="historial" element={isAuthenticated ? <HistorialPage /> : <Navigate to={"/auth/login"} />}></Route>
-        <Route path="requisiciones/compras" element={isAuthenticated ? <RequisicionesCompraPage /> : <Navigate to={"/auth/login"} />}></Route>
-
+      <Route
+        path="/dashboard"
+        element={
+          isAuthenticated ? <DashboardLayout /> : <Navigate to="/auth/login" replace />
+        }
+      >
+        <Route index element={<HomePage />} />
+        <Route path="blogs" element={<BlogPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="emails" element={<EmailsPage />} />
+        <Route path="clients" element={<ClientsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="testimonials" element={<TestimonialsPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
+        <Route path="services" element={<ServicesPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="requisiciones" element={<RequisicionesPage />} />
+        <Route path="reportes" element={<ReportesPage />} />
+        <Route path="obras" element={<ObrasPage />} />
+        <Route path="equipos" element={<EquiposPage />} />
+        <Route path="almacenes" element={<AlmacenesPage />} />
+        <Route path="productos" element={<ProductosPage />} />
+        <Route path="almacenes/:id" element={<AlmacenenInventarioPage />} />
+        <Route path="reportes/operadores" element={<ReportesOperadorPage />} />
+        <Route path="proveedores" element={<ProveedoresPage />} />
+        <Route path="entradas" element={<EntradasPage />} />
+        <Route path="salidas" element={<SalidasPage />} />
+        <Route path="historial" element={<HistorialPage />} />
+        <Route path="requisiciones/compras" element={<RequisicionesCompraPage />} />
       </Route>
 
-      <Route path="*" element={<NotFoundPage />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
-
 export default AppRoutes;
-

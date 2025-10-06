@@ -473,7 +473,7 @@ function ReportesOperadorPage() {
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                         onClick={toggleFormModal}
                         aria-label="Crear nuevo reporte"
-                        data-tooltip="Iniciar creación de reporte"
+
                       >
                         Crear Nuevo Reporte
                       </button>
@@ -890,7 +890,7 @@ function ReportesOperadorPage() {
                 onClick={closeDetailModal}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                 aria-label="Cerrar modal"
-                data-tooltip="Salir de la vista"
+
               >
                 Cerrar
               </button>
