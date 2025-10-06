@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { FaCirclePlus } from "react-icons/fa6"
-import { MapPin, HardHat, User, Edit, Trash2, Eye, Package, Search, TrendingUp, AlertTriangle } from "lucide-react"
+import { MapPin, HardHat, User, Edit, Trash2, Eye, Package, Search, TrendingUp, AlertTriangle, PackageCheck, Box } from "lucide-react" // Agregué PackageCheck y Box para íconos
 import Swal from "sweetalert2"
 import { useAlmacenes } from "../../hooks/useAlmacenes"
 import { useObras } from "../../hooks/useObras"
@@ -270,6 +270,20 @@ function AlmacenesPage() {
         >
           <span className="mt-1"> <Eye /> </span>
           Ver inventario</button>
+
+        {/* Botones nuevos: Entradas y Salidas */}
+        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
+          onClick={() => navigate(`/dashboard/entradas/${almacen.id}`)}
+        >
+          <span className="mt-1"> <PackageCheck /> </span>
+          Ver entradas
+        </button>
+        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
+          onClick={() => navigate(`/dashboard/salidas/${almacen.id}`)}
+        >
+          <span className="mt-1"> <Box /> </span>
+          Ver salidas
+        </button>
       </div>
 
       <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between items-center">
