@@ -221,37 +221,38 @@ function Sidebar() {
                           Requisiciones
                         </Link>
                       </li>
-                      <li>
-                        <Link
-                          to="/dashboard/entradas"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/entradas' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                            }`}
-                        >
 
-                          Entradas
-                        </Link>
-                      </li>
-
-                      <li>
-                        <Link
-                          to="/dashboard/salidas"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/salidas' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                            }`}
-                        >
-                          Salidas
-                        </Link>
-                      </li>
-
-
-                      <li>
-                        <Link
-                          to="/dashboard/historial"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/historial' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                            }`}
-                        >
-                          Historial
-                        </Link>
-                      </li>
+                      {/* <li> */}
+                      {/*   <Link */}
+                      {/*     to="/dashboard/entradas" */}
+                      {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/entradas' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
+                      {/*       }`} */}
+                      {/*   > */}
+                      {/**/}
+                      {/*     Entradas */}
+                      {/*   </Link> */}
+                      {/* </li> */}
+                      {/**/}
+                      {/* <li> */}
+                      {/*   <Link */}
+                      {/*     to="/dashboard/salidas" */}
+                      {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/salidas' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
+                      {/*       }`} */}
+                      {/*   > */}
+                      {/*     Salidas */}
+                      {/*   </Link> */}
+                      {/* </li> */}
+                      {/**/}
+                      {/**/}
+                      {/* <li> */}
+                      {/*   <Link */}
+                      {/*     to="/dashboard/historial" */}
+                      {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/historial' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
+                      {/*       }`} */}
+                      {/*   > */}
+                      {/*     Historial */}
+                      {/*   </Link> */}
+                      {/* </li> */}
                     </ul>
                   )}
                 </li>

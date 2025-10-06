@@ -9,6 +9,7 @@ import {
   Filter,
   Eye,
   BadgeDollarSign,
+  CircleDollarSign,
   XCircle,
 } from "lucide-react";
 import Swal from "sweetalert2";
@@ -213,7 +214,6 @@ const RequisicionesCompraPage = () => {
           label: "Pendiente",
           icon: <Filter className="w-3 h-3" />,
         };
-      case "aprobada":
       case "aprobado":
         return {
           bg: "bg-gradient-to-r from-blue-100 to-blue-200",
@@ -224,9 +224,9 @@ const RequisicionesCompraPage = () => {
         };
       case "pagada":
         return {
-          bg: "bg-gradient-to-r from-emerald-100 to-emerald-200",
-          text: "text-emerald-800",
-          border: "border-emerald-200",
+          bg: "bg-gradient-to-r from-green-100 to-green-200",
+          text: "text-green-800",
+          border: "border-green-200",
           label: "Pagada",
           icon: <CheckCircle2 className="w-3 h-3" />,
         };
@@ -267,7 +267,7 @@ const RequisicionesCompraPage = () => {
   const StatCard = ({ title, value, color, icon }) => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 h-28 flex items-center transition-all duration-300 hover:shadow-md animate-fade-in">
       <div className="flex items-center justify-between w-full">
-        <div>
+        <div className="pr-4">
           <p className={`text-sm font-medium ${color.text} mb-1`}>{title}</p>
           <p className={`text-2xl font-bold ${color.text}`}>{value}</p>
         </div>
@@ -348,22 +348,16 @@ const RequisicionesCompraPage = () => {
           icon={<FileText className="w-8 h-8 text-white" />}
         />
         <StatCard
-          title="Pendientes"
-          value={stats.pendientes}
-          color={{ text: "text-yellow-600", bg: "bg-yellow-500/90" }}
-          icon={<Filter className="w-8 h-8 text-white" />}
-        />
-        <StatCard
           title="Aprobadas"
           value={stats.aprobadas}
-          color={{ text: "text-blue-600", bg: "bg-blue-500/90" }}
+          color={{ text: "text-green-600", bg: "bg-green-500/90" }}
           icon={<CheckCircle2 className="w-8 h-8 text-white" />}
         />
         <StatCard
           title="Pagadas"
           value={stats.pagadas}
-          color={{ text: "text-emerald-600", bg: "bg-emerald-500/90" }}
-          icon={<CheckCircle2 className="w-8 h-8 text-white" />}
+          color={{ text: "text-blue-500", bg: "bg-blue-600/90" }}
+          icon={<CircleDollarSign className="w-8 h-8 text-white" />}
         />
         <StatCard
           title="Monto total"
@@ -463,8 +457,6 @@ const RequisicionesCompraPage = () => {
                               <button
                                 onClick={() => openPurchaseModal(r)}
                                 className="inline-flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
-                                aria-label={`Marcar como pagada la requisición ${r.rcp || 'N/A'}`}
-                                data-tooltip="Marcar como pagada"
                               >
                                 <ShoppingCart className="w-4 h-4" />
                                 Marcar

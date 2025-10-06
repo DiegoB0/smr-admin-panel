@@ -1,7 +1,9 @@
 "use client";
 
+import { useParams, useNavigate } from "react-router-dom";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ChevronLeft,
   FileText,
   Search,
   Eye,
@@ -39,6 +41,10 @@ const EntradasPage = () => {
   const [capture, setCapture] = useState({});
   const [histModalOpen, setHistModalOpen] = useState(false);
 
+  const { almacenId: almacenIdParam } = useParams();
+  const almacenId = Number(almacenIdParam);
+  const navigate = useNavigate();
+
   const limit =
     limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10);
 
@@ -46,12 +52,13 @@ const EntradasPage = () => {
     setLoading(true);
     try {
       const response = await listEntradas({
+        almacenId,
         page,
         limit: limitOption === "all" ? undefined : limit,
         search: debouncedSearch,
         order: "DESC",
       });
-      const rawData = response.data || [];
+      const rawData = response.data.data || [];
       const data = rawData.map((r) => {
         const items = r.items || [];
         const totalSolic = items.reduce(
@@ -69,8 +76,8 @@ const EntradasPage = () => {
         ).length;
         const status = !items || items.length === 0 ? "Pendiente"
           : completos === items.length ? "Completa"
-          : totalRec > 0 ? "Parcial"
-          : "Pendiente";
+            : totalRec > 0 ? "Parcial"
+              : "Pendiente";
         return {
           ...r,
           _statusLocal: status,
@@ -285,6 +292,15 @@ const EntradasPage = () => {
 
       <div className="mb-8 flex justify-between items-center">
         <div>
+          <button className="flex gap-2 items-center"
+            onClick={() => navigate(`/dashboard/almacenes/`)}
+          >
+            <span className="text-gray-500">
+              <ChevronLeft />
+            </span>
+            <h1 className="text-gray-600 uppercase  text-lg">
+              Regresar</h1>
+          </button>
           <h1 className="text-3xl font-bold text-gray-900">Entradas</h1>
           <p className="text-gray-600 mt-1">
             Registra la recepción de productos por requisición
@@ -417,8 +433,6 @@ const EntradasPage = () => {
                             <button
                               onClick={() => toggleRow(r.id)}
                               className="p-1 rounded-md hover:bg-gray-100 text-gray-600"
-                              aria-label={isOpen ? "Contraer fila" : "Expandir fila"}
-                              data-tooltip={isOpen ? "Contraer" : "Expandir"}
                             >
                               {isOpen ? (
                                 <ChevronDown className="w-5 h-5" />
@@ -449,8 +463,6 @@ const EntradasPage = () => {
                             <button
                               onClick={() => toggleRow(r.id)}
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              aria-label={`Ver items de la requisición ${r.requisicion?.rcp || 'N/A'}`}
-                              data-tooltip="Ver items"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -458,8 +470,6 @@ const EntradasPage = () => {
                               onClick={() => handleRegistrarEntrada(r)}
                               className="inline-flex items-center gap-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                               disabled={loading}
-                              aria-label={`Registrar entrada para la requisición ${r.requisicion?.rcp || 'N/A'}`}
-                              data-tooltip="Confirmar entrada"
                             >
                               {loading ? (
                                 <svg
@@ -576,8 +586,6 @@ const EntradasPage = () => {
                                                       )
                                                     }
                                                     className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                                                    aria-label="Completar cantidad"
-                                                    data-tooltip="Llenar cantidad restante"
                                                   >
                                                     Completar
                                                   </button>
@@ -587,10 +595,8 @@ const EntradasPage = () => {
                                                       setCantidadRecibida(r.id, it.id, 0)
                                                     }
                                                     className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                                                    aria-label="Restablecer a cero"
-                                                    data-tooltip="Restablecer cantidad"
                                                   >
-                                                    Cero
+                                                    Restablecer
                                                   </button>
                                                 </>
                                               ) : (
@@ -621,8 +627,6 @@ const EntradasPage = () => {
                                   onClick={() => handleRegistrarEntrada(r)}
                                   className="inline-flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                                   disabled={loading}
-                                  aria-label="Registrar entrada"
-                                  data-tooltip="Confirmar entrada"
                                 >
                                   {loading ? (
                                     <svg
@@ -670,7 +674,7 @@ const EntradasPage = () => {
                       </p>
                       <button
                         className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                        onClick={() => {/* Navegar a crear requisición */}}
+                        onClick={() => navigate('/dashboard/requisiciones')}
                         aria-label="Crear nueva requisición"
                       >
                         Crear Nueva Requisición
