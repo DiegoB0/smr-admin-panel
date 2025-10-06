@@ -3,6 +3,9 @@
 import React, { useEffect, useState } from "react";
 import {
   FileText,
+  CircleDollarSign,
+  CheckCheck,
+  Timer,
   AlertTriangle,
   Eye,
   CircleX,
@@ -258,7 +261,7 @@ const RequisicionesPage = () => {
   }
 
   const StatsSection = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -278,11 +281,23 @@ const RequisicionesPage = () => {
       <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div>
+            <p className="text-sm font-medium text-blue-900 mb-1">Pagadas</p>
+            <p className="text-2xl font-bold text-blue-900">{aprobadoCount}</p>
+          </div>
+          <div className="p-3 rounded-lg bg-blue-800">
+            <CircleDollarSign className="w-6 h-6 text-white" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
             <p className="text-sm font-medium text-green-600 mb-1">Aprobadas</p>
             <p className="text-2xl font-bold text-green-600">{aprobadoCount}</p>
           </div>
           <div className="p-3 rounded-lg bg-green-500">
-            <AlertTriangle className="w-6 h-6 text-white" />
+            <CheckCheck className="w-6 h-6 text-white" />
           </div>
         </div>
       </div>
@@ -296,7 +311,7 @@ const RequisicionesPage = () => {
             </p>
           </div>
           <div className="p-3 rounded-lg bg-yellow-500">
-            <AlertTriangle className="w-6 h-6 text-white" />
+            <Timer className="w-6 h-6 text-white" />
           </div>
         </div>
       </div>
@@ -522,7 +537,11 @@ const RequisicionesPage = () => {
                             ? "bg-yellow-100 text-yellow-800"
                             : ["aprobado", "aprobada"].includes(lower(r.status))
                               ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                              : ["pendiente"].includes(lower(r.status))
+                                ? "bg-yellow-100 text-yellow-800"
+                                : ["pagada"].includes(lower(r.status))
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-red-100 text-red-800"
                             }`}
                         >
                           {r.status || "N/A"}

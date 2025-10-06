@@ -81,8 +81,8 @@ function RouteLoader() {
         <Route path="almacenes/:id" element={<AlmacenenInventarioPage />} />
         <Route path="reportes/operadores" element={<ReportesOperadorPage />} />
         <Route path="proveedores" element={<ProveedoresPage />} />
-        <Route path="entradas" element={<EntradasPage />} />
-        <Route path="salidas" element={<SalidasPage />} />
+        <Route path="entradas/:almacenId" element={<EntradasPage />} />
+        <Route path="salidas/:almacenId" element={<SalidasPage />} />
         <Route path="historial" element={<HistorialPage />} />
         <Route path="requisiciones/compras" element={<RequisicionesCompraPage />} />
       </Route>

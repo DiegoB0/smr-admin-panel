@@ -1,7 +1,9 @@
 "use client";
 
+import { useParams, useNavigate } from "react-router-dom";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ChevronLeft,
   FileText,
   Search,
   Plus,
@@ -16,7 +18,6 @@ import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
 import { useSalidas } from "../../hooks/useSalidas";
 
-// Helper: formatea mensajes de error para Swal
 function getApiErrorMessage(err) {
   const d = err?.response?.data;
   if (!d) return err?.message || "Error inesperado";
@@ -40,6 +41,7 @@ const isUUID = (v) =>
 const SalidasPage = () => {
   const { listSalidas, crearSalida } = useSalidas();
 
+
   // Listado
   const [salidas, setSalidas] = useState([]);
   const [pagination, setPagination] = useState({
@@ -50,6 +52,7 @@ const SalidasPage = () => {
     totalItems: 0,
   });
   const [loading, setLoading] = useState(false);
+
 
   // Filtros / paginado
   const [page, setPage] = useState(1);
@@ -106,11 +109,15 @@ const SalidasPage = () => {
     });
   }
 
+  const { almacenId: almacenIdParam } = useParams();
+  const almacenIdNum = Number(almacenIdParam);
+  const navigate = useNavigate();
+
   async function fetchData() {
     setLoading(true);
     try {
       const { data } = await listSalidas({
-        almacenId,
+        almacenId: almacenIdNum,
         page,
         limit: limitOption === "all" ? undefined : limit,
         search: debouncedSearch,
@@ -307,9 +314,9 @@ const SalidasPage = () => {
     limitOption === "all"
       ? salidas
       : salidas.slice(
-          (pagination.currentPage - 1) * limit,
-          (pagination.currentPage - 1) * limit + limit
-        );
+        (pagination.currentPage - 1) * limit,
+        (pagination.currentPage - 1) * limit + limit
+      );
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto font-inter">
@@ -343,30 +350,21 @@ const SalidasPage = () => {
 
       <div className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow animate-fade-in">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-gray-600">Total Ítems</h3>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{totalItems}</p>
-              </div>
-              <Package className="w-8 h-8 text-green-500" />
-            </div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow animate-fade-in">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-gray-600">Pzas Retiradas</h3>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{totalPzas}</p>
-              </div>
-              <Box className="w-8 h-8 text-blue-500" />
-            </div>
-          </div>
           {/* Puedes agregar más tarjetas si tienes más datos */}
         </div>
       </div>
 
       <div className="mb-8 flex justify-between items-center">
         <div>
+          <button className="flex gap-2 items-center"
+            onClick={() => navigate(`/dashboard/almacenes/`)}
+          >
+            <span className="text-gray-500">
+              <ChevronLeft />
+            </span>
+            <h1 className="text-gray-600 uppercase  text-lg">
+              Regresar</h1>
+          </button>
           <h1 className="text-3xl font-bold text-gray-900">Salidas</h1>
           <p className="text-gray-600 mt-1">Registra y emite vales de salida desde almacén</p>
         </div>
@@ -391,8 +389,6 @@ const SalidasPage = () => {
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-colors"
-            aria-label="Crear nueva salida"
-            data-tooltip="Iniciar nueva salida"
           >
             <Plus className="w-5 h-5" />
             Nueva salida
@@ -482,8 +478,8 @@ const SalidasPage = () => {
                       {s.fecha
                         ? new Date(s.fecha).toLocaleString()
                         : s.createdAt
-                        ? new Date(s.createdAt).toLocaleString()
-                        : "-"}
+                          ? new Date(s.createdAt).toLocaleString()
+                          : "-"}
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700">
                       {s.almacenOrigen?.name ?? "-"}
@@ -498,8 +494,7 @@ const SalidasPage = () => {
                       {(s.items || [])
                         .map(
                           (it) =>
-                            `${it.cantidadRetirada ?? it.cantidad ?? 0} x ${
-                              it.producto?.name ?? it.productoId ?? "—"
+                            `${it.cantidadRetirada ?? it.cantidad ?? 0} x ${it.producto?.name ?? it.productoId ?? "—"
                             }`
                         )
                         .join(", ")}
@@ -508,8 +503,6 @@ const SalidasPage = () => {
                       <button
                         onClick={() => openDetail(s)}
                         className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                        aria-label={`Ver detalles de la salida ${displayFolio(s)}`}
-                        data-tooltip="Ver detalles"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -520,8 +513,6 @@ const SalidasPage = () => {
                           setTimeout(handlePrint, 0);
                         }}
                         className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        aria-label={`Imprimir vale de salida ${displayFolio(s)}`}
-                        data-tooltip="Imprimir"
                       >
                         <Printer className="w-4 h-4" />
                       </button>
@@ -532,8 +523,6 @@ const SalidasPage = () => {
                           setTimeout(handleDownload, 0);
                         }}
                         className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        aria-label={`Descargar PDF de salida ${displayFolio(s)}`}
-                        data-tooltip="Descargar PDF"
                       >
                         <Download className="w-4 h-4" />
                       </button>
@@ -553,8 +542,6 @@ const SalidasPage = () => {
                     <button
                       onClick={() => setIsCreateModalOpen(true)}
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                      aria-label="Crear nueva salida"
-                      data-tooltip="Iniciar nueva salida"
                     >
                       Crear Nueva Salida
                     </button>
@@ -629,8 +616,6 @@ const SalidasPage = () => {
               <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Cerrar modal"
-                data-tooltip="Cerrar formulario"
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
@@ -742,8 +727,6 @@ const SalidasPage = () => {
                         type="button"
                         onClick={() => removeItem(idx)}
                         className="absolute -top-3 -right-3 p-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow transition-colors"
-                        aria-label={`Eliminar ítem ${idx + 1}`}
-                        data-tooltip="Eliminar ítem"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -792,8 +775,6 @@ const SalidasPage = () => {
                     type="button"
                     onClick={addItem}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                    aria-label="Agregar renglón"
-                    data-tooltip="Añadir ítem"
                   >
                     <Plus className="w-4 h-4" />
                     Agregar renglón
@@ -805,16 +786,12 @@ const SalidasPage = () => {
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                  aria-label="Cancelar creación de salida"
-                  data-tooltip="Cancelar"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-colors"
-                  aria-label="Guardar salida"
-                  data-tooltip="Confirmar salida"
                 >
                   Guardar
                 </button>
@@ -847,8 +824,8 @@ const SalidasPage = () => {
                     {selected.fecha
                       ? new Date(selected.fecha).toLocaleDateString()
                       : selected.createdAt
-                      ? new Date(selected.createdAt).toLocaleDateString()
-                      : "-"}
+                        ? new Date(selected.createdAt).toLocaleDateString()
+                        : "-"}
                   </p>
                 </div>
               </div>
@@ -940,10 +917,10 @@ const SalidasPage = () => {
                         {selected.fecha
                           ? new Date(selected.fecha).toLocaleDateString("es-MX")
                           : selected.createdAt
-                          ? new Date(
+                            ? new Date(
                               selected.createdAt
                             ).toLocaleDateString("es-MX")
-                          : "-"}
+                            : "-"}
                       </div>
                       <div className="folio" style={{ textAlign: "right" }}>
                         {displayFolio(selected)}
