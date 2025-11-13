@@ -29,6 +29,8 @@ import EntradasPage from "../dashboard/pages/EntradasPage";
 import SalidasPage from "../dashboard/pages/SalidasPage";
 import HistorialPage from "../dashboard/pages/HistorialPage";
 import RequisicionesCompraPage from "../dashboard/pages/RequisicionesCompraPage";
+import EntradasComprasPage from "../dashboard/pages/EntradasComprasPage";
+import EntradasVistaPage from "../dashboard/pages/EntradasVistasPage";
 
 function AppRoutes() {
   return (
@@ -85,6 +87,9 @@ function RouteLoader() {
         <Route path="salidas/:almacenId" element={<SalidasPage />} />
         <Route path="historial" element={<HistorialPage />} />
         <Route path="requisiciones/compras" element={<RequisicionesCompraPage />} />
+        <Route path="entradas/compras" element={<EntradasComprasPage />} />
+        <Route path="entradas-compras/:almacenId" element={<EntradasVistaPage />} />
+
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

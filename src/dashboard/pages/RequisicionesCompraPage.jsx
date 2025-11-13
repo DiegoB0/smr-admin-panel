@@ -13,16 +13,17 @@ import {
   XCircle,
 } from "lucide-react";
 import Swal from "sweetalert2";
-import { debounce } from "lodash"; // Asegúrate de instalar lodash
+import { debounce } from "lodash";
 import { printRequisicion } from "../../utils/printPdf";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import PrintableRequisicion from "./PrintableRequisicion";
 
 const lower = (s) => (s || "").toLowerCase();
 const currency = (n) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
-    n || 0
-  );
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(n || 0);
 
 const RequisicionesCompraPage = () => {
   const { listRequisiciones, pagarRequisicion } = useRequisiciones();
@@ -40,7 +41,7 @@ const RequisicionesCompraPage = () => {
     metodo_pago: "orden de compra",
     observaciones: "",
     fechaEsperada: "",
-    submitted: false, // Para manejar validaciones
+    submitted: false,
   });
   const [totalBackendItems, setTotalBackendItems] = useState(0);
 
@@ -122,12 +123,16 @@ const RequisicionesCompraPage = () => {
   // Estadísticas
   const stats = useMemo(() => {
     const total = filtered.length;
-    const pendientes = filtered.filter((r) => lower(r.status) === "pendiente").length;
+    const pendientes = filtered.filter(
+      (r) => lower(r.status) === "pendiente"
+    ).length;
     const aprobadas = filtered.filter((r) =>
       ["aprobada", "aprobado"].includes(lower(r.status))
     ).length;
     const pagadas = filtered.filter((r) => lower(r.status) === "pagada").length;
-    const rechazadas = filtered.filter((r) => lower(r.status) === "rechazada").length;
+    const rechazadas = filtered.filter(
+      (r) => lower(r.status) === "rechazada"
+    ).length;
     const monto = filtered.reduce((acc, r) => {
       const n = typeof r.cantidad_dinero === "number" ? r.cantidad_dinero : 0;
       return acc + n;
@@ -162,7 +167,12 @@ const RequisicionesCompraPage = () => {
       Swal.fire("Error", "La fecha esperada es obligatoria", "error");
       return;
     }
-    const allowedMetodos = ["orden de compra", "pago", "pago sin factura", "-"];
+    const allowedMetodos = [
+      "orden de compra",
+      "pago",
+      "pago sin factura",
+      "-",
+    ];
     if (!allowedMetodos.includes(purchaseForm.metodo_pago)) {
       Swal.fire("Error", "Método de pago no válido", "error");
       return;
@@ -179,7 +189,9 @@ const RequisicionesCompraPage = () => {
       await pagarRequisicion(selectedRequisicion.id, payload);
       Swal.fire("Listo", "Requisición marcada como pagada", "success");
       setAllItems((prev) =>
-        prev.map((x) => (x.id === selectedRequisicion.id ? { ...x, status: "pagada" } : x))
+        prev.map((x) =>
+          x.id === selectedRequisicion.id ? { ...x, status: "pagada" } : x
+        )
       );
       closePurchaseModal();
       fetchApproved();
@@ -256,8 +268,18 @@ const RequisicionesCompraPage = () => {
           className="animate-spin h-12 w-12 text-blue-600"
           viewBox="0 0 24 24"
         >
-          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-          <path fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z" />
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+            fill="none"
+          />
+          <path
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+          />
         </svg>
         <p className="mt-4 text-gray-600">Cargando requisiciones...</p>
       </div>
@@ -268,10 +290,17 @@ const RequisicionesCompraPage = () => {
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6 h-28 flex items-center transition-all duration-300 hover:shadow-md animate-fade-in">
       <div className="flex items-center justify-between w-full">
         <div className="pr-4">
-          <p className={`text-sm font-medium ${color.text} mb-1`}>{title}</p>
+          <p className={`text-sm font-medium ${color.text} mb-1`}>
+            {title}
+          </p>
           <p className={`text-2xl font-bold ${color.text}`}>{value}</p>
         </div>
-        <div className={`p-3 rounded-lg bg-gradient-to-br ${color.bg.replace('/90', '')} to-${color.bg.split('-')[1]}-600`}>
+        <div
+          className={`p-3 rounded-lg bg-gradient-to-br ${color.bg.replace(
+            "/90",
+            ""
+          )} to-${color.bg.split("-")[1]}-600`}
+        >
           {icon}
         </div>
       </div>
@@ -302,22 +331,34 @@ const RequisicionesCompraPage = () => {
       {/* Estilo global para la fuente */}
       <style jsx global>{`
         body {
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
           letter-spacing: -0.01em;
         }
         .animate-fade-in {
           animation: fadeIn 0.5s ease-out;
         }
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
         .animate-scale-in {
           animation: scaleIn 0.3s ease-out;
         }
         @keyframes scaleIn {
-          from { transform: scale(0.95); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
+          from {
+            transform: scale(0.95);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
         [data-tooltip] {
           position: relative;
@@ -416,7 +457,10 @@ const RequisicionesCompraPage = () => {
                 {pageItems.length > 0 ? (
                   pageItems.map((r) => {
                     const statusStyles = getStatusStyles(r.status);
-                    const canMarkAsPurchased = ["aprobada", "aprobado"].includes(lower(r.status));
+                    const canMarkAsPurchased = [
+                      "aprobada",
+                      "aprobado",
+                    ].includes(lower(r.status));
                     return (
                       <tr
                         key={r.id}
@@ -448,7 +492,9 @@ const RequisicionesCompraPage = () => {
                             <button
                               onClick={() => openDetailModal(r)}
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              aria-label={`Ver detalles de la requisición ${r.rcp || 'N/A'}`}
+                              aria-label={`Ver detalles de la requisición ${
+                                r.rcp || "N/A"
+                              }`}
                               data-tooltip="Ver detalles"
                             >
                               <Eye className="w-4 h-4" />
@@ -486,7 +532,9 @@ const RequisicionesCompraPage = () => {
                       </p>
                       <button
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        onClick={() => {/* Navegar a crear requisición */}}
+                        onClick={() => {
+                          /* Navegar a crear requisición */
+                        }}
                       >
                         Crear Nueva Requisición
                       </button>
@@ -581,7 +629,11 @@ const RequisicionesCompraPage = () => {
                   RCP: {selectedRequisicion.rcp || "N/A"}
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusStyles(selectedRequisicion.status).bg} ${getStatusStyles(selectedRequisicion.status).text} ${getStatusStyles(selectedRequisicion.status).border}`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                    getStatusStyles(selectedRequisicion.status).bg
+                  } ${getStatusStyles(selectedRequisicion.status).text} ${
+                    getStatusStyles(selectedRequisicion.status).border
+                  }`}
                 >
                   {getStatusStyles(selectedRequisicion.status).icon}
                   {getStatusStyles(selectedRequisicion.status).label}
@@ -619,7 +671,9 @@ const RequisicionesCompraPage = () => {
                   />
                   <Detail
                     label="Almacén Destino"
-                    value={selectedRequisicion.almacenDestino?.name || "N/A"}
+                    value={
+                      selectedRequisicion.almacenDestino?.name || "N/A"
+                    }
                   />
                 </div>
               </section>
@@ -633,6 +687,7 @@ const RequisicionesCompraPage = () => {
                     <table className="min-w-full divide-y divide-gray-100">
                       <thead className="bg-gray-50">
                         <tr>
+                          <Th>ID Producto</Th>
                           <Th>Descripción / Producto</Th>
                           <Th>Cantidad</Th>
                           <Th>Unidad</Th>
@@ -641,8 +696,14 @@ const RequisicionesCompraPage = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {selectedRequisicion.items.map((it, i) => (
-                          <tr key={i} className="hover:bg-gray-50 transition-colors">
-                            <Td>{it.descripcion || it.producto?.name || "N/A"}</Td>
+                          <tr
+                            key={i}
+                            className="hover:bg-gray-50 transition-colors"
+                          >
+                            <Td>{it.producto?.id || "N/A"}</Td>
+                            <Td>
+                              {it.descripcion || it.producto?.name || "N/A"}
+                            </Td>
                             <Td>{it.cantidadSolicitada ?? "N/A"}</Td>
                             <Td>{it.producto?.unidad ?? "N/A"}</Td>
                             <Td align="right">
@@ -656,7 +717,9 @@ const RequisicionesCompraPage = () => {
                     </table>
                   </div>
                 ) : (
-                  <p className="text-gray-600">No hay items registrados.</p>
+                  <p className="text-gray-600">
+                    No hay items registrados.
+                  </p>
                 )}
               </section>
             </div>
@@ -731,7 +794,10 @@ const RequisicionesCompraPage = () => {
                 <select
                   value={purchaseForm.metodo_pago}
                   onChange={(e) =>
-                    setPurchaseForm({ ...purchaseForm, metodo_pago: e.target.value })
+                    setPurchaseForm({
+                      ...purchaseForm,
+                      metodo_pago: e.target.value,
+                    })
                   }
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                   aria-label="Seleccionar método de pago"
@@ -749,7 +815,10 @@ const RequisicionesCompraPage = () => {
                 <textarea
                   value={purchaseForm.observaciones}
                   onChange={(e) =>
-                    setPurchaseForm({ ...purchaseForm, observaciones: e.target.value })
+                    setPurchaseForm({
+                      ...purchaseForm,
+                      observaciones: e.target.value,
+                    })
                   }
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                   rows="4"
@@ -765,7 +834,10 @@ const RequisicionesCompraPage = () => {
                   type="date"
                   value={purchaseForm.fechaEsperada}
                   onChange={(e) =>
-                    setPurchaseForm({ ...purchaseForm, fechaEsperada: e.target.value })
+                    setPurchaseForm({
+                      ...purchaseForm,
+                      fechaEsperada: e.target.value,
+                    })
                   }
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm ${
                     purchaseForm.submitted && !purchaseForm.fechaEsperada
@@ -776,7 +848,9 @@ const RequisicionesCompraPage = () => {
                   aria-label="Fecha esperada"
                 />
                 {purchaseForm.submitted && !purchaseForm.fechaEsperada && (
-                  <p className="text-xs text-red-500 mt-1">La fecha es obligatoria</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    La fecha es obligatoria
+                  </p>
                 )}
               </div>
             </div>
