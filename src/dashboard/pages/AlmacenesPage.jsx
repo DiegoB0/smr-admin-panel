@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { IoIosNotifications } from "react-icons/io";
 import { FaCirclePlus } from "react-icons/fa6"
 import { MapPin, HardHat, User, Edit, Trash2, Eye, Package, Search, TrendingUp, AlertTriangle, PackageCheck, Box } from "lucide-react" // Agregué PackageCheck y Box para íconos
 import Swal from "sweetalert2"
@@ -266,6 +267,13 @@ function AlmacenesPage() {
         </div>
 
         <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
+          onClick={() => navigate(`/dashboard/notificaciones/${almacen.id}`)}
+        >
+          <span className="mt-1"> <IoIosNotifications /> </span>
+          Notificaciones
+        </button>
+
+        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
           onClick={() => navigate(`/dashboard/almacenes/${almacen.id}`)}
         >
           <span className="mt-1"> <Eye /> </span>
@@ -284,6 +292,7 @@ function AlmacenesPage() {
           <span className="mt-1"> <Box /> </span>
           Ver salidas
         </button>
+
       </div>
 
       <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between items-center">

@@ -16,7 +16,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Si no puedes importar el store aquí, usamos un evento global
 api.interceptors.response.use(
   (res) => res,
   (error) => {
