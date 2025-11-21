@@ -1,14 +1,14 @@
 import React from "react";
-import logo from "../../assets/logmine-logo.png"; // Ajusta la ruta a tu proyecto
+import logo from "../../assets/logmine-logo.png";
 
-const PrintableRequisicion = ({ requisicion }) => {
+const PrintableRequisicion = ({ requisicion, currentUser }) => {
   if (!requisicion) return null;
 
   const items = requisicion.items || [];
 
   const subtotal = items.reduce((acc, it) => {
-    const q = Number(it.cantidad) || 0;
-    const p = Number(it.precio_unitario) || 0;
+    const q = Number(it.cantidadSolicitada || it.cantidad) || 0;
+    const p = Number(it.precio_unitario || it.producto?.precio) || 0;
     return acc + q * p;
   }, 0);
 
@@ -45,20 +45,19 @@ const PrintableRequisicion = ({ requisicion }) => {
       <div className="grid grid-cols-2 gap-4 border border-black p-3 mb-6">
         <div className="space-y-1">
           <div>
-            <strong>Proveedor:</strong> {requisicion.proveedor?.name || "N/A"}
+            <strong>Proveedor:</strong> N/A
           </div>
           <div>
-            <strong>Equipo:</strong> {requisicion.equipo?.equipo || "N/A"}
+            <strong>Equipo:</strong> N/A
           </div>
           <div>
-            <strong>No. Económico:</strong>{" "}
-            {requisicion.equipo?.no_economico || "N/A"}
+            <strong>No. Económico:</strong> N/A
           </div>
           <div>
-            <strong>HRM:</strong> {requisicion.hrm || "N/A"}
+            <strong>HRM:</strong> N/A
           </div>
           <div>
-            <strong>Solicita:</strong> {requisicion.pedidoPor?.name || "N/A"}
+            <strong>Solicita:</strong> {currentUser?.name || "N/A"}
           </div>
           <div>
             <strong>Concepto:</strong> {requisicion.concepto || "N/A"}
@@ -74,11 +73,11 @@ const PrintableRequisicion = ({ requisicion }) => {
             <strong>Prioridad:</strong> {requisicion.prioridad || "N/A"}
           </div>
           <div>
-            <strong>Obra/Ubicación:</strong> {requisicion.ubicacion || "N/A"}
+            <strong>Obra/Ubicación:</strong> N/A
           </div>
           <div>
             <strong>Con cargo a:</strong>{" "}
-            {requisicion.almacenCargo?.name || "N/A"}
+            {requisicion.almacenDestino?.name || "N/A"}
           </div>
           <div>
             <strong>Status:</strong> {requisicion.status || "N/A"}
@@ -92,10 +91,10 @@ const PrintableRequisicion = ({ requisicion }) => {
           <tr className="bg-[#0b3b7a] text-white text-center uppercase tracking-wide">
             {[
               "No.",
+              "ID Producto",
               "Cantidad",
               "Unidad",
               "Descripción",
-              "Cargo",
               "Costo Unitario",
               "Subtotal",
               "IVA",
@@ -112,8 +111,8 @@ const PrintableRequisicion = ({ requisicion }) => {
         </thead>
         <tbody>
           {items.map((it, idx) => {
-            const q = Number(it.cantidad) || 0;
-            const p = Number(it.precio_unitario) || 0;
+            const q = Number(it.cantidadSolicitada || it.cantidad) || 0;
+            const p = Number(it.precio_unitario || it.producto?.precio) || 0;
             const sub = q * p;
             const ivaItem = sub * 0.16;
             const totItem = sub + ivaItem;
@@ -126,16 +125,16 @@ const PrintableRequisicion = ({ requisicion }) => {
                   {idx + 1}
                 </td>
                 <td className="border border-gray-300 text-center px-2 py-2">
+                  {it.producto?.id || "-"}
+                </td>
+                <td className="border border-gray-300 text-center px-2 py-2">
                   {q}
                 </td>
                 <td className="border border-gray-300 text-center px-2 py-2">
-                  {it.unidad || ""}
+                  {it.unidad || it.producto?.unidad || ""}
                 </td>
                 <td className="border border-gray-300 text-left px-2 py-2">
-                  {it.descripcion || ""}
-                </td>
-                <td className="border border-gray-300 text-center px-2 py-2">
-                  {requisicion.equipo?.equipo || "-"}
+                  {it.descripcion || it.producto?.name || ""}
                 </td>
                 <td className="border border-gray-300 text-right px-2 py-2">
                   ${p.toFixed(2)}
@@ -156,11 +155,12 @@ const PrintableRequisicion = ({ requisicion }) => {
         <tfoot>
           <tr className="bg-gray-100 font-semibold">
             <td
-              colSpan={6}
+              colSpan={5}
               className="border-t border-gray-400 text-right px-2 py-2"
             >
               Totales
             </td>
+            <td className="border-t border-gray-400 text-right px-2 py-2"></td>
             <td className="border-t border-gray-400 text-right px-2 py-2">
               ${subtotal.toFixed(2)}
             </td>
@@ -178,7 +178,7 @@ const PrintableRequisicion = ({ requisicion }) => {
       <div className="flex justify-between mt-12 text-center text-[13px]">
         <div>
           <div className="border-t border-black w-40 mx-auto"></div>
-          {requisicion.pedidoPor?.name || "Solicita"}
+          {currentUser?.name || "Solicita"}
         </div>
         <div>
           <div className="border-t border-black w-40 mx-auto"></div>
@@ -196,7 +196,4 @@ const PrintableRequisicion = ({ requisicion }) => {
 };
 
 export default PrintableRequisicion;
-
-
-
 

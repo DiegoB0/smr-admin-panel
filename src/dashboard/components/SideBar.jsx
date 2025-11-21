@@ -30,7 +30,6 @@ function Sidebar() {
     setIsOpen(!isOpen);
   };
 
-
   const toggleDropdownWeb = () => {
     setIsOpenWeb(!isOpenWeb);
   };
@@ -38,7 +37,6 @@ function Sidebar() {
   const toggleDropdownAlmacen = () => {
     setIsOpenAlmacen(!isOpenAlmacen)
   }
-
 
   const handleLogout = () => {
     dispatch(logout())
@@ -86,21 +84,37 @@ function Sidebar() {
 
             {
               isAdminCompras && (
-                <li>
-                  <Link
-                    to="/dashboard/requisiciones/compras"
-                    className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === "/dashboard/compras"
-                      ? "border-l-2 text-red-400 font-semibold bg-gray-800"
-                      : ""
-                      }`}
-                  >
-                    <span className="mt-1">
-                      <PiHandshake />
-                    </span>
-                    Compras
-                  </Link>
-                </li>
+                <>
+                  <li>
+                    <Link
+                      to="/dashboard/requisiciones/compras"
+                      className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === "/dashboard/requisiciones/compras"
+                        ? "border-l-2 text-red-400 font-semibold bg-gray-800"
+                        : ""
+                        }`}
+                    >
+                      <span className="mt-1">
+                        <PiHandshake />
+                      </span>
+                      Compras
+                    </Link>
+                  </li>
 
+                  <li>
+                    <Link
+                      to="/dashboard/entradas/compras"
+                      className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === "/dashboard/entradas/compras"
+                        ? "border-l-2 text-red-400 font-semibold bg-gray-800"
+                        : ""
+                        }`}
+                    >
+                      <span className="mt-1">
+                        <FaFileAlt />
+                      </span>
+                      Entradas
+                    </Link>
+                  </li>
+                </>
               )
             }
 
@@ -221,162 +235,11 @@ function Sidebar() {
                           Requisiciones
                         </Link>
                       </li>
-
-                      {/* <li> */}
-                      {/*   <Link */}
-                      {/*     to="/dashboard/entradas" */}
-                      {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/entradas' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
-                      {/*       }`} */}
-                      {/*   > */}
-                      {/**/}
-                      {/*     Entradas */}
-                      {/*   </Link> */}
-                      {/* </li> */}
-                      {/**/}
-                      {/* <li> */}
-                      {/*   <Link */}
-                      {/*     to="/dashboard/salidas" */}
-                      {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/salidas' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
-                      {/*       }`} */}
-                      {/*   > */}
-                      {/*     Salidas */}
-                      {/*   </Link> */}
-                      {/* </li> */}
-                      {/**/}
-                      {/**/}
-                      {/* <li> */}
-                      {/*   <Link */}
-                      {/*     to="/dashboard/historial" */}
-                      {/*     className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/historial' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
-                      {/*       }`} */}
-                      {/*   > */}
-                      {/*     Historial */}
-                      {/*   </Link> */}
-                      {/* </li> */}
                     </ul>
                   )}
                 </li>
               )
             }
-
-
-            {/* { */}
-            {/*   isAdmin && ( */}
-            {/*     <li> */}
-            {/*       <button */}
-            {/*         className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpen ? 'border-l-2' : ''}`} */}
-            {/*         onClick={toggleDropdown} */}
-            {/*       > */}
-            {/*         <div className='flex gap-2'> */}
-            {/*           <span className='mt-1'> */}
-            {/*             <MdEmail /> */}
-            {/*           </span> */}
-            {/**/}
-            {/*           <div className='flex gap-2 justify-between w-full'> */}
-            {/*             Administrar emails */}
-            {/*             <span className='mt-1'> */}
-            {/*               <MdKeyboardArrowUp */}
-            {/*                 className={`transition-transform duration-300 ${isOpen ? '-rotate-180' : 'rotate-0'}`} */}
-            {/*               /> */}
-            {/*             </span> */}
-            {/*           </div> */}
-            {/*         </div> */}
-            {/*       </button> */}
-            {/*       {isOpen && ( */}
-            {/*         <ul className="pl-4"> */}
-            {/*           <li> */}
-            {/*             <Link */}
-            {/*               to="/dashboard/clients" */}
-            {/*               className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option1' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : '' */}
-            {/*                 }`} */}
-            {/*             > */}
-            {/*               Clientes */}
-            {/*             </Link> */}
-            {/*           </li> */}
-            {/*           <li> */}
-            {/*             <Link */}
-            {/*               to="/dashboard/emails" */}
-            {/*               className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : '' */}
-            {/*                 }`} */}
-            {/*             > */}
-            {/*               Correos */}
-            {/*             </Link> */}
-            {/*           </li> */}
-            {/**/}
-            {/*           <li> */}
-            {/*             <Link */}
-            {/*               to="/dashboard/notifications" */}
-            {/*               className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : '' */}
-            {/*                 }`} */}
-            {/*             > */}
-            {/*               Notificaciones */}
-            {/*             </Link> */}
-            {/*           </li> */}
-            {/*         </ul> */}
-            {/*       )} */}
-            {/*     </li> */}
-            {/*   ) */}
-            {/* } */}
-
-
-            {/* { */}
-            {/*   (isAdminWeb || isAdmin) && ( */}
-            {/*     <li> */}
-            {/*       <button */}
-            {/*         className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpenWeb ? 'border-l-2' : ''}`} */}
-            {/*         onClick={toggleDropdownWeb} */}
-            {/*       > */}
-            {/*         <div className='flex gap-2'> */}
-            {/*           <span className='mt-1'> */}
-            {/*             <TbWorld /> */}
-            {/*           </span> */}
-            {/**/}
-            {/*           <div className='flex gap-2 justify-between w-full'> */}
-            {/*             Administrar web */}
-            {/*             <span className='mt-1'> */}
-            {/*               <MdKeyboardArrowUp */}
-            {/*                 className={`transition-transform duration-300 ${isOpenWeb ? '-rotate-180' : 'rotate-0'}`} */}
-            {/*               /> */}
-            {/*             </span> */}
-            {/*           </div> */}
-            {/*         </div> */}
-            {/*       </button> */}
-            {/*       {isOpenWeb && ( */}
-            {/*         <ul className="pl-4"> */}
-            {/*           <li> */}
-            {/*             <Link */}
-            {/*               to="/dashboard/testimonials" */}
-            {/*               className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option1' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : '' */}
-            {/*                 }`} */}
-            {/*             > */}
-            {/*               Testimonios */}
-            {/*             </Link> */}
-            {/*           </li> */}
-            {/**/}
-            {/*           <li> */}
-            {/*             <Link */}
-            {/*               to="/dashboard/services" */}
-            {/*               className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : '' */}
-            {/*                 }`} */}
-            {/*             > */}
-            {/*               Servicios */}
-            {/*             </Link> */}
-            {/*           </li> */}
-            {/**/}
-            {/*           <li> */}
-            {/*             <Link */}
-            {/*               to="/dashboard/projects" */}
-            {/*               className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/option2' ? 'bg-red-600 bg-gray-800 text-red-600 font-semibold' : '' */}
-            {/*                 }`} */}
-            {/*             > */}
-            {/*               Proyectos */}
-            {/*             </Link> */}
-            {/*           </li> */}
-            {/*         </ul> */}
-            {/*       )} */}
-            {/*     </li> */}
-            {/*   ) */}
-            {/* } */}
 
             {
               isOperador && (

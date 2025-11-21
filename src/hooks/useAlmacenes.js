@@ -55,6 +55,8 @@ export function useAlmacenes() {
    */
   const updateAlmacen = (id, data) => api.patch(`almacenes/update_almacen/${id}`, data)
 
+
+
   return {
     createAlmacen,
     listAlmacen,
