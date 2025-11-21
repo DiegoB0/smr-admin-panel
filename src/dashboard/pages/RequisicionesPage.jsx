@@ -17,6 +17,7 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
+import { useFiltros } from "../../hooks/useFiltros";
 import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
 import { printRequisicion } from "../../utils/printPdf";
@@ -34,6 +35,9 @@ const RequisicionesPage = () => {
     approveRequisicion,
     rejectRequisicion,
   } = useRequisiciones();
+
+  const { getFiltrosByHrs } = useFiltros();
+
   const [requisiciones, setRequisiciones] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -64,6 +68,11 @@ const RequisicionesPage = () => {
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
+
+  const [filtroQuery, setFiltroQuery] = useState({
+    hrs: '',
+    no_economico: ''
+  })
 
   // Modal de creación
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -318,7 +327,7 @@ const RequisicionesPage = () => {
         requisicionType: formData.requisicionType,
         almacenCargoId: Number(formData.almacenCargoId),
         proveedorId: Number(formData.proveedorId),
-        hrm: formData.hrm ? Number(formData.hrm) : null,
+        hrs: filtroQuery.hrs ? Number(filtroQuery.hrs): null,
         metodo_pago: formData.metodo_pago,
         currency: formData.currency,
         items: formData.items.map((item) => {
@@ -359,26 +368,28 @@ const RequisicionesPage = () => {
       };
 
       // Validate items
-      const invalidItem = payload.items.find(
-        (it) =>
-          !it.cantidad ||
-          it.cantidad <= 0 ||
-          !it.unidad ||
-          !it.descripcion
-      );
+      const invalidItem = payload.items.find((it) => {
+        const missingBasics = !it.cantidad || it.cantidad <= 0 || !it.unidad;
+
+        if (formData.requisicionType === 'consumibles') {
+          const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
+          return missingBasics || missingDescripcion;
+        }
+
+        return missingBasics;
+      });
 
       if (invalidItem) {
-        Swal.fire(
-          "Error",
-          "Todos los items deben tener cantidad > 0, unidad y descripción",
-          "error"
-        );
+        const msg =
+          formData.requisicionType === 'consumibles'
+            ? 'Todos los items deben tener cantidad > 0, unidad y descripción'
+            : 'Todos los items deben tener cantidad > 0 y unidad';
+        Swal.fire('Error', msg, 'error');
         return;
       }
 
       console.log(payload)
 
-      // Call service
       await createRequisicion(payload);
 
       Swal.fire("Éxito", "Requisición creada correctamente", "success");
@@ -403,12 +414,18 @@ const RequisicionesPage = () => {
             precio: "",
             currency: "USD",
             no_economico: "",
-            name: "",
             hrs: "",
             is_product: false,
           },
         ],
       });
+
+      setFiltroQuery({
+        hrs: '',
+        no_economico: ''
+      })
+
+
       fetchRequisiciones();
     } catch (err) {
       const msg =
@@ -416,6 +433,59 @@ const RequisicionesPage = () => {
       Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleBuscarFiltros = async () => {
+    const { hrs, no_economico } = filtroQuery;
+    if (!hrs || !no_economico) {
+      Swal.fire('Faltan datos', 'Ingresa HRS y No. económico', 'warning');
+      return;
+    }
+
+    try {
+      const res = await getFiltrosByHrs({
+        no_economico: no_economico.trim(),
+        hrs: Number(hrs),
+      });
+
+      // If using axios, data is in res.data
+      const payload = res.data || res;
+
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      if (items.length === 0) {
+        Swal.fire('Sin resultados', 'No se encontraron filtros', 'info');
+        return;
+      }
+
+      // Map fetched filtro items into your requisición items
+      setFormData((prev) => ({
+        ...prev,
+        requisicionType: 'filtros',
+        items: items.map((it) => ({
+          customId: it.numero,
+          descripcion: it.descripcion || '',
+          cantidad: Number(it.cantidad) || 1,
+          unidad: it.unidad || 'pieza',
+          precio: '',
+          currency: prev.currency || 'USD',
+          no_economico: no_economico.trim(),
+          hrs: String(hrs),
+          is_product: false,
+        })),
+      }));
+
+      Swal.fire(
+        'Listo',
+        `Se cargaron ${items.length} filtros para ${no_economico} (${hrs} HRS)`,
+        'success'
+      );
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Error buscando filtros';
+      Swal.fire('Error', Array.isArray(msg) ? msg.join(', ') : msg, 'error');
     }
   };
 
@@ -682,10 +752,10 @@ const RequisicionesPage = () => {
                           : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {r.requisicionType === "service"
-                          ? "Servicio"
-                          : r.requisicionType === "product"
-                            ? "Producto"
+                        {r.requisicionType === "refacciones"
+                          ? "Refacciones"
+                          : r.requisicionType === "filtros"
+                            ? "Filtros"
                             : r.requisicionType === "consumibles"
                               ? "Consumibles"
                               : "N/A"}
@@ -1012,17 +1082,17 @@ const RequisicionesPage = () => {
                         <ClipboardList className="w-4 h-4 text-green-600" />
                         Busqueda de filtros
                       </h3>
+
                       <div className="flex gap-2">
                         <div className="md:col-span-1">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             HRS <span className="text-red-500">*</span>
                           </label>
                           <select
-                            value={formData.hrs || ""}
+                            value={filtroQuery.hrs}
                             onChange={(e) =>
-                              updateItem(index, "hrs", e.target.value)
+                              setFiltroQuery((prev) => ({ ...prev, hrs: e.target.value }))
                             }
-                            required
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
                           >
                             <option value="">-- Selecciona HRS --</option>
@@ -1032,21 +1102,21 @@ const RequisicionesPage = () => {
                             <option value="2000">2000</option>
                           </select>
 
+
                         </div>
                         <div className="md:col-span-1">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Equipo <span className="text-red-500">*</span>
                           </label>
-                          <select
-                            value={formData.equipo || ""}
+                          <input
+                            type="text"
+                            placeholder="Ej. TD-27"
+                            value={filtroQuery.no_economico}
                             onChange={(e) =>
-                              updateItem(index, "equipo", e.target.value)
+                              setFiltroQuery((prev) => ({ ...prev, no_economico: e.target.value }))
                             }
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
-                          >
-                            <option value="">-- Selecciona equipo --</option>
-                            {/* Backend data will go here */}
-                          </select>
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
                         </div>
 
                         <div>
@@ -1058,7 +1128,10 @@ const RequisicionesPage = () => {
                           <button
                             type="button"
                             className="bg-gray-500 hover:bg-gray-600 ease-in-out duration-200 px-4 py-2 text-white border-none rounded-lg"
-                          >Buscar filtros</button>
+                            onClick={handleBuscarFiltros}
+                          >
+                            Buscar filtros
+                          </button>
                         </div>
 
                       </div>
@@ -1191,12 +1264,18 @@ const RequisicionesPage = () => {
 
                             <div className="md:col-span-2">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Descripción (opcional)
+                                Descripción{' '}
+                                {formData.requisicionType === 'consumibles' ? (
+                                  <span className="text-red-500">*</span>
+                                ) : (
+                                  <span className="text-gray-700 text-medium">(opcional)</span>
+                                )}
                               </label>
                               <input
                                 type="text"
                                 placeholder="Describe el servicio (ej. mantenimiento correctivo)"
                                 value={item.descripcion}
+                                required={formData.requisicionType === 'consumibles'}
                                 onChange={(e) =>
                                   updateItem(index, "descripcion", e.target.value)
                                 }
@@ -1374,7 +1453,7 @@ const RequisicionesPage = () => {
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Detail label="Título" value={selectedRequisicion.titulo} />
-                    <Detail label="HRS" value={selectedRequisicion.hrm} />
+                    <Detail label="HRS" value={selectedRequisicion.hrs} />
                     <Detail
                       label="Concepto"
                       value={selectedRequisicion.concepto || "Sin concepto"}

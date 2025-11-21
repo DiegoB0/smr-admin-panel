@@ -492,10 +492,6 @@ const RequisicionesCompraPage = () => {
                             <button
                               onClick={() => openDetailModal(r)}
                               className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              aria-label={`Ver detalles de la requisición ${
-                                r.rcp || "N/A"
-                              }`}
-                              data-tooltip="Ver detalles"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
