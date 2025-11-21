@@ -266,6 +266,7 @@ const RequisicionesPage = () => {
       await approveRequisicion(id);
       Swal.fire("Éxito", "Requisición aprobada", "success");
       fetchRequisiciones();
+      fetchStats();
     } catch (err) {
       const msg =
         err?.response?.data?.message || err?.message || "No se pudo aprobar";
@@ -1426,10 +1427,12 @@ const RequisicionesPage = () => {
                   </span>
 
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
-                    {selectedRequisicion.requisicionType === "service"
-                      ? "Servicio"
-                      : selectedRequisicion.requisicionType === "product"
-                        ? "Producto"
+                    {selectedRequisicion.requisicionType === "consumibles"
+                      ? "Consumibles"
+                      : selectedRequisicion.requisicionType === "refacciones"
+                        ? "Refacciones"
+                      : selectedRequisicion.requisicionType === "filtros"
+                        ? "Filtros"
                         : "Tipo N/A"}
                   </span>
 
