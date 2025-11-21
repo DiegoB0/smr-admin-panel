@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { PiHandshake, PiStorefront, PiTractorFill, PiUsers } from "react-icons/pi";
+import { IoIosFunnel } from "react-icons/io";
 import { HiCube } from "react-icons/hi2";
 import { FaHelmetSafety } from "react-icons/fa6";
-import { FaFileAlt } from "react-icons/fa";
+import { FaFileAlt, FaStore } from "react-icons/fa";
 import { IoStorefront } from "react-icons/io5";
 import { HiUsers } from "react-icons/hi2";
 import { Link, useLocation } from 'react-router-dom';
@@ -11,6 +12,7 @@ import { logout } from '../../store/features/auth/authSlice';
 import { FaPaperPlane } from "react-icons/fa6";
 import { FaHome } from "react-icons/fa";
 import { IoSettingsSharp } from "react-icons/io5";
+import { IoIosNotifications } from "react-icons/io";
 import { MdKeyboardArrowUp } from "react-icons/md";
 import { PiSignOutBold } from "react-icons/pi";
 import { useNavigate } from 'react-router-dom';
@@ -163,12 +165,25 @@ function Sidebar() {
 
                   <li>
                     <Link
+                      to="/dashboard/filtros"
+                      className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/filtros' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                        }`}
+                    >
+                      <span className='mt-1'>
+                        <IoIosFunnel />
+                      </span>
+                      Filtros
+                    </Link>
+                  </li>
+
+                  <li>
+                    <Link
                       to="/dashboard/proveedores"
                       className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/proveedores' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
                         }`}
                     >
                       <span className='mt-1'>
-                        <PiStorefront />
+                        <FaStore />
                       </span>
                       Proveedores
                     </Link>
@@ -212,19 +227,19 @@ function Sidebar() {
                         </Link>
                       </li>
 
-                      {
-                        isAdminAlmacen && (
-                          <li>
-                            <Link
-                              to="/dashboard/reportes"
-                              className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/reportes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                                }`}
-                            >
-                              Reportes
-                            </Link>
-                          </li>
-                        )
-                      }
+                      {/* { */}
+                      {/*   isAdminAlmacen && ( */}
+                      {/*     <li> */}
+                      {/*       <Link */}
+                      {/*         to="/dashboard/reportes" */}
+                      {/*         className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/reportes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
+                      {/*           }`} */}
+                      {/*       > */}
+                      {/*         Reportes */}
+                      {/*       </Link> */}
+                      {/*     </li> */}
+                      {/*   ) */}
+                      {/* } */}
 
                       <li>
                         <Link

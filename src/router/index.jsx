@@ -31,6 +31,8 @@ import HistorialPage from "../dashboard/pages/HistorialPage";
 import RequisicionesCompraPage from "../dashboard/pages/RequisicionesCompraPage";
 import EntradasComprasPage from "../dashboard/pages/EntradasComprasPage";
 import EntradasVistaPage from "../dashboard/pages/EntradasVistasPage";
+import { FiltrosPage } from "../dashboard/pages/FiltrosPage";
+import { NotificacionesAlmacenPage } from "../dashboard/pages/NotificacionesAlmacenPage";
 
 function AppRoutes() {
   return (
@@ -69,7 +71,7 @@ function RouteLoader() {
         <Route path="users" element={<UsersPage />} />
         <Route path="emails" element={<EmailsPage />} />
         <Route path="clients" element={<ClientsPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
+        {/* <Route path="notifications" element={<NotificationsPage />} /> */}
         <Route path="testimonials" element={<TestimonialsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="services" element={<ServicesPage />} />
@@ -78,6 +80,8 @@ function RouteLoader() {
         <Route path="reportes" element={<ReportesPage />} />
         <Route path="obras" element={<ObrasPage />} />
         <Route path="equipos" element={<EquiposPage />} />
+        <Route path="filtros" element={<FiltrosPage />} />
+        <Route path="notificaciones/:id" element={<NotificacionesAlmacenPage />} />
         <Route path="almacenes" element={<AlmacenesPage />} />
         <Route path="productos" element={<ProductosPage />} />
         <Route path="almacenes/:id" element={<AlmacenenInventarioPage />} />
