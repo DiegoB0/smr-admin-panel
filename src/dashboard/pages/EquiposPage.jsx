@@ -11,12 +11,15 @@ import {
 } from "lucide-react";
 
 import { useEquipos } from "../../hooks/useEquipos";
+import { useFiltros } from "../../hooks/useFiltros";
 
 function EquiposPage() {
   const { canCreateUsers, canDeleteUsers, canEditUsers } = useAuthFlags();
   const [equipos, setEquipos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [categoriasLoading, setCategoriasLoading] = useState(false);
   const { listEquipos, createEquipo, getOneEquipo, deleteEquipo, updateEquipo } = useEquipos();
+  const { listCategoriaFiltros } = useFiltros();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -34,12 +37,16 @@ function EquiposPage() {
     totalItems: 0,
   });
 
+  // Categorías de filtros
+  const [categorias, setCategorias] = useState([]);
+
   // Form fields
   const [tipoEquipo, setTipoEquipo] = useState("");
   const [numeroEconomico, setNumeroEconomico] = useState("");
   const [modelo, setModelo] = useState("");
   const [serie, setSerie] = useState("");
   const [estatus, setEstatus] = useState("Activo");
+  const [filtroCategoriaId, setFiltroCategoriaId] = useState("");
 
   const toggleModal = () => setIsModalOpen(!isModalOpen);
 
@@ -49,6 +56,7 @@ function EquiposPage() {
     setModelo("");
     setSerie("");
     setEstatus("Activo");
+    setFiltroCategoriaId("");
     setEditId(null);
   };
 
@@ -56,6 +64,24 @@ function EquiposPage() {
     setIsEditing(false);
     toggleModal();
     clearForm();
+  };
+
+  // Cargar categorías de filtros al montar
+  useEffect(() => {
+    fetchCategorias();
+  }, []);
+
+  const fetchCategorias = async () => {
+    setCategoriasLoading(true);
+    try {
+      const res = await listCategoriaFiltros({ page: 1, limit: 100, search: '', order: 'ASC' });
+      setCategorias(res.data.data || []);
+    } catch (error) {
+      console.error("Error al cargar categorías:", error);
+      Swal.fire("Error", "No se pudieron cargar las categorías de filtros", "error");
+    } finally {
+      setCategoriasLoading(false);
+    }
   };
 
   const fetchEquipos = async () => {
@@ -72,25 +98,40 @@ function EquiposPage() {
   };
 
   useEffect(() => {
-
     fetchEquipos();
   }, [page, limitOption, debouncedSearch]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const payload = { equipo: tipoEquipo, no_economico: numeroEconomico, modelo, serie };
+
+    if (!filtroCategoriaId) {
+      Swal.fire("Error", "Selecciona una categoría de filtros", "error");
+      return;
+    }
+
+    const payload = {
+      equipo: tipoEquipo,
+      no_economico: numeroEconomico,
+      modelo,
+      serie,
+      filtroCategoriaId,
+    };
+
+    // 🔥 CONSOLE LOG DEL PAYLOAD
+    console.log("📤 Payload enviado:", payload);
 
     try {
       if (isEditing) {
         await updateEquipo(editId, payload);
         Swal.fire("Actualizado", "Equipo actualizado con éxito", "success");
       } else {
-        const { data: newEquipo } = await createEquipo(payload);
-        setEquipos((prev) => [newEquipo, ...prev]);
+        await createEquipo(payload);
         Swal.fire("Registrado", "Equipo agregado con éxito", "success");
       }
+
       handleCloseModal();
-      fetchEquipos();
+      await fetchEquipos();
+
     } catch (err) {
       Swal.fire("Error", err.message || "Ocurrió un error", "error");
     }
@@ -104,6 +145,7 @@ function EquiposPage() {
     setModelo(equipo.modelo);
     setSerie(equipo.serie);
     setEstatus(equipo.isActive ? "Activo" : "Caído");
+    setFiltroCategoriaId(equipo.filtro_categoria?.id || "");
     toggleModal();
   };
 
@@ -121,7 +163,7 @@ function EquiposPage() {
     if (!result.isConfirmed) return;
     try {
       await deleteEquipo(id);
-      setEquipos((prev) => prev.filter(e => e.id !== id));
+      fetchEquipos();
       Swal.fire("Eliminado", "Equipo eliminado con éxito", "success");
     } catch (err) {
       Swal.fire("Error", "Fallo al eliminar equipo", "error");
@@ -143,7 +185,7 @@ function EquiposPage() {
     }
   };
 
-  // --------- Stats ----------
+  // Stats
   const StatsSection = () => {
     const activos = equipos.filter(e => e.isActive).length;
     const caidos = equipos.filter(e => !e.isActive).length;
@@ -227,9 +269,10 @@ function EquiposPage() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Equipo</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Número Económico</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Económico</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Modelo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Serie</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Categoría Filtros</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estatus</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
@@ -243,6 +286,8 @@ function EquiposPage() {
                     <td className="px-6 py-4 text-sm">{e.no_economico}</td>
                     <td className="px-6 py-4 text-sm">{e.modelo}</td>
                     <td className="px-6 py-4 text-sm">{e.serie}</td>
+                    <td className="px-6 py-4 text-sm">{e.filtroCategoriaNombre || "N/A"}
+                    </td>
                     <td className="px-6 py-4 text-sm">{renderEstatus(e.isActive ? "Activo" : "Caído")}</td>
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex space-x-2">
@@ -262,7 +307,7 @@ function EquiposPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">No hay equipos registrados</td>
+                  <td colSpan="8" className="px-6 py-12 text-center text-gray-500">No hay equipos registrados</td>
                 </tr>
               )}
             </tbody>
@@ -310,34 +355,82 @@ function EquiposPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Truck className="w-4 h-4 inline mr-1" /> Equipo *
                 </label>
-                <input type="text" value={tipoEquipo} onChange={(e) => setTipoEquipo(e.target.value)} required
-                  className="w-full px-3 py-2 border rounded-lg" />
+                <input
+                  type="text"
+                  value={tipoEquipo}
+                  onChange={(e) => setTipoEquipo(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Hash className="w-4 h-4 inline mr-1" /> Número Económico *
                 </label>
-                <input type="text" value={numeroEconomico} onChange={(e) => setNumeroEconomico(e.target.value)} required
-                  className="w-full px-3 py-2 border rounded-lg" />
+                <input
+                  type="text"
+                  value={numeroEconomico}
+                  onChange={(e) => setNumeroEconomico(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Tag className="w-4 h-4 inline mr-1" /> Modelo *
                 </label>
-                <input type="text" value={modelo} onChange={(e) => setModelo(e.target.value)} required
-                  className="w-full px-3 py-2 border rounded-lg" />
+                <input
+                  type="text"
+                  value={modelo}
+                  onChange={(e) => setModelo(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Clipboard className="w-4 h-4 inline mr-1" /> Serie *
                 </label>
-                <input type="text" value={serie} onChange={(e) => setSerie(e.target.value)} required
-                  className="w-full px-3 py-2 border rounded-lg" />
+                <input
+                  type="text"
+                  value={serie}
+                  onChange={(e) => setSerie(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Categoría de Filtros *
+                </label>
+                <select
+                  value={filtroCategoriaId}
+                  onChange={(e) => setFiltroCategoriaId(e.target.value)}
+                  required
+                  disabled={categoriasLoading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">-- Selecciona una categoría --</option>
+                  {categorias.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+                {categoriasLoading && <p className="text-xs text-gray-500 mt-1">Cargando categorías...</p>}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Estatus *</label>
-                <select value={estatus} onChange={(e) => setEstatus(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg">
+                <select
+                  value={estatus}
+                  onChange={(e) => setEstatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
                   <option>Activo</option>
                   <option>En reparación</option>
                   <option>Caído</option>
@@ -345,9 +438,17 @@ function EquiposPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-6 border-t border-gray-200">
-                <button type="button" onClick={handleCloseModal}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
                   {isEditing ? "Actualizar" : "Crear"} Equipo
                 </button>
               </div>
