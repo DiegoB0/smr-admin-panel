@@ -39,6 +39,9 @@ export function useRequisiciones() {
   const rejectRequisicion = (id) => api.patch(`requisiciones/${id}/reject`);
   const pagarRequisicion = (id, data) => api.patch(`requisiciones/${id}/pagar`, data);
 
+  // Update items
+  const updateItems = (id, data) => api.patch(`requisiciones/${id}/items`, data)
+
 
   return {
     getStats,
@@ -48,5 +51,6 @@ export function useRequisiciones() {
     rejectRequisicion,
     pagarRequisicion,
     listAprovedRequisiciones,
+    updateItems
   };
 }
