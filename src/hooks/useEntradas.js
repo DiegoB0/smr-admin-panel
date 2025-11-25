@@ -6,9 +6,11 @@ export function useEntradas() {
     page = 1,
     limit = 10,
     search = '',
-    order = 'ASC'
+    order = 'ASC',
+    status,
   }) => {
     const params = { page, limit, search, order };
+    if (status && status !== "ALL") params.status = status;
     return api.get(`entradas/${almacenId}`, { params });
   };
 

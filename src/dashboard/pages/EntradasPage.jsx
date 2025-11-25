@@ -7,8 +7,6 @@ import {
   FileText,
   Search,
   Eye,
-  ChevronDown,
-  ChevronRight,
   CheckCircle2,
   CircleAlert,
   CircleX,
@@ -30,7 +28,6 @@ const EntradasPage = () => {
     hasPreviousPage: false,
     totalItems: 0,
   });
-  const [historial, setHistorial] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
@@ -39,7 +36,6 @@ const EntradasPage = () => {
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [openRows, setOpenRows] = useState({});
   const [capture, setCapture] = useState({});
-  const [histModalOpen, setHistModalOpen] = useState(false);
   const [isEntradaDetailModalOpen, setIsEntradaDetailModalOpen] = useState(
     false
   );
@@ -66,6 +62,7 @@ const EntradasPage = () => {
         limit: limitOption === "all" ? undefined : limit,
         search: debouncedSearch,
         order: "DESC",
+        status: statusFilter,
       });
       const rawData = response.data.data || [];
       const data = rawData.map((r) => {
@@ -122,12 +119,15 @@ const EntradasPage = () => {
     fetchData();
   }, [page, limitOption, debouncedSearch, statusFilter]);
 
+  const handleStatusChange = (status) => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, limitOption, statusFilter]);
 
-  const toggleRow = (id) =>
-    setOpenRows((prev) => ({ ...prev, [id]: !prev[id] }));
 
   const setCantidadRecibida = (requisId, itemId, value) => {
     const valNum = value === "" ? "" : Number(value);
@@ -194,15 +194,10 @@ const EntradasPage = () => {
   };
 
   const handleRegistrarEntrada = async (requisicion) => {
-    console.log("=== DEBUG REGISTRAR ENTRADA ===");
-    console.log("Requisición ID:", requisicion.id);
-    console.log("Capture state completo:", capture);
-    console.log("Capture para este requisición:", capture[requisicion.id]);
 
     const entradas = Object.entries(capture[requisicion.id] || {})
       .filter(([itemId, val]) => {
         const isValid = val !== "" && !Number.isNaN(Number(val)) && Number(val) > 0;
-        console.log(`Item ${itemId}: valor=${val}, válido=${isValid}`);
         return isValid;
       })
       .map(([itemId, val]) => ({
@@ -210,7 +205,6 @@ const EntradasPage = () => {
         cantidadRecibida: Number(val),
       }));
 
-    console.log("Entradas filtradas:", entradas);
 
     if (entradas.length === 0) {
       Swal.fire(
@@ -440,7 +434,7 @@ const EntradasPage = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Buscar por RCP o título..."
+            placeholder="Buscar por RCP, ID del producto o titulo"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
@@ -454,9 +448,9 @@ const EntradasPage = () => {
           aria-label="Filtrar por estatus"
         >
           <option value="ALL">Todos</option>
-          <option value="Completa">Completa</option>
-          <option value="Parcial">Parcial</option>
-          <option value="Pendiente">Pendiente</option>
+          <option value="recibida">Completa</option>
+          <option value="parcial">Parcial</option>
+          <option value="pendiente">Pendiente</option>
         </select>
         <select
           value={limitOption}
@@ -468,13 +462,48 @@ const EntradasPage = () => {
           <option value="10">10 por página</option>
           <option value="20">20 por página</option>
           <option value="all">Mostrar todos</option>
+
+
         </select>
+      </div>
+
+
+      <div className="mb-4 flex gap-2 flex-wrap">
         <button
-          onClick={() => setHistModalOpen(true)}
-          className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-          aria-label="Ver historial de entradas"
+          onClick={() => handleStatusChange("ALL")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "ALL"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
         >
-          Ver historial
+          Todas
+        </button>
+        <button
+          onClick={() => handleStatusChange("pendiente")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "pendiente"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
+        >
+          Pendientes
+        </button>
+        <button
+          onClick={() => handleStatusChange("parcial")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "parcial"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
+        >
+          Parciales
+        </button>
+        <button
+          onClick={() => handleStatusChange("recibida")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "recibida"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
+        >
+          Completas
         </button>
       </div>
 
@@ -488,7 +517,6 @@ const EntradasPage = () => {
             <table className="min-w-full divide-y divide-gray-100">
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide" />
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                     RCP
                   </th>
@@ -525,18 +553,6 @@ const EntradasPage = () => {
                     return (
                       <React.Fragment key={r.id}>
                         <tr className="hover:bg-gray-50 transition-colors duration-200 odd:bg-gray-50 animate-fade-in">
-                          <td className="px-6 py-5">
-                            <button
-                              onClick={() => toggleRow(r.id)}
-                              className="p-1 rounded-md hover:bg-gray-100 text-gray-600"
-                            >
-                              {isOpen ? (
-                                <ChevronDown className="w-5 h-5" />
-                              ) : (
-                                <ChevronRight className="w-5 h-5" />
-                              )}
-                            </button>
-                          </td>
                           <td className="px-6 py-5 text-sm text-gray-700">
                             {r.requisicion?.rcp ?? "N/A"}
                           </td>
@@ -603,170 +619,6 @@ const EntradasPage = () => {
                           </td>
                         </tr>
 
-                        {isOpen && (
-                          <tr className="bg-gray-50">
-                            <td colSpan={7} className="px-6 pb-6">
-                              <div className="mt-2 rounded-lg border border-gray-100 overflow-hidden bg-white">
-                                <table className="min-w-full">
-                                  <thead className="bg-gray-50">
-                                    <tr>
-                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                        ID Refacción
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                        Producto
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                        Solicitado
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                        Recibido
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                        Por recibir
-                                      </th>
-                                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                                        Capturar entrada
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-gray-100">
-                                    {(r.items || []).map((it) => {
-                                      const solic = Number(it.cantidadEsperada) || 0;
-                                      const recAcum =
-                                        Number(it.cantidadRecibida) || 0;
-                                      const restante = Math.max(solic - recAcum, 0);
-                                      const curCapture =
-                                        capture[r.id]?.[it.id] ?? "";
-                                      const completo =
-                                        solic > 0 && recAcum >= solic;
-                                      return (
-                                        <tr
-                                          key={it.id}
-                                          className="hover:bg-gray-50 transition-colors duration-200"
-                                        >
-                                          <td className="px-4 py-2 text-sm text-gray-700">
-                                            {it.producto?.id || "N/A"}
-                                          </td>
-                                          <td className="px-4 py-2 text-sm text-gray-700">
-                                            {it.producto?.name || "Producto"}
-                                          </td>
-                                          <td className="px-4 py-2 text-sm text-gray-700 text-right">
-                                            {solic}
-                                          </td>
-                                          <td className="px-4 py-2 text-sm text-gray-700 text-right">
-                                            {recAcum}
-                                          </td>
-                                          <td className="px-4 py-2 text-sm text-gray-700 text-right">
-                                            {restante}
-                                          </td>
-                                          <td className="px-4 py-2 text-sm">
-                                            <div className="flex items-center gap-2">
-                                              <input
-                                                type="number"
-                                                placeholder="0"
-                                                min={0}
-                                                max={restante}
-                                                value={curCapture}
-                                                disabled={completo}
-                                                onChange={(e) =>
-                                                  setCantidadRecibida(
-                                                    r.id,
-                                                    it.id,
-                                                    e.target.value
-                                                  )
-                                                }
-                                                className="w-28 px-3 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition disabled:bg-gray-100 shadow-sm"
-                                                aria-label={`Capturar entrada para el item ${it.producto?.name || "N/A"}`}
-                                              />
-                                              {!completo ? (
-                                                <>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      setCantidadRecibida(
-                                                        r.id,
-                                                        it.id,
-                                                        restante
-                                                      )
-                                                    }
-                                                    className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                                                  >
-                                                    Completar
-                                                  </button>
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      setCantidadRecibida(
-                                                        r.id,
-                                                        it.id,
-                                                        0
-                                                      )
-                                                    }
-                                                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
-                                                  >
-                                                    Restablecer
-                                                  </button>
-                                                </>
-                                              ) : (
-                                                <span className="inline-flex items-center text-xs text-green-700">
-                                                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                                                  Completo
-                                                </span>
-                                              )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-
-                              <div className="mt-3 flex justify-end gap-2">
-                                <button
-                                  onClick={() => limpiarCaptura(r.id)}
-                                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                                  aria-label="Limpiar capturas"
-                                >
-                                  Limpiar capturas
-                                </button>
-                                {!isCompleta && (
-                                  <button
-                                    onClick={() => handleRegistrarEntrada(r)}
-                                    className="inline-flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={loading}
-                                  >
-                                    {loading ? (
-                                      <svg
-                                        className="animate-spin h-5 w-5 text-white"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <circle
-                                          cx="12"
-                                          cy="12"
-                                          r="10"
-                                          stroke="currentColor"
-                                          strokeWidth="4"
-                                          fill="none"
-                                        />
-                                        <path
-                                          fill="currentColor"
-                                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
-                                        />
-                                      </svg>
-                                    ) : (
-                                      <>
-                                        <PackageCheck className="w-4 h-4" />
-                                        Registrar entrada
-                                      </>
-                                    )}
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                       </React.Fragment>
                     );
                   })
@@ -895,8 +747,8 @@ const EntradasPage = () => {
                     value={
                       selectedEntrada.fechaCreacion
                         ? new Date(
-                            selectedEntrada.fechaCreacion
-                          ).toLocaleDateString()
+                          selectedEntrada.fechaCreacion
+                        ).toLocaleDateString()
                         : "N/A"
                     }
                   />
@@ -911,8 +763,8 @@ const EntradasPage = () => {
                     value={
                       selectedEntrada.fechaEsperada
                         ? new Date(
-                            selectedEntrada.fechaEsperada
-                          ).toLocaleDateString()
+                          selectedEntrada.fechaEsperada
+                        ).toLocaleDateString()
                         : "No registrada"
                     }
                   />
@@ -947,6 +799,9 @@ const EntradasPage = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                          ID
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                           Producto
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
@@ -955,41 +810,35 @@ const EntradasPage = () => {
                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                           Recibido
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                          Diferencia
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {(selectedEntrada.items || []).map((it) => {
                         const solic = Number(it.cantidadEsperada) || 0;
                         const rec = Number(it.cantidadRecibida) || 0;
-                        const diff = rec - solic;
+                        const itemName = it.insumoItem?.descripcion ||
+                          it.filtroItem?.descripcion ||
+                          it.refaccionItem?.descripcion ||
+                          "Sin nombre";
+
+                        const itemId = it.filtroItem?.customId || it.refaccionItem?.customId || "No especificado"
+
                         return (
                           <tr
                             key={it.id}
                             className="hover:bg-gray-50 transition-colors"
                           >
                             <td className="px-4 py-2 text-sm text-gray-700">
-                              {it.producto?.name || "N/A"}
+                              {itemId}
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                            <td className="px-4 py-2 text-sm text-gray-700">
+                              {itemName}
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-700">
                               {solic}
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                            <td className="px-4 py-2 text-sm text-gray-700">
                               {rec}
-                            </td>
-                            <td
-                              className={`px-4 py-2 text-sm text-right font-medium ${
-                                diff > 0
-                                  ? "text-green-600"
-                                  : diff < 0
-                                    ? "text-red-600"
-                                    : "text-gray-600"
-                              }`}
-                            >
-                              {diff > 0 ? "+" : ""}
-                              {diff}
                             </td>
                           </tr>
                         );
@@ -1007,9 +856,8 @@ const EntradasPage = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <Detail
                     label="Items completos"
-                    value={`${selectedEntrada._totales?.itemsCompletos || 0}/${
-                      selectedEntrada._totales?.itemsTotales || 0
-                    }`}
+                    value={`${selectedEntrada._totales?.itemsCompletos || 0}/${selectedEntrada._totales?.itemsTotales || 0
+                      }`}
                   />
                   <Detail
                     label="Piezas recibidas"
@@ -1024,11 +872,11 @@ const EntradasPage = () => {
                     value={
                       selectedEntrada._totales?.piezasSolicitadas > 0
                         ? `${Math.round(
-                            ((selectedEntrada._totales?.piezasRecibidas || 0) /
-                              (selectedEntrada._totales
-                                ?.piezasSolicitadas || 1)) *
-                              100
-                          )}%`
+                          ((selectedEntrada._totales?.piezasRecibidas || 0) /
+                            (selectedEntrada._totales
+                              ?.piezasSolicitadas || 1)) *
+                          100
+                        )}%`
                         : "N/A"
                     }
                   />
@@ -1092,7 +940,7 @@ const EntradasPage = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                        ID Producto
+                        ID
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Producto
@@ -1116,6 +964,14 @@ const EntradasPage = () => {
                       const solic = Number(it.cantidadEsperada) || 0;
                       const recAcum = Number(it.cantidadRecibida) || 0;
                       const restante = Math.max(solic - recAcum, 0);
+
+                      const itemName = it.insumoItem?.descripcion ||
+                        it.filtroItem?.descripcion ||
+                        it.refaccionItem?.descripcion ||
+                        "Sin nombre";
+
+                      const itemId = it.filtroItem?.customId || it.refaccionItem?.customId || "No especificado"
+
                       const curCapture =
                         capture[selectedRequisicionForCapture.id]?.[it.id] ??
                         "";
@@ -1126,18 +982,18 @@ const EntradasPage = () => {
                           className="hover:bg-gray-50 transition-colors"
                         >
                           <td className="px-4 py-2 text-sm text-gray-700">
-                            {it.producto?.id || "N/A"}
+                            {itemId}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-700">
-                            {it.producto?.name || "Producto"}
+                            {itemName}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                          <td className="px-4 py-2 text-sm text-gray-700">
                             {solic}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                          <td className="px-4 py-2 text-sm text-gray-700">
                             {recAcum}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                          <td className="px-4 py-2 text-sm text-gray-700">
                             {restante}
                           </td>
                           <td className="px-4 py-2 text-sm">
@@ -1249,132 +1105,132 @@ const EntradasPage = () => {
       )}
 
       {/* Modal Historial */}
-      {histModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-          onClick={() => setHistModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl w-full sm:max-w-4xl h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600">
-                  <History className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Historial de entradas
-                  </h2>
-                  <p className="text-xs text-gray-500">
-                    Registros de esta sesión (no persistente)
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setHistModalOpen(false)}
-                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Cerrar modal de historial"
-              >
-                <span className="text-2xl leading-none">&times;</span>
-              </button>
-            </div>
-
-            <div className="px-6 py-5">
-              {historial.length === 0 ? (
-                <div className="text-center text-gray-600 py-8">
-                  No hay movimientos registrados aún.
-                </div>
-              ) : (
-                <div className="rounded-lg border border-gray-100 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-100">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            Fecha
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            RCP
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            Almacén
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            Producto
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                            Cantidad
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {historial
-                          .slice()
-                          .sort(
-                            (a, b) =>
-                              new Date(b.fecha).getTime() -
-                              new Date(a.fecha).getTime()
-                          )
-                          .map((h) => (
-                            <tr
-                              key={h.id}
-                              className="hover:bg-gray-50 transition-colors duration-200"
-                            >
-                              <td className="px-4 py-2 text-sm text-gray-700">
-                                {new Date(h.fecha).toLocaleString()}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-700">
-                                {h.rcp}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-700">
-                                {h.almacen}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-700">
-                                {h.productoName}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-700 text-right">
-                                {h.cantidadRecibida}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {historial.length > 0 && (
-                <div className="mt-4 flex justify-end">
-                  <button
-                    onClick={() => {
-                      Swal.fire({
-                        title: "¿Borrar historial?",
-                        text: "Eliminará los registros de esta sesión.",
-                        icon: "warning",
-                        showCancelButton: true,
-                        confirmButtonText: "Sí, borrar",
-                        cancelButtonText: "Cancelar",
-                      }).then((res) => {
-                        if (res.isConfirmed) {
-                          setHistorial([]);
-                          Swal.fire("Listo", "Historial borrado", "success");
-                        }
-                      });
-                    }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                    aria-label="Borrar historial"
-                    data-tooltip="Eliminar registros"
-                  >
-                    Borrar historial
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* {histModalOpen && ( */}
+      {/*   <div */}
+      {/*     className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" */}
+      {/*     onClick={() => setHistModalOpen(false)} */}
+      {/*   > */}
+      {/*     <div */}
+      {/*       className="bg-white rounded-xl shadow-2xl w-full sm:max-w-4xl h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in" */}
+      {/*       onClick={(e) => e.stopPropagation()} */}
+      {/*     > */}
+      {/*       <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl"> */}
+      {/*         <div className="flex items-center gap-3"> */}
+      {/*           <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600"> */}
+      {/*             <History className="w-5 h-5" /> */}
+      {/*           </div> */}
+      {/*           <div> */}
+      {/*             <h2 className="text-lg font-semibold text-gray-900"> */}
+      {/*               Historial de entradas */}
+      {/*             </h2> */}
+      {/*             <p className="text-xs text-gray-500"> */}
+      {/*               Registros de esta sesión (no persistente) */}
+      {/*             </p> */}
+      {/*           </div> */}
+      {/*         </div> */}
+      {/*         <button */}
+      {/*           onClick={() => setHistModalOpen(false)} */}
+      {/*           className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors" */}
+      {/*           aria-label="Cerrar modal de historial" */}
+      {/*         > */}
+      {/*           <span className="text-2xl leading-none">&times;</span> */}
+      {/*         </button> */}
+      {/*       </div> */}
+      {/**/}
+      {/*       <div className="px-6 py-5"> */}
+      {/*         {historial.length === 0 ? ( */}
+      {/*           <div className="text-center text-gray-600 py-8"> */}
+      {/*             No hay movimientos registrados aún. */}
+      {/*           </div> */}
+      {/*         ) : ( */}
+      {/*           <div className="rounded-lg border border-gray-100 overflow-hidden"> */}
+      {/*             <div className="overflow-x-auto"> */}
+      {/*               <table className="min-w-full divide-y divide-gray-100"> */}
+      {/*                 <thead className="bg-gray-50 sticky top-0 z-10"> */}
+      {/*                   <tr> */}
+      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
+      {/*                       Fecha */}
+      {/*                     </th> */}
+      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
+      {/*                       RCP */}
+      {/*                     </th> */}
+      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
+      {/*                       Almacén */}
+      {/*                     </th> */}
+      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
+      {/*                       Producto */}
+      {/*                     </th> */}
+      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
+      {/*                       Cantidad */}
+      {/*                     </th> */}
+      {/*                   </tr> */}
+      {/*                 </thead> */}
+      {/*                 <tbody className="divide-y divide-gray-100"> */}
+      {/*                   {historial */}
+      {/*                     .slice() */}
+      {/*                     .sort( */}
+      {/*                       (a, b) => */}
+      {/*                         new Date(b.fecha).getTime() - */}
+      {/*                         new Date(a.fecha).getTime() */}
+      {/*                     ) */}
+      {/*                     .map((h) => ( */}
+      {/*                       <tr */}
+      {/*                         key={h.id} */}
+      {/*                         className="hover:bg-gray-50 transition-colors duration-200" */}
+      {/*                       > */}
+      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
+      {/*                           {new Date(h.fecha).toLocaleString()} */}
+      {/*                         </td> */}
+      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
+      {/*                           {h.rcp} */}
+      {/*                         </td> */}
+      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
+      {/*                           {h.almacen} */}
+      {/*                         </td> */}
+      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
+      {/*                           {h.productoName} */}
+      {/*                         </td> */}
+      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
+      {/*                           {h.cantidadRecibida} */}
+      {/*                         </td> */}
+      {/*                       </tr> */}
+      {/*                     ))} */}
+      {/*                 </tbody> */}
+      {/*               </table> */}
+      {/*             </div> */}
+      {/*           </div> */}
+      {/*         )} */}
+      {/**/}
+      {/*         {historial.length > 0 && ( */}
+      {/*           <div className="mt-4 flex justify-end"> */}
+      {/*             <button */}
+      {/*               onClick={() => { */}
+      {/*                 Swal.fire({ */}
+      {/*                   title: "¿Borrar historial?", */}
+      {/*                   text: "Eliminará los registros de esta sesión.", */}
+      {/*                   icon: "warning", */}
+      {/*                   showCancelButton: true, */}
+      {/*                   confirmButtonText: "Sí, borrar", */}
+      {/*                   cancelButtonText: "Cancelar", */}
+      {/*                 }).then((res) => { */}
+      {/*                   if (res.isConfirmed) { */}
+      {/*                     setHistorial([]); */}
+      {/*                     Swal.fire("Listo", "Historial borrado", "success"); */}
+      {/*                   } */}
+      {/*                 }); */}
+      {/*               }} */}
+      {/*               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors" */}
+      {/*               aria-label="Borrar historial" */}
+      {/*               data-tooltip="Eliminar registros" */}
+      {/*             > */}
+      {/*               Borrar historial */}
+      {/*             </button> */}
+      {/*           </div> */}
+      {/*         )} */}
+      {/*       </div> */}
+      {/*     </div> */}
+      {/*   </div> */}
+      {/* )} */}
     </div>
   );
 };

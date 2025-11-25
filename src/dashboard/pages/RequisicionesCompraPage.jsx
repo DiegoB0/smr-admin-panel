@@ -66,7 +66,7 @@ const RequisicionesCompraPage = () => {
   const updateItemQuantity = (itemId, quantity) => {
     setSelectedItemQuantities((prev) => ({
       ...prev,
-      [itemId]: quantity,
+      [itemId]: parseInt(quantity) || 0,
     }));
   };
 
@@ -186,7 +186,6 @@ const RequisicionesCompraPage = () => {
 
     try {
       setLoading(true);
-
       const payload = {
         requisicionType: selectedRequisicion.requisicionType,
         items: selectedItemIds.map((itemId) => ({
@@ -226,12 +225,19 @@ const RequisicionesCompraPage = () => {
     setPage(1);
   };
 
-  const toggleItemSelection = (itemId) => {
-    setSelectedItemIds((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    );
+  const toggleItemSelection = (itemId, itemCantidad) => {
+    setSelectedItemIds((prev) => {
+      if (prev.includes(itemId)) {
+        // Removing from selection
+        return prev.filter((id) => id !== itemId);
+      } else {
+        setSelectedItemQuantities((prevQty) => ({
+          ...prevQty,
+          [itemId]: itemCantidad,
+        }));
+        return [...prev, itemId];
+      }
+    });
   };
 
   const openDetailModal = (r) => {
@@ -962,7 +968,7 @@ const RequisicionesCompraPage = () => {
                       <input
                         type="checkbox"
                         checked={selectedItemIds.includes(item.id)}
-                        onChange={() => toggleItemSelection(item.id)}
+                        onChange={() => toggleItemSelection(item.id, item.cantidad)}
                         className="w-4 h-4 rounded border-gray-300"
                       />
                       <span className="text-sm text-gray-700">
@@ -973,8 +979,11 @@ const RequisicionesCompraPage = () => {
                           type="number"
                           min="0"
                           max={item.cantidad}
-                          value={selectedItemQuantities[item.id] || item.cantidad}
-                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          value={selectedItemQuantities[item.id] !== undefined ? selectedItemQuantities[item.id] : item.cantidad}
+                          onChange={(e) => {
+                            console.log('Changed quantity for item', item.id, 'to', e.target.value);
+                            updateItemQuantity(item.id, parseInt(e.target.value) || 0);
+                          }}
                           className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
                           placeholder="Cantidad"
                         />
@@ -987,7 +996,7 @@ const RequisicionesCompraPage = () => {
                       <input
                         type="checkbox"
                         checked={selectedItemIds.includes(item.id)}
-                        onChange={() => toggleItemSelection(item.id)}
+                        onChange={() => toggleItemSelection(item.id, item.cantidad)}
                         className="w-4 h-4 rounded border-gray-300"
                       />
                       <span className="text-sm text-gray-700">
@@ -998,8 +1007,11 @@ const RequisicionesCompraPage = () => {
                           type="number"
                           min="0"
                           max={item.cantidad}
-                          value={selectedItemQuantities[item.id] || item.cantidad}
-                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          value={selectedItemQuantities[item.id] !== undefined ? selectedItemQuantities[item.id] : item.cantidad}
+                          onChange={(e) => {
+                            console.log('Changed quantity for item', item.id, 'to', e.target.value);
+                            updateItemQuantity(item.id, parseInt(e.target.value) || 0);
+                          }}
                           className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
                           placeholder="Cantidad"
                         />
@@ -1012,7 +1024,7 @@ const RequisicionesCompraPage = () => {
                       <input
                         type="checkbox"
                         checked={selectedItemIds.includes(item.id)}
-                        onChange={() => toggleItemSelection(item.id)}
+                        onChange={() => toggleItemSelection(item.id, item.cantidad)}
                         className="w-4 h-4 rounded border-gray-300"
                       />
                       <span className="text-sm text-gray-700">
@@ -1024,8 +1036,11 @@ const RequisicionesCompraPage = () => {
                           type="number"
                           min="0"
                           max={item.cantidad}
-                          value={selectedItemQuantities[item.id] || item.cantidad}
-                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          value={selectedItemQuantities[item.id] !== undefined ? selectedItemQuantities[item.id] : item.cantidad}
+                          onChange={(e) => {
+                            console.log('Changed quantity for item', item.id, 'to', e.target.value);
+                            updateItemQuantity(item.id, parseInt(e.target.value) || 0);
+                          }}
                           className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
                           placeholder="Cantidad"
                         />

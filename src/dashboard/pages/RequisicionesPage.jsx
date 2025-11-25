@@ -472,19 +472,16 @@ const RequisicionesPage = () => {
       const invalidItem = payload.items.find((it) => {
         const missingBasics = !it.cantidad || it.cantidad <= 0 || !it.unidad;
 
-        if (formData.requisicionType === 'consumibles') {
-          const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
-          return missingBasics || missingDescripcion;
-        }
+        const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
+        return missingBasics || missingDescripcion;
 
-        return missingBasics;
       });
 
       if (invalidItem) {
         const msg =
           formData.requisicionType === 'consumibles'
             ? 'Todos los items deben tener cantidad > 0, unidad y descripción'
-            : 'Todos los items deben tener cantidad > 0 y unidad';
+            : 'Todos los items deben tener cantidad > 0 y unidad y nombre';
         Swal.fire('Error', msg, 'error');
         return;
       }
@@ -1468,16 +1465,17 @@ const RequisicionesPage = () => {
 
                             <div className="md:col-span-2">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Descripción{' '}
                                 {formData.requisicionType === 'consumibles' ? (
-                                  <span className="text-red-500">*</span>
+                                  <span className="text-gray-700 flex items-center gap-1">
+                                    Descripcion <p className="text-red-500">*</p>
+                                  </span>
                                 ) : (
-                                  <span className="text-gray-700 text-medium">(opcional)</span>
+                                  <span className="text-gray-700 text-medium flex items-center gap-1">Nombre <p className="text-red-500">*</p></span>
                                 )}
                               </label>
                               <input
                                 type="text"
-                                placeholder="Describe el servicio (ej. mantenimiento correctivo)"
+                                placeholder="Escribe el nombre del item"
                                 value={item.descripcion}
                                 required={formData.requisicionType === 'consumibles'}
                                 onChange={(e) =>
