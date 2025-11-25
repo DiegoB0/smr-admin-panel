@@ -2,20 +2,25 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   FileText,
   ShoppingCart,
   CheckCircle2,
   Search,
+  ClipboardList,
   Filter,
   Eye,
   BadgeDollarSign,
   CircleDollarSign,
   XCircle,
+  X,
+  Check
 } from "lucide-react";
 import Swal from "sweetalert2";
 import { debounce } from "lodash";
 import { printRequisicion } from "../../utils/printPdf";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
+import { useDebounce } from "../../hooks/customHooks";
 import PrintableRequisicion from "./PrintableRequisicion";
 
 const lower = (s) => (s || "").toLowerCase();
@@ -26,16 +31,45 @@ const currency = (n) =>
   }).format(n || 0);
 
 const RequisicionesCompraPage = () => {
-  const { listRequisiciones, pagarRequisicion } = useRequisiciones();
+  const { markAsPaid, getStats, listAprovedRequisiciones } = useRequisiciones();
 
   // Estado base
   const [allItems, setAllItems] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+    totalItems: 0,
+  });
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  const [stats, setStats] = useState({
+    pagada: 0,
+    aprobada: 0,
+    pendiente: 0,
+    rechazada: 0,
+    total: 0,
+  });
+
+
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
+  const [selectedItemIds, setSelectedItemIds] = useState([]);
+
+  const [selectedItemQuantities, setSelectedItemQuantities] = useState({});
+  const updateItemQuantity = (itemId, quantity) => {
+    setSelectedItemQuantities((prev) => ({
+      ...prev,
+      [itemId]: quantity,
+    }));
+  };
+
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [purchaseForm, setPurchaseForm] = useState({
     metodo_pago: "orden de compra",
@@ -43,13 +77,7 @@ const RequisicionesCompraPage = () => {
     fechaEsperada: "",
     submitted: false,
   });
-  const [totalBackendItems, setTotalBackendItems] = useState(0);
 
-  // Debounce para la búsqueda
-  const debouncedSetSearchTerm = useMemo(
-    () => debounce((value) => setSearchTerm(value), 300),
-    []
-  );
 
   // Cargar desde backend
   const limit =
@@ -61,17 +89,22 @@ const RequisicionesCompraPage = () => {
       page,
       limit,
       order: "DESC",
-      search: searchTerm,
+      search: debouncedSearch,
+      status: statusFilter,
     };
     if (limitOption === "all") {
       delete params.limit;
     }
-    listRequisiciones(params)
+    listAprovedRequisiciones(params)
       .then((res) => {
-        const data = res?.data?.data || [];
-        const total = res?.data?.pagination?.total || data.length;
-        setAllItems(data);
-        setTotalBackendItems(total);
+        setAllItems(res?.data?.data || []);
+        setPagination(res?.data?.meta || {
+          currentPage: 1,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false,
+          totalItems: 0,
+        });
       })
       .catch((err) => {
         const msg =
@@ -83,66 +116,33 @@ const RequisicionesCompraPage = () => {
       .finally(() => setLoading(false));
   };
 
+  const fetchStats = () => {
+    getStats()
+      .then((res) => {
+        setStats(res.data)
+      })
+      .catch((err) => {
+        console.error("Error loading stats:", err);
+      });
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
   useEffect(() => {
     fetchApproved();
-  }, [page, limitOption, searchTerm]);
-
-  // Filtrado client-side
-  const filtered = useMemo(() => {
-    const q = searchTerm.trim().toLowerCase();
-    if (!q) return allItems;
-    return allItems.filter((r) => {
-      return (
-        String(r.rcp ?? "").toLowerCase().includes(q) ||
-        String(r.titulo ?? "").toLowerCase().includes(q) ||
-        String(r.concepto ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [allItems, searchTerm]);
-
-  // Paginación
-  const totalItems = limitOption === "all" ? filtered.length : totalBackendItems;
-  const effectiveLimit =
-    limitOption === "all" ? filtered.length || 0 : parseInt(limitOption, 10);
-  const totalPages = effectiveLimit
-    ? Math.max(1, Math.ceil(totalItems / effectiveLimit))
-    : 1;
+  }, [page, limitOption, debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    if (page > totalPages) {
-      setPage(1);
-    }
-  }, [totalPages]);
+    setPage(1);
+  }, [debouncedSearch, limitOption]);
 
-  const currentPage = Math.min(page, totalPages);
-  const start = effectiveLimit ? (currentPage - 1) * effectiveLimit : 0;
-  const end = effectiveLimit ? start + effectiveLimit : totalItems;
-  const pageItems =
-    limitOption === "all" ? filtered : filtered.slice(start, end);
-
-  // Estadísticas
-  const stats = useMemo(() => {
-    const total = filtered.length;
-    const pendientes = filtered.filter(
-      (r) => lower(r.status) === "pendiente"
-    ).length;
-    const aprobadas = filtered.filter((r) =>
-      ["aprobada", "aprobado"].includes(lower(r.status))
-    ).length;
-    const pagadas = filtered.filter((r) => lower(r.status) === "pagada").length;
-    const rechazadas = filtered.filter(
-      (r) => lower(r.status) === "rechazada"
-    ).length;
-    const monto = filtered.reduce((acc, r) => {
-      const n = typeof r.cantidad_dinero === "number" ? r.cantidad_dinero : 0;
-      return acc + n;
-    }, 0);
-    return { total, pendientes, aprobadas, pagadas, rechazadas, monto };
-  }, [filtered]);
 
   // Acciones
   const openPurchaseModal = (req) => {
     setSelectedRequisicion(req);
+    setSelectedItemIds([]);
     setPurchaseForm({
       metodo_pago: "orden de compra",
       observaciones: "",
@@ -157,6 +157,7 @@ const RequisicionesCompraPage = () => {
     setSelectedRequisicion(null);
   };
 
+
   const handleMarkPurchased = async () => {
     setPurchaseForm((prev) => ({ ...prev, submitted: true }));
     if (!selectedRequisicion) {
@@ -167,6 +168,11 @@ const RequisicionesCompraPage = () => {
       Swal.fire("Error", "La fecha esperada es obligatoria", "error");
       return;
     }
+    if (selectedItemIds.length === 0) {
+      Swal.fire("Error", "Selecciona al menos un item", "error");
+      return;
+    }
+
     const allowedMetodos = [
       "orden de compra",
       "pago",
@@ -178,15 +184,24 @@ const RequisicionesCompraPage = () => {
       return;
     }
 
-    const payload = {
-      metodo_pago: purchaseForm.metodo_pago,
-      observaciones: purchaseForm.observaciones || "",
-      fechaEsperada: purchaseForm.fechaEsperada,
-    };
-
     try {
       setLoading(true);
-      await pagarRequisicion(selectedRequisicion.id, payload);
+
+      const payload = {
+        requisicionType: selectedRequisicion.requisicionType,
+        items: selectedItemIds.map((itemId) => ({
+          id: itemId,
+          cantidadPagada: selectedItemQuantities[itemId] || 0,
+        })),
+        metodo_pago: purchaseForm.metodo_pago,
+        observaciones: purchaseForm.observaciones,
+        fecha_esperada: purchaseForm.fechaEsperada,
+      };
+
+      console.log('Sending payload:', payload);
+
+      await markAsPaid(selectedRequisicion.id, payload);
+
       Swal.fire("Listo", "Requisición marcada como pagada", "success");
       setAllItems((prev) =>
         prev.map((x) =>
@@ -206,7 +221,21 @@ const RequisicionesCompraPage = () => {
     }
   };
 
+  const handleStatusChange = (status) => {
+    setStatusFilter(status);
+    setPage(1);
+  };
+
+  const toggleItemSelection = (itemId) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
   const openDetailModal = (r) => {
+    console.log(r)
     setSelectedRequisicion(r);
     setIsDetailModalOpen(true);
   };
@@ -329,7 +358,7 @@ const RequisicionesCompraPage = () => {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto font-inter">
       {/* Estilo global para la fuente */}
-      <style jsx global>{`
+      <style >{`
         body {
           font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
           letter-spacing: -0.01em;
@@ -390,21 +419,21 @@ const RequisicionesCompraPage = () => {
         />
         <StatCard
           title="Aprobadas"
-          value={stats.aprobadas}
+          value={stats.aprobada}
           color={{ text: "text-green-600", bg: "bg-green-500/90" }}
           icon={<CheckCircle2 className="w-8 h-8 text-white" />}
         />
         <StatCard
           title="Pagadas"
-          value={stats.pagadas}
+          value={stats.pagada}
           color={{ text: "text-blue-500", bg: "bg-blue-600/90" }}
           icon={<CircleDollarSign className="w-8 h-8 text-white" />}
         />
         <StatCard
-          title="Monto total"
-          value={currency(stats.monto)}
-          color={{ text: "text-indigo-600", bg: "bg-indigo-500/90" }}
-          icon={<BadgeDollarSign className="w-8 h-8 text-white" />}
+          title="Otras"
+          value={stats.pendiente + stats.rechazada}
+          color={{ text: "text-gray-500", bg: "bg-gray-600/90" }}
+          icon={<AlertTriangle className="w-8 h-8 text-white" />}
         />
       </div>
 
@@ -415,7 +444,8 @@ const RequisicionesCompraPage = () => {
           <input
             type="text"
             placeholder="Buscar por RCP, título, concepto..."
-            onChange={(e) => debouncedSetSearchTerm(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
             aria-label="Buscar requisiciones"
           />
@@ -431,6 +461,36 @@ const RequisicionesCompraPage = () => {
           <option value="20">20 por página</option>
           <option value="all">Mostrar todos</option>
         </select>
+      </div>
+
+      <div className="mb-4 flex gap-2 flex-wrap">
+        <button
+          onClick={() => handleStatusChange("ALL")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "ALL"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
+        >
+          Todas
+        </button>
+        <button
+          onClick={() => handleStatusChange("aprobada")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "aprobada"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
+        >
+          Aprobadas
+        </button>
+        <button
+          onClick={() => handleStatusChange("pagada")}
+          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "pagada"
+            ? "bg-gray-900 text-white border-gray-900"
+            : "bg-white text-gray-700 border-gray-300"
+            }`}
+        >
+          Pagadas
+        </button>
       </div>
 
       {/* Tabla */}
@@ -449,13 +509,14 @@ const RequisicionesCompraPage = () => {
                   <Th>Título</Th>
                   <Th>Concepto</Th>
                   <Th>Estatus</Th>
-                  <Th>Monto</Th>
+                  <Th>Precio estimado</Th>
+                  <Th>Monto final</Th>
                   <Th>Acciones</Th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pageItems.length > 0 ? (
-                  pageItems.map((r) => {
+                {allItems.length > 0 ? (
+                  allItems.map((r) => {
                     const statusStyles = getStatusStyles(r.status);
                     const canMarkAsPurchased = [
                       "aprobada",
@@ -482,10 +543,11 @@ const RequisicionesCompraPage = () => {
                             {statusStyles.label}
                           </span>
                         </Td>
+                        <Td>
+                          {r.cantidadEstimada ? currency(r.cantidadEstimada) : "N/A"}
+                        </Td>
                         <Td align="right">
-                          {typeof r.cantidad_dinero === "number"
-                            ? currency(r.cantidad_dinero)
-                            : "N/A"}
+                          {r.cantidadActual ? currency(r.cantidadActual) : "N/A"}
                         </Td>
                         <Td>
                           <div className="flex items-center gap-2">
@@ -526,14 +588,6 @@ const RequisicionesCompraPage = () => {
                       <p className="text-gray-600 mb-4">
                         Cuando existan requisiciones, aparecerán aquí.
                       </p>
-                      <button
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        onClick={() => {
-                          /* Navegar a crear requisición */
-                        }}
-                      >
-                        Crear Nueva Requisición
-                      </button>
                     </td>
                   </tr>
                 )}
@@ -544,210 +598,323 @@ const RequisicionesCompraPage = () => {
       )}
 
       {/* Paginación */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 mt-6">
-          <button
-            onClick={() => setPage(1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
-            aria-label="Ir a la primera página"
-          >
-            1
-          </button>
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6">
           <button
             onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-            disabled={currentPage <= 1}
+            disabled={!pagination.hasPreviousPage}
             className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
             aria-label="Página anterior"
           >
             Anterior
           </button>
+
           <span className="px-4 py-2 text-gray-600">
-            Página {currentPage} de {totalPages}
+            Página {pagination.currentPage} de {pagination.totalPages}
           </span>
+
           <button
             onClick={() => setPage((prev) => prev + 1)}
-            disabled={currentPage >= totalPages}
+            disabled={!pagination.hasNextPage}
             className="px-4 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
             aria-label="Página siguiente"
           >
             Siguiente
           </button>
-          <button
-            onClick={() => setPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 bg-gray-900 text-white rounded-lg disabled:opacity-50 hover:bg-gray-800 transition-colors"
-            aria-label="Ir a la última página"
-          >
-            Última
-          </button>
         </div>
       )}
 
       {/* Modal Detalles */}
-      {isDetailModalOpen && selectedRequisicion && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
-          onClick={closeDetailModal}
-        >
+      {
+        isDetailModalOpen && selectedRequisicion && (
           <div
-            className="bg-white rounded-xl shadow-2xl w-full sm:max-w-3xl h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            onClick={closeDetailModal}
           >
-            {/* Header */}
-            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
-              <div className="flex items-center gap-3">
-                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
-                  <Eye className="w-5 h-5" />
+            <div
+              className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Detalles de la Requisición
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Vista resumen con información clave
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Detalles de la Requisición
-                  </h2>
-                  <p className="text-xs text-gray-500">
-                    Vista resumen con información clave
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={closeDetailModal}
-                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Cerrar modal de detalles"
-              >
-                <span className="text-2xl leading-none">&times;</span>
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-5 space-y-8">
-              <section className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 text-gray-700 border-gray-200">
-                  RCP: {selectedRequisicion.rcp || "N/A"}
-                </span>
-                <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    getStatusStyles(selectedRequisicion.status).bg
-                  } ${getStatusStyles(selectedRequisicion.status).text} ${
-                    getStatusStyles(selectedRequisicion.status).border
-                  }`}
+                <button
+                  onClick={closeDetailModal}
+                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label="Cerrar"
                 >
-                  {getStatusStyles(selectedRequisicion.status).icon}
-                  {getStatusStyles(selectedRequisicion.status).label}
-                </span>
-              </section>
+                  <span className="text-2xl leading-none">&times;</span>
+                </button>
+              </div>
 
-              <section>
-                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-600" />
-                  Información general
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Detail label="Título" value={selectedRequisicion.titulo} />
-                  <Detail
-                    label="Fecha"
-                    value={
-                      selectedRequisicion.fechaSolicitud
-                        ? new Date(
+              {/* Body */}
+              <div className="px-6 py-5 space-y-8">
+                {/* Encabezado con badges */}
+                <section className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 text-gray-700 border-gray-200">
+                    RCP: {selectedRequisicion.rcp || "N/A"}
+                  </span>
+
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
+                    {selectedRequisicion.requisicionType === "consumibles"
+                      ? "Consumibles"
+                      : selectedRequisicion.requisicionType === "refacciones"
+                        ? "Refacciones"
+                        : selectedRequisicion.requisicionType === "filtros"
+                          ? "Filtros"
+                          : "Tipo N/A"}
+                  </span>
+
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : lower(selectedRequisicion.status) === "pendiente"
+                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                        : "bg-red-50 text-red-700 border-red-200"
+                      }`}
+                  >
+                    {selectedRequisicion.status || "Sin status"}
+                  </span>
+                </section>
+
+                {/* Grid datos principales */}
+                <section>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    Información general
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Detail label="Título" value={selectedRequisicion.titulo} />
+                    <Detail label="HRS" value={selectedRequisicion.hrs} />
+                    <Detail
+                      label="Concepto"
+                      value={selectedRequisicion.concepto || "Sin concepto"}
+                    />
+                    <Detail
+                      label="Método de pago"
+                      value={selectedRequisicion.metodo_pago}
+                    />
+                    <Detail label="Prioridad" value={selectedRequisicion.prioridad} />
+                    <Detail
+                      label="Fecha creación"
+                      value={
+                        selectedRequisicion.fechaSolicitud
+                          ? new Date(
                             selectedRequisicion.fechaSolicitud
                           ).toLocaleDateString()
-                        : "N/A"
-                    }
-                  />
-                  <Detail
-                    label="Concepto"
-                    value={selectedRequisicion.concepto || "N/A"}
-                  />
-                  <Detail
-                    label="Monto"
-                    value={currency(selectedRequisicion.cantidad_dinero)}
-                  />
-                  <Detail
-                    label="Prioridad"
-                    value={selectedRequisicion.prioridad || "N/A"}
-                  />
-                  <Detail
-                    label="Almacén Destino"
-                    value={
-                      selectedRequisicion.almacenDestino?.name || "N/A"
-                    }
-                  />
-                </div>
-              </section>
-
-              <section>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">
-                  Items
-                </h3>
-                {selectedRequisicion.items?.length > 0 ? (
-                  <div className="rounded-lg border border-gray-100 overflow-hidden">
-                    <table className="min-w-full divide-y divide-gray-100">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <Th>ID Producto</Th>
-                          <Th>Descripción / Producto</Th>
-                          <Th>Cantidad</Th>
-                          <Th>Unidad</Th>
-                          <Th>Precio Unitario</Th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {selectedRequisicion.items.map((it, i) => (
-                          <tr
-                            key={i}
-                            className="hover:bg-gray-50 transition-colors"
-                          >
-                            <Td>{it.producto?.id || "N/A"}</Td>
-                            <Td>
-                              {it.descripcion || it.producto?.name || "N/A"}
-                            </Td>
-                            <Td>{it.cantidadSolicitada ?? "N/A"}</Td>
-                            <Td>{it.producto?.unidad ?? "N/A"}</Td>
-                            <Td align="right">
-                              {typeof it.producto?.precio === "string"
-                                ? currency(parseFloat(it.producto.precio))
-                                : "N/A"}
-                            </Td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                          : "N/A"
+                      }
+                    />
+                    <Detail
+                      label="Fecha revisión"
+                      value={
+                        selectedRequisicion.fechaRevision
+                          ? new Date(
+                            selectedRequisicion.fechaRevision
+                          ).toLocaleDateString()
+                          : "N/A"
+                      }
+                    />
                   </div>
-                ) : (
-                  <p className="text-gray-600">
-                    No hay items registrados.
-                  </p>
-                )}
-              </section>
-            </div>
+                </section>
 
-            {/* Contenido oculto para exportar */}
-            <PrintableRequisicion requisicion={selectedRequisicion} />
+                {/* Relacionados */}
+                <section>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    Relacionados
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Detail label="Pedido por" value={selectedRequisicion.pedidoPor?.name} />
+                    <Detail label="Revisado por" value={selectedRequisicion.revisadoPor?.name} />
+                    <Detail
+                      label="Almacén Destino"
+                      value={selectedRequisicion.almacenDestino?.name}
+                    />
+                    <Detail label="Almacén Cargo" value={selectedRequisicion.almacenCargo?.name} />
+                  </div>
+                </section>
 
-            {/* Footer modal */}
-            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-100 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
-              <button
-                onClick={() =>
-                  printRequisicion(
-                    `req-print-${selectedRequisicion.id}`,
-                    `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
-                  )
-                }
-                className="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 transition-colors"
-                aria-label="Imprimir o guardar como PDF"
-              >
-                Imprimir / Guardar PDF
-              </button>
-              <button
-                onClick={closeDetailModal}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                aria-label="Cerrar modal"
-              >
-                Cerrar
-              </button>
+
+                <section>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-blue-600" />
+                    Observaciones
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <Detail label="Notas de almacen" value={selectedRequisicion.observaciones} />
+                    <Detail label="Notas de compras" value={selectedRequisicion.observacionesCompras} />
+                  </div>
+                </section>
+
+
+                {/* Items */}
+                <section>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-blue-600" />
+                    Items
+                  </h3>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      {selectedRequisicion.requisicionType === "consumibles"
+                        ? "Consumibles"
+                        : selectedRequisicion.requisicionType === "refacciones"
+                          ? "Refacciones"
+                          : selectedRequisicion.requisicionType === "filtros"
+                            ? "Filtros"
+                            : "Tipo N/A"}
+                    </h3>
+                    {selectedRequisicion.insumos?.length > 0 ? (
+                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr key={selectedRequisicion.insumos?.id}>
+                              <Th>Descripción</Th>
+                              <Th>Unidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
+                              <Th>Precio Unitario</Th>
+                              <Th>Tipo de moneda</Th>
+                              <Th>Pagado</Th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {
+                              selectedRequisicion.insumos.map((item, i) => (
+                                <tr key={i}>
+                                  <Td>{item.descripcion}</Td>
+                                  <Td>{item.unidad}</Td>
+                                  <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
+                                  <Td>{item.precio}</Td>
+                                  <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                                </tr>
+                              ))
+                            }
+
+                          </tbody>
+                        </table>
+                      </div>
+
+                    ) : selectedRequisicion.refacciones?.length > 0 ? (
+                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr key={selectedRequisicion.refacciones?.id}>
+                              <Th>ID</Th>
+                              <Th>No. Economico</Th>
+                              <Th>Unidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
+                              <Th>Precio</Th>
+                              <Th>Moneda</Th>
+                              <Th>Pagado</Th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {
+                              selectedRequisicion.refacciones.map((item, i) => (
+                                <tr key={i}>
+                                  <Td>{item.customId}</Td>
+                                  <Td>{item.no_economico}</Td>
+                                  <Td>{item.unidad}</Td>
+                                  <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
+                                  <Td>{item.precio}</Td>
+                                  <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                                </tr>
+                              ))
+                            }
+
+                          </tbody>
+                        </table>
+                      </div>
+
+                    ) : selectedRequisicion.filtros?.length > 0 ? (
+                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr key={selectedRequisicion.filtros?.id}>
+                              <Th>ID</Th>
+                              <Th>No. Economico</Th>
+                              <Th>Unidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
+                              <Th>Precio</Th>
+                              <Th>Moneda</Th>
+                              <Th>Pagado</Th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {
+                              selectedRequisicion.filtros.map((item, i) => (
+                                <tr key={i}>
+                                  <Td>{item.customId}</Td>
+                                  <Td>{item.no_economico}</Td>
+                                  <Td>{item.unidad}</Td>
+                                  <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
+                                  <Td>{item.precio}</Td>
+                                  <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                                </tr>
+                              ))
+                            }
+
+                          </tbody>
+                        </table>
+                      </div>
+
+                    ) : (
+
+                      <p className="text-gray-600">
+                        No hay items registrados en esta requisición
+                      </p>
+                    )}
+
+                  </div>
+                </section>
+              </div>
+              {/* Contenido oculto para exportar (layout imprimible) */}
+              <PrintableRequisicion requisicion={selectedRequisicion} />
+              {/* Footer */}
+              <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
+                <button
+                  onClick={() =>
+                    printRequisicion(
+                      `req-print-${selectedRequisicion.id}`,
+                      `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
+                    )
+                  }
+                  className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                >
+                  Imprimir / Guardar PDF
+                </button>
+                <button
+                  onClick={closeDetailModal}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Modal para Marcar como Pagada */}
       {isPurchaseModalOpen && selectedRequisicion && (
@@ -759,6 +926,7 @@ const RequisicionesCompraPage = () => {
             className="bg-white rounded-xl shadow-2xl w-full sm:max-w-md h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Header */}
             <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
               <div className="flex items-center gap-3">
                 <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600">
@@ -783,6 +951,94 @@ const RequisicionesCompraPage = () => {
             </div>
 
             <div className="px-6 py-5 space-y-4">
+              {/* Items Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Selecciona items a marcar como pagados
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-3 bg-gray-50">
+                  {selectedRequisicion.insumos?.map((item) => (
+                    <label key={item.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.includes(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {item.descripcion} - {item.cantidad} {item.unidad}
+                      </span>
+                      {selectedItemIds.includes(item.id) && (
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.cantidad}
+                          value={selectedItemQuantities[item.id] || item.cantidad}
+                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
+                          placeholder="Cantidad"
+                        />
+                      )}
+
+                    </label>
+                  ))}
+                  {selectedRequisicion.refacciones?.map((item) => (
+                    <label key={item.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.includes(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {item.customId} - {item.cantidad} {item.unidad}
+                      </span>
+                      {selectedItemIds.includes(item.id) && (
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.cantidad}
+                          value={selectedItemQuantities[item.id] || item.cantidad}
+                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
+                          placeholder="Cantidad"
+                        />
+                      )}
+
+                    </label>
+                  ))}
+                  {selectedRequisicion.filtros?.map((item) => (
+                    <label key={item.id} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.includes(item.id)}
+                        onChange={() => toggleItemSelection(item.id)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {item.customId} - {item.cantidad} {item.unidad}
+                      </span>
+
+                      {selectedItemIds.includes(item.id) && (
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.cantidad}
+                          value={selectedItemQuantities[item.id] || item.cantidad}
+                          onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value))}
+                          className="w-16 px-2 py-1 text-sm border border-gray-300 rounded"
+                          placeholder="Cantidad"
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedItemIds.length} item(s) seleccionado(s)
+                </p>
+              </div>
+
+              {/* Rest of form */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Método de Pago
@@ -796,7 +1052,6 @@ const RequisicionesCompraPage = () => {
                     })
                   }
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
-                  aria-label="Seleccionar método de pago"
                 >
                   <option value="orden de compra">Orden de Compra</option>
                   <option value="pago">Pago</option>
@@ -804,6 +1059,7 @@ const RequisicionesCompraPage = () => {
                   <option value="-">-</option>
                 </select>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Observaciones
@@ -819,9 +1075,9 @@ const RequisicionesCompraPage = () => {
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm"
                   rows="4"
                   placeholder="Ingresa observaciones"
-                  aria-label="Observaciones"
                 />
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Fecha Esperada
@@ -835,13 +1091,11 @@ const RequisicionesCompraPage = () => {
                       fechaEsperada: e.target.value,
                     })
                   }
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm ${
-                    purchaseForm.submitted && !purchaseForm.fechaEsperada
-                      ? "border-red-500"
-                      : "border-gray-200"
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm ${purchaseForm.submitted && !purchaseForm.fechaEsperada
+                    ? "border-red-500"
+                    : "border-gray-200"
+                    }`}
                   required
-                  aria-label="Fecha esperada"
                 />
                 {purchaseForm.submitted && !purchaseForm.fechaEsperada && (
                   <p className="text-xs text-red-500 mt-1">
@@ -851,11 +1105,11 @@ const RequisicionesCompraPage = () => {
               </div>
             </div>
 
+            {/* Footer */}
             <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-100 px-6 py-4 rounded-b-xl flex gap-2 justify-end">
               <button
                 onClick={closePurchaseModal}
                 className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                aria-label="Cancelar"
               >
                 Cancelar
               </button>
@@ -863,7 +1117,6 @@ const RequisicionesCompraPage = () => {
                 onClick={handleMarkPurchased}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors flex items-center gap-2"
                 disabled={loading}
-                aria-label="Confirmar pago"
               >
                 {loading ? (
                   <svg

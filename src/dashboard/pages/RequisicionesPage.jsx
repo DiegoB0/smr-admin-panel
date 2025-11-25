@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { IoSearch } from "react-icons/io5";
 import {
+  Check,
+  X,
   FileText,
   CircleDollarSign,
   CheckCheck,
@@ -16,6 +18,7 @@ import {
   Plus,
   Trash2,
   ClipboardList,
+  CheckCircle2,
 } from "lucide-react";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import { useFiltros } from "../../hooks/useFiltros";
@@ -622,6 +625,12 @@ const RequisicionesPage = () => {
     }
   };
 
+  const currency = (n) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(n || 0);
+
   // Stats 
   const StatsSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -839,10 +848,13 @@ const RequisicionesPage = () => {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Precio
+                    Tipo de requisición
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Tipo de requisición
+                    Precio estimado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Monto final
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Acciones
@@ -884,14 +896,6 @@ const RequisicionesPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {typeof r.cantidad_dinero === "number"
-                          ? new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          }).format(r.cantidad_dinero)
-                          : "N/A"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
                         {r.requisicionType === "refacciones"
                           ? "Refacciones"
                           : r.requisicionType === "filtros"
@@ -900,44 +904,92 @@ const RequisicionesPage = () => {
                               ? "Consumibles"
                               : "N/A"}
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {r.cantidadEstimada ? currency(r.cantidadEstimada) : "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {r.cantidadActual ? currency(r.cantidadActual) : "N/A"}
+                      </td>
+
                       <td className="px-6 py-4 text-sm flex space-x-2">
-                        <button
-                          onClick={() => openDetailModal(r)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="Ver detalles"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-
-                        {isAdminAlmacen && (
-                          <button
-                            onClick={() => openEditModal(r)}
-                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="Editar detalles"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                        )
-                        }
-
-                        {isAdmin && lower(r.status) === "pendiente" && (
+                        {lower(r.status) === "pagada" ? (
                           <>
                             <button
-                              onClick={() => handleApprove(r.id)}
-                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                              title="Aprobar"
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Ver detalles"
                             >
-                              <CircleCheck className="w-4 h-4" />
+                              <Eye className="w-4 h-4" />
                             </button>
+                            <span className="text-blue-800 text-sm bg-blue-200 rounded-xl px-2 py-1 flex items-center gap-2">
+                              <CheckCircle2 className="w-3 h-3" />
+                              pagada
+                            </span>
+
+                          </>
+
+                        ) : lower(r.status) === "aprobada" ? (
+                          <>
                             <button
-                              onClick={() => handleReject(r.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Rechazar"
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Ver detalles"
                             >
-                              <CircleX className="w-4 h-4" />
+                              <Eye className="w-4 h-4" />
                             </button>
+                            <span className="text-green-800 text-sm bg-green-200 rounded-xl px-2 py-1 flex items-center gap-2">
+                              <CheckCircle2 className="w-3 h-3" />
+                              abrobado
+                            </span>
+
+                          </>
+
+                        ) : (
+
+
+                          <>
+                            <button
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Ver detalles"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            {isAdminAlmacen && (
+                              <button
+                                onClick={() => openEditModal(r)}
+                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                title="Editar detalles"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )
+                            }
+
+                            {isAdmin && lower(r.status) === "pendiente" && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(r.id)}
+                                  className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                  title="Aprobar"
+                                >
+                                  <CircleCheck className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleReject(r.id)}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                  title="Rechazar"
+                                >
+                                  <CircleX className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+
+
                           </>
                         )}
+
                       </td>
                     </tr>
                   ))
@@ -1457,7 +1509,7 @@ const RequisicionesPage = () => {
                                 Moneda (opcional)
                               </label>
                               <select
-                                value={item.currency || "USD"}
+                                value={item.currency || "no especificado"}
                                 onChange={(e) =>
                                   updateItem(index, "currency", e.target.value)
                                 }
@@ -1546,7 +1598,7 @@ const RequisicionesPage = () => {
             onClick={closeDetailModal}
           >
             <div
-              className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
+              className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -1697,9 +1749,11 @@ const RequisicionesPage = () => {
                             <tr key={selectedRequisicion.insumos?.id}>
                               <Th>Descripción</Th>
                               <Th>Unidad</Th>
-                              <Th>Cantidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
                               <Th>Precio Unitario</Th>
                               <Th>Tipo de moneda</Th>
+                              <Th>Pagado</Th>
 
                             </tr>
                           </thead>
@@ -1710,8 +1764,10 @@ const RequisicionesPage = () => {
                                   <Td>{item.descripcion}</Td>
                                   <Td>{item.unidad}</Td>
                                   <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
                                   <Td>{item.precio}</Td>
                                   <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
                                 </tr>
                               ))
                             }
@@ -1728,9 +1784,11 @@ const RequisicionesPage = () => {
                               <Th>ID</Th>
                               <Th>No. Economico</Th>
                               <Th>Unidad</Th>
-                              <Th>Cantidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
                               <Th>Precio</Th>
                               <Th>Moneda</Th>
+                              <Th>Pagado</Th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
@@ -1741,8 +1799,10 @@ const RequisicionesPage = () => {
                                   <Td>{item.no_economico}</Td>
                                   <Td>{item.unidad}</Td>
                                   <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
                                   <Td>{item.precio}</Td>
                                   <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
                                 </tr>
                               ))
                             }
@@ -1759,10 +1819,11 @@ const RequisicionesPage = () => {
                               <Th>ID</Th>
                               <Th>No. Economico</Th>
                               <Th>Unidad</Th>
-                              <Th>Cantidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
                               <Th>Precio</Th>
                               <Th>Moneda</Th>
-
+                              <Th>Pagado</Th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
@@ -1773,8 +1834,10 @@ const RequisicionesPage = () => {
                                   <Td>{item.no_economico}</Td>
                                   <Td>{item.unidad}</Td>
                                   <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
                                   <Td>{item.precio}</Td>
                                   <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
                                 </tr>
                               ))
                             }
