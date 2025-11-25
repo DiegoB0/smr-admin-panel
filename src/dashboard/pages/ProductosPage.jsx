@@ -93,46 +93,48 @@ function ProductosPage() {
   }, [page, limit, debouncedSearch])
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+
     const payload = {
-      id: productoId,
       name,
       description,
       unidad,
-      precio,
-      imageUrl: previewImage || imageUrl,
+      imageUrl: previewImage || imageUrl || undefined,
+    };
+
+    // Only include customId if it's not empty
+    if (productoId.trim()) {
+      payload.customId = productoId;
     }
 
     const updatePayload = {
       name,
       description,
       unidad,
-      precio,
-      imageUrl: previewImage || imageUrl,
-    }
+      imageUrl: previewImage || imageUrl || undefined,
+    };
 
     try {
       if (isEditing) {
-        await updateProducto(editId, updatePayload)
-        Swal.fire("Actualizado", "Producto actualizado con éxito", "success")
+        await updateProducto(editId, updatePayload);
+        Swal.fire("Actualizado", "Producto actualizado con éxito", "success");
       } else {
-        await createProducto(payload)
-        Swal.fire("Registrado", "Producto agregado con éxito", "success")
+        await createProducto(payload);
+        Swal.fire("Registrado", "Producto agregado con éxito", "success");
       }
-      fetchProductos()
-      handleCloseModal()
+      fetchProductos();
+      handleCloseModal();
     } catch (err) {
-      console.error(err)
-      Swal.fire("Error", err.message || "Ocurrió un error", "error")
+      console.error(err);
+      Swal.fire("Error", err.message || "Ocurrió un error", "error");
     }
-  }
+  };
 
   const handleEdit = (producto) => {
     setIsEditing(true)
     setEditId(producto.id)
     setProductoId(producto.id)
     setName(producto.name)
-    setPrecio(producto.precio)
     setDescription(producto.description)
     setUnidad(producto.unidad)
     setImageUrl(producto.imageUrl)
@@ -308,10 +310,6 @@ function ProductosPage() {
                       Unidad
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <DollarSign className="w-4 h-4 inline mr-1" />
-                      Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <Image className="w-4 h-4 inline mr-1" />
                       Imagen
                     </th>
@@ -328,7 +326,6 @@ function ProductosPage() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{p.description}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{p.unidad}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.precio || 0}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <img
                             src={p.imageUrl || "/placeholder.svg?height=48&width=48&query=product"}
@@ -424,13 +421,12 @@ function ProductosPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     <Tag className="w-4 h-4 inline mr-1" />
-                    ID (Refacción) *
+                    ID (Refacción) <span className="text-gray-500 text-xs">(opcional)</span>
                   </label>
                   <input
                     type="text"
                     value={productoId}
                     onChange={(e) => setProductoId(e.target.value)}
-                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
@@ -469,18 +465,6 @@ function ProductosPage() {
                   type="text"
                   value={unidad}
                   onChange={(e) => setUnidad(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <DollarSign className="w-4 h-4 inline mr-1" />
-                  Precio
-                </label>
-                <input
-                  type="text"
-                  value={precio}
-                  onChange={(e) => setPrecio(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>

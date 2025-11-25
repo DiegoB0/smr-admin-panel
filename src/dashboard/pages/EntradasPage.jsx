@@ -819,6 +819,7 @@ const EntradasPage = () => {
                         const itemName = it.insumoItem?.descripcion ||
                           it.filtroItem?.descripcion ||
                           it.refaccionItem?.descripcion ||
+                          it.descripcion || 
                           "Sin nombre";
 
                         const itemId = it.filtroItem?.customId || it.refaccionItem?.customId || "No especificado"

@@ -163,18 +163,6 @@ function Sidebar() {
                     </Link>
                   </li>
 
-                  <li>
-                    <Link
-                      to="/dashboard/filtros"
-                      className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/filtros' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                        }`}
-                    >
-                      <span className='mt-1'>
-                        <IoIosFunnel />
-                      </span>
-                      Filtros
-                    </Link>
-                  </li>
 
                   <li>
                     <Link
@@ -195,64 +183,79 @@ function Sidebar() {
 
             {
               (isAdminAlmacen || isAdmin) && (
-                <li>
-                  <button
-                    className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpenAlmacen ? 'border-l-2' : ''}`}
-                    onClick={toggleDropdownAlmacen}
-                  >
-                    <div className='flex gap-2'>
+                <>
+
+                  <li>
+                    <Link
+                      to="/dashboard/filtros"
+                      className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === '/dashboard/filtros' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                        }`}
+                    >
                       <span className='mt-1'>
-                        <IoStorefront />
+                        <IoIosFunnel />
                       </span>
-                      <div className='flex gap-2 justify-between w-full'>
-                        Administrar almacen
+                      Filtros
+                    </Link>
+                  </li>
+                  <li>
+                    <button
+                      className={`block w-full py-2 px-4 text-left rounded-md mb-2 hover:border-l-2 border-red-600 ${isOpenAlmacen ? 'border-l-2' : ''}`}
+                      onClick={toggleDropdownAlmacen}
+                    >
+                      <div className='flex gap-2'>
                         <span className='mt-1'>
-                          <MdKeyboardArrowUp
-                            className={`transition-transform duration-300 ${isOpenAlmacen ? '-rotate-180' : 'rotate-0'}`}
-                          />
+                          <IoStorefront />
                         </span>
+                        <div className='flex gap-2 justify-between w-full'>
+                          Administrar almacen
+                          <span className='mt-1'>
+                            <MdKeyboardArrowUp
+                              className={`transition-transform duration-300 ${isOpenAlmacen ? '-rotate-180' : 'rotate-0'}`}
+                            />
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
 
-                  {isOpenAlmacen && (
-                    <ul className="pl-4">
-                      <li>
-                        <Link
-                          to="/dashboard/almacenes"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/almacenes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                            }`}
-                        >
-                          Almacenes
-                        </Link>
-                      </li>
+                    {isOpenAlmacen && (
+                      <ul className="pl-4">
+                        <li>
+                          <Link
+                            to="/dashboard/almacenes"
+                            className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/almacenes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                              }`}
+                          >
+                            Almacenes
+                          </Link>
+                        </li>
 
-                      {/* { */}
-                      {/*   isAdminAlmacen && ( */}
-                      {/*     <li> */}
-                      {/*       <Link */}
-                      {/*         to="/dashboard/reportes" */}
-                      {/*         className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/reportes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
-                      {/*           }`} */}
-                      {/*       > */}
-                      {/*         Reportes */}
-                      {/*       </Link> */}
-                      {/*     </li> */}
-                      {/*   ) */}
-                      {/* } */}
+                        {/* { */}
+                        {/*   isAdminAlmacen && ( */}
+                        {/*     <li> */}
+                        {/*       <Link */}
+                        {/*         to="/dashboard/reportes" */}
+                        {/*         className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/reportes' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : '' */}
+                        {/*           }`} */}
+                        {/*       > */}
+                        {/*         Reportes */}
+                        {/*       </Link> */}
+                        {/*     </li> */}
+                        {/*   ) */}
+                        {/* } */}
 
-                      <li>
-                        <Link
-                          to="/dashboard/requisiciones"
-                          className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/requisiciones' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
-                            }`}
-                        >
-                          Requisiciones
-                        </Link>
-                      </li>
-                    </ul>
-                  )}
-                </li>
+                        <li>
+                          <Link
+                            to="/dashboard/requisiciones"
+                            className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 hover:bg-gray-800 ${location.pathname === '/dashboard/requisiciones' ? 'border-l-2 text-red-400 font-semibold bg-gray-800' : ''
+                              }`}
+                          >
+                            Requisiciones
+                          </Link>
+                        </li>
+                      </ul>
+                    )}
+                  </li>
+                </>
               )
             }
 
