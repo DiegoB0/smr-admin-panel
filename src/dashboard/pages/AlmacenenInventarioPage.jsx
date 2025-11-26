@@ -121,11 +121,22 @@ function AlmacenenInventarioPage() {
           createEntrada: true,
         });
       } else {
+        const { value: prestadaPara } = await Swal.fire({
+          title: "¿Quién recibe?",
+          input: "text",
+          inputPlaceholder: "Nombre de quien recibe el producto",
+          showCancelButton: true,
+        });
+
+        if (!prestadaPara) return;
+
         await removeStock({
           almacenId: id,
           productId: producto.producto.id,
           cantidad: Number(cantidad),
+          prestadaPara,
         });
+
       }
 
       Swal.fire("Éxito", "Stock actualizado correctamente", "success");
@@ -376,7 +387,7 @@ function AlmacenenInventarioPage() {
                     stockProductos.map((producto) => (
                       <tr key={producto.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {producto?.producto?.id}
+                          {producto?.producto?.customId || "Sin especificar"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {producto?.producto?.name || "—"}

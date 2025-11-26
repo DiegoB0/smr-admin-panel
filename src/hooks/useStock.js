@@ -13,9 +13,9 @@ export function useStock() {
   const findProductoInStock = (params = {}) =>
     api.get("almacenes/products/find_product", { params });
 
-  const removeStock = ({ almacenId, productId, cantidad }) =>
+  const removeStock = ({ almacenId, productId, cantidad, prestadaPara }) =>
     api.delete("almacenes/products/remove_stock", {
-      params: { almacenId, productId, cantidad }
+      params: { almacenId, productId, cantidad, prestadaPara }
     });
 
   return {
