@@ -877,7 +877,7 @@ const SalidasPage = () => {
                         key={idx}
                         className="hover:bg-gray-50 transition-colors duration-200"
                       >
-                        <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                        <td className="px-4 py-2 text-sm text-gray-700">
                           {it.cantidadRetirada ?? it.cantidad ?? "-"}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-700">

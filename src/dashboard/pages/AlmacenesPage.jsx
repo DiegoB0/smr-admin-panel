@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { IoIosNotifications } from "react-icons/io";
 import { FaCirclePlus } from "react-icons/fa6"
-import { MapPin, HardHat, User, Edit, Trash2, Eye, Package, Search, TrendingUp, AlertTriangle, PackageCheck, Box } from "lucide-react" // Agregué PackageCheck y Box para íconos
+import { MapPin, HardHat, User, Edit, Trash2, Eye, Package, Search, TrendingUp, AlertTriangle, PackageCheck, Box, X } from "lucide-react"
 import Swal from "sweetalert2"
 import { useAlmacenes } from "../../hooks/useAlmacenes"
 import { useObras } from "../../hooks/useObras"
@@ -24,7 +24,7 @@ function AlmacenesPage() {
   const [obras, setObras] = useState([])
 
   const [selectedObra, setSelectedObra] = useState("")
-  const [selectedEncargado, setSelectedEncargado] = useState("")
+  const [selectedEncargados, setSelectedEncargados] = useState([])
   const [loading, setLoading] = useState(false)
 
   const [name, setName] = useState("")
@@ -80,10 +80,10 @@ function AlmacenesPage() {
     }
   }
 
-  const fetchEncargados = async (almacenId) => {
+  const fetchEncargados = async () => {
     setLoading(true);
     try {
-      const res = await listEncargados(almacenId);
+      const res = await listEncargados();
       setEncargados(res.data);
     } catch (err) {
       console.error(err);
@@ -115,7 +115,12 @@ function AlmacenesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const payload = { name, location, obraId: selectedObra, encargadoId: selectedEncargado }
+    const payload = {
+      name,
+      location,
+      obraId: selectedObra,
+      encargadoIds: selectedEncargados,
+    }
 
     try {
       if (isEditing) {
@@ -163,10 +168,22 @@ function AlmacenesPage() {
     setName(almacen.name)
     setLocation(almacen.location)
     setSelectedObra(almacen.obraId)
-    setSelectedEncargado(almacen.encargadoId)
+    setSelectedEncargados(
+      almacen.encargados?.map((e) => e.user?.id || e.id) || []
+    )
     setIsModalOpen(true)
-    fetchEncargados(almacen.id)
+    fetchEncargados()
     fetchObras(almacen.id)
+  }
+
+  const toggleEncargado = (encargadoId) => {
+    setSelectedEncargados((prev) => {
+      if (prev.includes(encargadoId)) {
+        return prev.filter((id) => id !== encargadoId)
+      } else {
+        return [...prev, encargadoId]
+      }
+    })
   }
 
   const closeModal = () => {
@@ -174,7 +191,7 @@ function AlmacenesPage() {
     setEditId(null)
     setName("")
     setLocation("")
-    setSelectedEncargado("")
+    setSelectedEncargados([])
     setSelectedObra("")
     setIsModalOpen(false)
   }
@@ -182,7 +199,7 @@ function AlmacenesPage() {
   // Componente de estadísticas
   const StatsSection = () => {
     const totalAlmacenes = almacenes.length
-    const activeAlmacenes = almacenes.length // Todos están activos según tu lógica actual
+    const activeAlmacenes = almacenes.length
 
     const stats = [
       {
@@ -263,7 +280,11 @@ function AlmacenesPage() {
         </div>
         <div className="flex items-center text-sm text-gray-600">
           <Package className="w-4 h-4 mr-2" />
-          <span>Encargado: {almacen.encargadoName || "Sin Encargado"}</span>
+          <span>
+            Encargados: {almacen.encargados?.length > 0
+              ? almacen.encargados.map((e) => e.user?.name || e.name).join(", ")
+              : "Sin Encargado"}
+          </span>
         </div>
 
         <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
@@ -279,7 +300,6 @@ function AlmacenesPage() {
           <span className="mt-1"> <Eye /> </span>
           Ver inventario</button>
 
-        {/* Botones nuevos: Entradas y Salidas */}
         <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
           onClick={() => navigate(`/dashboard/entradas/${almacen.id}`)}
         >
@@ -445,8 +465,13 @@ function AlmacenesPage() {
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">{isEditing ? "Editar Almacén" : "Nuevo Almacén"}</h2>
-              <button onClick={closeModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {isEditing ? "Editar Almacén" : "Nuevo Almacén"}
+              </h2>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
                 <span className="text-gray-400 hover:text-gray-600 text-xl">&times;</span>
               </button>
             </div>
@@ -492,14 +517,13 @@ function AlmacenesPage() {
                   value={selectedObra}
                   onChange={(e) => setSelectedObra(e.target.value)}
                   required
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent `}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   {!isEditing && (
                     <option value="" disabled>
                       — Selecciona una obra —
                     </option>
                   )}
-
 
                   {obras.map((obra) => (
                     <option key={obra.id} value={obra.id}>
@@ -512,25 +536,56 @@ function AlmacenesPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <User className="w-4 h-4 inline mr-1" />
-                  Encargado
+                  Encargados
                 </label>
-                <select
-                  value={selectedEncargado}
-                  onChange={(e) => setSelectedEncargado(e.target.value)}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent `}
-                >
-                  {!isEditing && (
-                    <option value="" disabled>
-                      — Selecciona una encargado —
-                    </option>
+                <div className="space-y-2 border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto">
+                  {encargados.length > 0 ? (
+                    encargados.map((encargado) => (
+                      <label
+                        key={encargado.id}
+                        className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedEncargados.includes(
+                            encargado.id,
+                          )}
+                          onChange={() => toggleEncargado(encargado.id)}
+                          className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-gray-700">
+                          {encargado.name}
+                        </span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">
+                      No hay encargados disponibles
+                    </p>
                   )}
-
-                  {encargados.map((encargado) => (
-                    <option key={encargado.id} value={encargado.id}>
-                      {encargado.name}
-                    </option>
-                  ))}
-                </select>
+                </div>
+                {selectedEncargados.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {selectedEncargados.map((id) => {
+                      const encargado = encargados.find((e) => e.id === id);
+                      return (
+                        <span
+                          key={id}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                        >
+                          {encargado?.name}
+                          <button
+                            type="button"
+                            onClick={() => toggleEncargado(id)}
+                            className="ml-1 hover:text-blue-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
@@ -558,4 +613,3 @@ function AlmacenesPage() {
 }
 
 export default AlmacenesPage
-
