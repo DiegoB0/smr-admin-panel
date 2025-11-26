@@ -3,18 +3,22 @@
 import React, { useEffect, useState } from "react";
 import { IoSearch } from "react-icons/io5";
 import {
+  Check,
+  X,
   FileText,
   CircleDollarSign,
   CheckCheck,
   Timer,
   AlertTriangle,
   Eye,
+  Pencil,
   CircleX,
   CircleCheck,
   Search,
   Plus,
   Trash2,
   ClipboardList,
+  CheckCircle2,
 } from "lucide-react";
 import { useRequisiciones } from "../../hooks/useRequisiciones";
 import { useFiltros } from "../../hooks/useFiltros";
@@ -34,6 +38,7 @@ const RequisicionesPage = () => {
     createRequisicion,
     approveRequisicion,
     rejectRequisicion,
+    updateItems
   } = useRequisiciones();
 
   const { getFiltrosByHrs } = useFiltros();
@@ -47,6 +52,7 @@ const RequisicionesPage = () => {
     totalItems: 0,
   });
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [limitOption, setLimitOption] = useState("10");
@@ -67,6 +73,7 @@ const RequisicionesPage = () => {
   })
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
 
   const [filtroQuery, setFiltroQuery] = useState({
@@ -223,9 +230,102 @@ const RequisicionesPage = () => {
     setIsDetailModalOpen(true);
   };
 
+  const openEditModal = (requisicion) => {
+    setIsEditing(true)
+    setSelectedRequisicion(requisicion);
+
+    const itemsMap = {
+      consumibles: requisicion.insumos || [],
+      refacciones: requisicion.refacciones || [],
+      filtros: requisicion.filtros || [],
+    };
+
+    const itemsArray = itemsMap[requisicion.requisicionType] || [];
+
+    setFormData({
+      requisicionType: requisicion.requisicionType,
+      items: itemsArray.map((item) => ({
+        id: item.id,
+        customId: item.customId || "",
+        no_economico: item.no_economico || "",
+        cantidad: item.cantidad || 0,
+        unidad: item.unidad || "",
+        descripcion: item.descripcion || "",
+        precio: item.precio || 0,
+        currency: item.currency || "USD",
+        is_product: item.is_product || false,
+      })),
+    });
+
+    setIsEditModalOpen(true)
+  };
+
   const closeDetailModal = () => {
     setIsDetailModalOpen(false);
     setSelectedRequisicion(null);
+
+  };
+
+  const closeCreateModal = () => {
+    setIsCreateModalOpen(false);
+    setFormData({
+      rcp: "",
+      titulo: "",
+      observaciones: "",
+      prioridad: "alta",
+      hrm: null,
+      concepto: "",
+      requisicionType: "refacciones",
+      almacenCargoId: "",
+      proveedorId: "",
+      metodo_pago: "sin_pagar",
+      currency: "USD",
+      items: [
+        {
+          cantidad: "",
+          unidad: "",
+          descripcion: "",
+          precio: "",
+          currency: "USD",
+          customId: "",
+          no_economico: "",
+          hrs: "",
+          is_product: false,
+        },
+      ],
+    })
+  };
+
+  const closeEditModal = () => {
+    setIsEditing(false)
+    setIsEditModalOpen(false);
+    setSelectedRequisicion(null);
+    setFormData({
+      rcp: "",
+      titulo: "",
+      observaciones: "",
+      prioridad: "alta",
+      hrm: null,
+      concepto: "",
+      requisicionType: "refacciones",
+      almacenCargoId: "",
+      proveedorId: "",
+      metodo_pago: "sin_pagar",
+      currency: "USD",
+      items: [
+        {
+          cantidad: "",
+          unidad: "",
+          descripcion: "",
+          precio: "",
+          currency: "USD",
+          customId: "",
+          no_economico: "",
+          hrs: "",
+          is_product: false,
+        },
+      ],
+    })
   };
 
   const handleTipoChange = (newTipo) => {
@@ -328,7 +428,7 @@ const RequisicionesPage = () => {
         requisicionType: formData.requisicionType,
         almacenCargoId: Number(formData.almacenCargoId),
         proveedorId: Number(formData.proveedorId),
-        hrs: filtroQuery.hrs ? Number(filtroQuery.hrs): null,
+        hrs: filtroQuery.hrs ? Number(filtroQuery.hrs) : null,
         metodo_pago: formData.metodo_pago,
         currency: formData.currency,
         items: formData.items.map((item) => {
@@ -372,24 +472,19 @@ const RequisicionesPage = () => {
       const invalidItem = payload.items.find((it) => {
         const missingBasics = !it.cantidad || it.cantidad <= 0 || !it.unidad;
 
-        if (formData.requisicionType === 'consumibles') {
-          const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
-          return missingBasics || missingDescripcion;
-        }
+        const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
+        return missingBasics || missingDescripcion;
 
-        return missingBasics;
       });
 
       if (invalidItem) {
         const msg =
           formData.requisicionType === 'consumibles'
             ? 'Todos los items deben tener cantidad > 0, unidad y descripción'
-            : 'Todos los items deben tener cantidad > 0 y unidad';
+            : 'Todos los items deben tener cantidad > 0 y unidad y nombre';
         Swal.fire('Error', msg, 'error');
         return;
       }
-
-      console.log(payload)
 
       await createRequisicion(payload);
 
@@ -436,6 +531,43 @@ const RequisicionesPage = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handleEdit = async (e) => {
+    e.preventDefault();
+    const payload = {
+      requisicionType: formData.requisicionType,
+      items: formData.items.map((item) => ({
+        id: item.id,
+        cantidad: item.cantidad,
+        precio: item.precio,
+        currency: item.currency,
+        unidad: item.unidad,
+        descripcion: item.descripcion,
+        customId: item.customId,
+        no_economico: item.no_economico,
+        hrs_snapshot: item.hrs_snapshot,
+        is_product: item.is_product,
+      })),
+    };
+
+    console.log("Payload: ", payload)
+
+    try {
+
+      await updateItems(
+        selectedRequisicion.id,
+        payload,
+      );
+
+      fetchRequisiciones();
+
+      Swal.fire("Éxito", "Requisición actualizada", "success");
+      closeEditModal();
+    } catch (error) {
+      Swal.fire('Error!', 'Ocurrio un error al actualizar', 'warning');
+    }
+
+  }
 
   const handleBuscarFiltros = async () => {
     const { hrs, no_economico } = filtroQuery;
@@ -489,6 +621,12 @@ const RequisicionesPage = () => {
       Swal.fire('Error', Array.isArray(msg) ? msg.join(', ') : msg, 'error');
     }
   };
+
+  const currency = (n) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(n || 0);
 
   // Stats 
   const StatsSection = () => (
@@ -548,10 +686,17 @@ const RequisicionesPage = () => {
   const lower = (s) => (s || "").toLowerCase();
 
   const updateItem = (index, field, value) => {
+    console.log(`Updating item ${index}, field: ${field}, value:`, value);
     setFormData((prev) => {
-      const next = [...prev.items];
-      next[index] = { ...next[index], [field]: value };
-      return { ...prev, items: next };
+      const newItems = [...prev.items];
+      newItems[index] = {
+        ...newItems[index],
+        [field]: value,
+      };
+      return {
+        ...prev,
+        items: newItems,
+      };
     });
   };
 
@@ -700,10 +845,13 @@ const RequisicionesPage = () => {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Precio
+                    Tipo de requisición
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Tipo de requisición
+                    Precio estimado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Monto final
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Acciones
@@ -745,14 +893,6 @@ const RequisicionesPage = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {typeof r.cantidad_dinero === "number"
-                          ? new Intl.NumberFormat("en-US", {
-                            style: "currency",
-                            currency: "USD",
-                          }).format(r.cantidad_dinero)
-                          : "N/A"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
                         {r.requisicionType === "refacciones"
                           ? "Refacciones"
                           : r.requisicionType === "filtros"
@@ -761,33 +901,92 @@ const RequisicionesPage = () => {
                               ? "Consumibles"
                               : "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-sm flex space-x-2">
-                        <button
-                          onClick={() => openDetailModal(r)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="Ver detalles"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {r.cantidadEstimada ? currency(r.cantidadEstimada) : "N/A"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500">
+                        {r.cantidadActual ? currency(r.cantidadActual) : "N/A"}
+                      </td>
 
-                        {isAdmin && lower(r.status) === "pendiente" && (
+                      <td className="px-6 py-4 text-sm flex space-x-2">
+                        {lower(r.status) === "pagada" ? (
                           <>
                             <button
-                              onClick={() => handleApprove(r.id)}
-                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                              title="Aprobar"
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Ver detalles"
                             >
-                              <CircleCheck className="w-4 h-4" />
+                              <Eye className="w-4 h-4" />
                             </button>
+                            <span className="text-blue-800 text-sm bg-blue-200 rounded-xl px-2 py-1 flex items-center gap-2">
+                              <CheckCircle2 className="w-3 h-3" />
+                              pagada
+                            </span>
+
+                          </>
+
+                        ) : lower(r.status) === "aprobada" ? (
+                          <>
                             <button
-                              onClick={() => handleReject(r.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                              title="Rechazar"
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Ver detalles"
                             >
-                              <CircleX className="w-4 h-4" />
+                              <Eye className="w-4 h-4" />
                             </button>
+                            <span className="text-green-800 text-sm bg-green-200 rounded-xl px-2 py-1 flex items-center gap-2">
+                              <CheckCircle2 className="w-3 h-3" />
+                              abrobado
+                            </span>
+
+                          </>
+
+                        ) : (
+
+
+                          <>
+                            <button
+                              onClick={() => openDetailModal(r)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Ver detalles"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            {isAdminAlmacen && (
+                              <button
+                                onClick={() => openEditModal(r)}
+                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                title="Editar detalles"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                            )
+                            }
+
+                            {isAdmin && lower(r.status) === "pendiente" && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(r.id)}
+                                  className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                  title="Aprobar"
+                                >
+                                  <CircleCheck className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleReject(r.id)}
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                                  title="Rechazar"
+                                >
+                                  <CircleX className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+
+
                           </>
                         )}
+
                       </td>
                     </tr>
                   ))
@@ -839,7 +1038,8 @@ const RequisicionesPage = () => {
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-          onClick={() => setIsCreateModalOpen(false)}
+
+          onClick={() => closeCreateModal()}
         >
           <div
             className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex"
@@ -863,7 +1063,7 @@ const RequisicionesPage = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => setIsCreateModalOpen(false)}
+                  onClick={() => closeCreateModal()}
                   className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
                   aria-label="Cerrar"
                 >
@@ -1265,16 +1465,17 @@ const RequisicionesPage = () => {
 
                             <div className="md:col-span-2">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Descripción{' '}
                                 {formData.requisicionType === 'consumibles' ? (
-                                  <span className="text-red-500">*</span>
+                                  <span className="text-gray-700 flex items-center gap-1">
+                                    Descripcion <p className="text-red-500">*</p>
+                                  </span>
                                 ) : (
-                                  <span className="text-gray-700 text-medium">(opcional)</span>
+                                  <span className="text-gray-700 text-medium flex items-center gap-1">Nombre <p className="text-red-500">*</p></span>
                                 )}
                               </label>
                               <input
                                 type="text"
-                                placeholder="Describe el servicio (ej. mantenimiento correctivo)"
+                                placeholder="Escribe el nombre del item"
                                 value={item.descripcion}
                                 required={formData.requisicionType === 'consumibles'}
                                 onChange={(e) =>
@@ -1306,7 +1507,7 @@ const RequisicionesPage = () => {
                                 Moneda (opcional)
                               </label>
                               <select
-                                value={item.currency || "USD"}
+                                value={item.currency || "no especificado"}
                                 onChange={(e) =>
                                   updateItem(index, "currency", e.target.value)
                                 }
@@ -1326,6 +1527,10 @@ const RequisicionesPage = () => {
                                 </label>
                                 <input
                                   type="checkbox"
+                                  checked={item.is_product || false}
+                                  onChange={(e) =>
+                                    updateItem(index, "is_product", e.target.checked)
+                                  }
                                   className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                                 />
                               </div>
@@ -1342,7 +1547,7 @@ const RequisicionesPage = () => {
                 <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 -mx-6 px-6 py-4 flex items-center justify-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setIsCreateModalOpen(false)}
+                    onClick={() => closeCreateModal()}
                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     Cancelar
@@ -1391,7 +1596,7 @@ const RequisicionesPage = () => {
             onClick={closeDetailModal}
           >
             <div
-              className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
+              className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -1431,9 +1636,9 @@ const RequisicionesPage = () => {
                       ? "Consumibles"
                       : selectedRequisicion.requisicionType === "refacciones"
                         ? "Refacciones"
-                      : selectedRequisicion.requisicionType === "filtros"
-                        ? "Filtros"
-                        : "Tipo N/A"}
+                        : selectedRequisicion.requisicionType === "filtros"
+                          ? "Filtros"
+                          : "Tipo N/A"}
                   </span>
 
                   <span
@@ -1505,18 +1710,18 @@ const RequisicionesPage = () => {
                   </div>
                 </section>
 
-                {/* Equipo */}
-                <section className="print:break-inside-avoid">
 
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Equipo</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Detail label="Equipo" value={selectedRequisicion.equipo?.equipo} />
-                    <Detail
-                      label="No. Económico"
-                      value={selectedRequisicion.equipo?.no_economico}
-                    />
+                <section>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-blue-600" />
+                    Observaciones
+                  </h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    <Detail label="Notas de almacen" value={selectedRequisicion.observaciones} />
+                    <Detail label="Notas de compras" value={selectedRequisicion.observacionesCompras} />
                   </div>
                 </section>
+
 
                 {/* Items */}
                 <section>
@@ -1526,61 +1731,121 @@ const RequisicionesPage = () => {
                   </h3>
 
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">{selectedRequisicion.requisicionType === "service" ? "Servicio" : "product" ? "Refacciones" : "Consumibles"}</h3>
-                    {selectedRequisicion.items?.length > 0 ? (
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      {selectedRequisicion.requisicionType === "consumibles"
+                        ? "Consumibles"
+                        : selectedRequisicion.requisicionType === "refacciones"
+                          ? "Refacciones"
+                          : selectedRequisicion.requisicionType === "filtros"
+                            ? "Filtros"
+                            : "Tipo N/A"}
+                    </h3>
+                    {selectedRequisicion.insumos?.length > 0 ? (
                       <div className="rounded-lg border border-gray-200 overflow-hidden">
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead className="bg-gray-50">
-                            <tr>
-                              {selectedRequisicion.requisicionType === "product" ? (
-                                <>
-                                  <Th>Producto ID</Th>
-                                  <Th>Descripción</Th>
-                                  <Th>Unidad</Th>
-                                  <Th>Cantidad</Th>
-                                  <Th>Precio Unitario</Th>
-                                </>
-                              ) : (
-                                <>
-                                  <Th>Descripción</Th>
-                                  <Th>Cantidad</Th>
-                                  <Th>Unidad</Th>
-                                  <Th>Precio Unitario</Th>
-                                </>
-                              )}
+                            <tr key={selectedRequisicion.insumos?.id}>
+                              <Th>Descripción</Th>
+                              <Th>Unidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
+                              <Th>Precio Unitario</Th>
+                              <Th>Tipo de moneda</Th>
+                              <Th>Pagado</Th>
+
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
-                            {selectedRequisicion.items.map((item, i) => (
-                              <tr key={i} className="hover:bg-gray-50">
-                                {selectedRequisicion.requisicionType === "product" ? (
-                                  <>
-                                    <Td>{item.producto?.id || "N/A"}</Td>
-                                    <Td>{item.producto?.name || "Sin nombre"}</Td>
-                                    <Td>{item.producto?.unidad || "Sin unidad"}</Td>
-                                    <Td>{item.cantidadSolicitada ?? item.cantidad ?? "N/A"}</Td>
-                                    <Td>{item.producto?.precio || "N/A"}</Td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Td>{item.descripcion || "N/A"}</Td>
-                                    <Td>{item.cantidad || "N/A"}</Td>
-                                    <Td>{item.unidad || "N/A"}</Td>
-                                    <Td>
-                                      {typeof item.precio === "number" ||
-                                        (typeof item.precio === "string" &&
-                                          item.precio !== "")
-                                        ? item.precio
-                                        : "N/A"}
-                                    </Td>
-                                  </>
-                                )}
-                              </tr>
-                            ))}
+                            {
+                              selectedRequisicion.insumos.map((item, i) => (
+                                <tr key={i}>
+                                  <Td>{item.descripcion}</Td>
+                                  <Td>{item.unidad}</Td>
+                                  <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
+                                  <Td>{item.precio}</Td>
+                                  <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                                </tr>
+                              ))
+                            }
+
                           </tbody>
                         </table>
                       </div>
+
+                    ) : selectedRequisicion.refacciones?.length > 0 ? (
+                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr key={selectedRequisicion.refacciones?.id}>
+                              <Th>ID</Th>
+                              <Th>No. Economico</Th>
+                              <Th>Unidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
+                              <Th>Precio</Th>
+                              <Th>Moneda</Th>
+                              <Th>Pagado</Th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {
+                              selectedRequisicion.refacciones.map((item, i) => (
+                                <tr key={i}>
+                                  <Td>{item.customId}</Td>
+                                  <Td>{item.no_economico}</Td>
+                                  <Td>{item.unidad}</Td>
+                                  <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
+                                  <Td>{item.precio}</Td>
+                                  <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                                </tr>
+                              ))
+                            }
+
+                          </tbody>
+                        </table>
+                      </div>
+
+                    ) : selectedRequisicion.filtros?.length > 0 ? (
+                      <div className="rounded-lg border border-gray-200 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr key={selectedRequisicion.filtros?.id}>
+                              <Th>ID</Th>
+                              <Th>No. Economico</Th>
+                              <Th>Unidad</Th>
+                              <Th>Cantidad Esperada</Th>
+                              <Th>Cantidad Comprada</Th>
+                              <Th>Precio</Th>
+                              <Th>Moneda</Th>
+                              <Th>Pagado</Th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {
+                              selectedRequisicion.filtros.map((item, i) => (
+                                <tr key={i}>
+                                  <Td>{item.customId}</Td>
+                                  <Td>{item.no_economico}</Td>
+                                  <Td>{item.unidad}</Td>
+                                  <Td>{item.cantidad}</Td>
+                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
+                                  <Td>{item.precio}</Td>
+                                  <Td>{item.currency}</Td>
+                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                                </tr>
+                              ))
+                            }
+
+                          </tbody>
+                        </table>
+                      </div>
+
                     ) : (
+
                       <p className="text-gray-600">
                         No hay items registrados en esta requisición
                       </p>
@@ -1615,6 +1880,260 @@ const RequisicionesPage = () => {
           </div>
         )
       }
+
+      {/* Edit modal */}
+      {
+        isEditModalOpen && selectedRequisicion && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+            onClick={closeEditModal}
+          >
+            <div
+              className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
+                    <Pencil className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Editar Requisición
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Actualizar precios de los items
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeEditModal}
+                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label="Cerrar"
+                >
+                  <span className="text-2xl leading-none">&times;</span>
+                </button>
+              </div>
+
+              <form onSubmit={handleEdit} className="px-6 py-5 space-y-8">
+
+                <section>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <ClipboardList className="w-4 h-4 text-green-600" />
+                      Items de la requisicion
+                    </h3>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={addItem}
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Agregar item
+                      </button>
+
+                    </div>
+                  </div>
+
+                  {formData.items.length === 0 && (
+                    <p className="text-sm text-gray-500 mb-2">
+                      Agrega al menos un item para crear la requisicion.
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
+
+                    {formData.items.map((item, index) => (
+                      <div
+                        key={index}
+                        className="relative border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        {/* Botón eliminar item */}
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="absolute -top-3 -right-3 p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow"
+                          title="Eliminar item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+
+                          {(formData.requisicionType === "refacciones" || formData.requisicionType === "filtros") && (
+                            <>
+                              <div className="md:col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  {getItemLabel()} <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Ej. REF-001"
+                                  value={item.customId || ""}
+                                  onChange={(e) =>
+                                    updateItem(index, "customId", e.target.value)
+                                  }
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                                />
+                              </div>
+
+                              <div className="md:col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  No. Economico <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Ej. Bomba hidráulica"
+                                  value={item.no_economico || ""}
+                                  onChange={(e) =>
+                                    updateItem(index, "no_economico", e.target.value)
+                                  }
+                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                                />
+                              </div>
+                            </>
+                          )}
+
+                          <>
+                            <div className="md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Cantidad <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={item.cantidad}
+                                onChange={(e) =>
+                                  updateItem(index, "cantidad", e.target.value)
+                                }
+                                required
+                                min={1}
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                              />
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Unidad <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Ej. hr, día, pieza"
+                                value={item.unidad}
+                                onChange={(e) =>
+                                  updateItem(index, "unidad", e.target.value)
+                                }
+                                required
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                              />
+                            </div>
+
+                            <div className="md:col-span-2">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Descripción{' '}
+                                {formData.requisicionType === 'consumibles' ? (
+                                  <span className="text-red-500">*</span>
+                                ) : (
+                                  <span className="text-gray-700 text-medium">(opcional)</span>
+                                )}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Describe el servicio (ej. mantenimiento correctivo)"
+                                value={item.descripcion}
+                                required={formData.requisicionType === 'consumibles'}
+                                onChange={(e) =>
+                                  updateItem(index, "descripcion", e.target.value)
+                                }
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                              />
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Precio unitario (opcional)
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="0.00"
+                                value={item.precio}
+                                onChange={(e) =>
+                                  updateItem(index, "precio", e.target.value)
+                                }
+                                min={0}
+                                step="0.01"
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                              />
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Moneda (opcional)
+                              </label>
+                              <select
+                                value={item.currency || "USD"}
+                                onChange={(e) =>
+                                  updateItem(index, "currency", e.target.value)
+                                }
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
+                              >
+                                <option value="">No especificado</option>
+                                <option value="USD">USD</option>
+                                <option value="MXN">MX Pesos</option>
+                              </select>
+                            </div>
+
+
+                            {(formData.requisicionType === "consumibles") && (
+                              <div className="md:col-span-1">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Guardar en inventario
+                                </label>
+                                <input
+                                  type="checkbox"
+                                  checked={item.is_product || false}
+                                  onChange={(e) =>
+                                    updateItem(index, "is_product", e.target.checked)
+                                  }
+                                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                />
+                              </div>
+                            )}
+                          </>
+
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+                  >
+                    Actualizar
+                  </button>
+                  <button
+                    onClick={closeEditModal}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+              </form>
+
+
+
+
+            </div>
+          </div>
+        )
+      }
+
+
     </div >
   );
 };

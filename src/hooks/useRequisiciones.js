@@ -28,8 +28,10 @@ export function useRequisiciones() {
     limit = 10,
     search = "",
     order = "ASC",
+    status,
   }) => {
     const params = { page, limit, search, order };
+    if (status && status !== "ALL") params.status = status;
     return api.get("requisiciones/aproved_requisiciones", { params });
   };
 
@@ -39,14 +41,27 @@ export function useRequisiciones() {
   const rejectRequisicion = (id) => api.patch(`requisiciones/${id}/reject`);
   const pagarRequisicion = (id, data) => api.patch(`requisiciones/${id}/pagar`, data);
 
+  const markAsPaid = async (requisicionId, payload) => {
+    const response = await api.patch(
+      `/requisiciones/${requisicionId}/items/paid`,
+      payload
+    );
+    return response.data;
+  };
+
+  // Update items
+  const updateItems = (id, data) => api.patch(`requisiciones/${id}/items`, data)
+
 
   return {
     getStats,
+    markAsPaid,
     createRequisicion,
     listRequisiciones,
     approveRequisicion,
     rejectRequisicion,
     pagarRequisicion,
     listAprovedRequisiciones,
+    updateItems
   };
 }

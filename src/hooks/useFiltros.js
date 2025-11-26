@@ -12,6 +12,13 @@ export function useFiltros() {
     return api.get('filtros/categorias', { params });
   };
 
+  const getFiltrosByHrs = ({
+    no_economico,
+    hrs
+  }) => {
+    return api.get(`filtros/${no_economico}/hrs/${hrs}`)
+  }
+
   const createCategoria = (nombre) => {
     return api.post('filtros/categorias', { nombre });
   };
@@ -44,8 +51,9 @@ export function useFiltros() {
     listCategoriaFiltros,
     createCategoria,
     updateCategoria,
-    deleteCategoria,
     getFiltrosByCategoria,
+    getFiltrosByHrs,
+    deleteCategoria,
     addFiltros,
     updateFiltro,
     deleteFiltro

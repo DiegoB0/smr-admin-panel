@@ -48,6 +48,9 @@ function AlmacenenInventarioPage() {
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [cantidad, setCantidad] = useState("");
+  const [productDescription, setProductDescription] = useState("");
+  const [productUnidad, setProductUnidad] = useState("");
+  const [productCustomId, setProductCustomId] = useState("");
 
   const fetchStock = async () => {
     setLoading(true);
@@ -78,7 +81,6 @@ function AlmacenenInventarioPage() {
       // Traer todos los productos
       const resAll = await listProductos();
       const todosLosProductos = resAll.data.data || [];
-      console.log(todosLosProductos)
 
       // Traer productos que ya están en este almacén
       const resStock = await listStockProductos({ almacenId: id });
@@ -102,6 +104,7 @@ function AlmacenenInventarioPage() {
   const handleChangeStock = async (producto, action) => {
     const { value: cantidad } = await Swal.fire({
       title: `${action === "add" ? "Sumar" : "Restar"} stock`,
+      text: `${action === "add" ? "Esta accion generara una entrada" : "Esta accion generara una salida"}`,
       input: "number",
       inputAttributes: { min: 1 },
       showCancelButton: true,
@@ -115,13 +118,25 @@ function AlmacenenInventarioPage() {
           almacenId: id,
           productId: producto.producto.id,
           cantidad: Number(cantidad),
+          createEntrada: true,
         });
       } else {
+        const { value: prestadaPara } = await Swal.fire({
+          title: "¿Quién recibe?",
+          input: "text",
+          inputPlaceholder: "Nombre de quien recibe el producto",
+          showCancelButton: true,
+        });
+
+        if (!prestadaPara) return;
+
         await removeStock({
           almacenId: id,
           productId: producto.producto.id,
           cantidad: Number(cantidad),
+          prestadaPara,
         });
+
       }
 
       Swal.fire("Éxito", "Stock actualizado correctamente", "success");
@@ -143,27 +158,73 @@ function AlmacenenInventarioPage() {
   const closeStockModal = () => {
     setSelectedProduct("");
     setCantidad("");
+    setProductDescription("");
+    setProductUnidad("");
+    setProductCustomId("");
     setIsStockFormOpen(false);
   };
 
   const handleSaveStock = async (e) => {
     e.preventDefault();
-    if (!selectedProduct || cantidad <= 0) {
-      Swal.fire("Error", "Seleccione un producto y cantidad válida", "error");
+
+    if (!cantidad || cantidad <= 0) {
+      Swal.fire("Error", "Ingrese una cantidad válida", "error");
       return;
     }
-    try {
-      await addStock({
-        almacenId: id,
-        productId: selectedProduct,
-        cantidad: Number(cantidad),
-      });
-      Swal.fire("Agregado", "Producto añadido al inventario", "success");
-      fetchStock();
-      closeStockModal();
-    } catch (error) {
-      Swal.fire("Error", error.message || "No se pudo agregar al stock", "error");
+
+    const isNewProduct = selectedProduct.startsWith("new_");
+
+    if (isNewProduct) {
+      const productName = selectedProduct.split("|")[1];
+      if (!productName) {
+        Swal.fire("Error", "Ingrese el nombre del producto", "error");
+        return;
+      }
+
+      try {
+        const payload = {
+          almacenId: id,
+          cantidad: Number(cantidad),
+          productName,
+          productDescription,
+          unidad: productUnidad,
+          createEntrada: true,
+        };
+
+        if (productCustomId.trim()) {
+          payload.customId = productCustomId;
+        }
+
+        await addStock(payload);
+        Swal.fire("Éxito", "Producto creado y stock agregado", "success");
+      } catch (error) {
+        Swal.fire(
+          "Error",
+          error.message || "No se pudo crear el producto",
+          "error"
+        );
+      }
+    } else {
+      if (!selectedProduct) {
+        Swal.fire("Error", "Seleccione un producto", "error");
+        return;
+      }
+
+      try {
+        await addStock({
+          almacenId: id,
+          productId: selectedProduct,
+          cantidad: Number(cantidad),
+          createEntrada: true,
+        });
+        Swal.fire("Éxito", "Stock agregado correctamente", "success");
+      } catch (error) {
+        Swal.fire("Error", error.message || "No se pudo agregar al stock", "error");
+      }
     }
+
+    fetchStock();
+    closeStockModal();
   };
 
   // Estadísticas
@@ -326,7 +387,7 @@ function AlmacenenInventarioPage() {
                     stockProductos.map((producto) => (
                       <tr key={producto.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {producto?.producto?.id}
+                          {producto?.producto?.customId || "Sin especificar"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {producto?.producto?.name || "—"}
@@ -398,7 +459,6 @@ function AlmacenenInventarioPage() {
         </>
       )}
 
-      {/* Modal agregar stock */}
       {isStockFormOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
@@ -422,31 +482,125 @@ function AlmacenenInventarioPage() {
               </button>
             </div>
 
+            <div className="flex items-center justify-between px-6 border-b border-gray-200 text-gray-600 font-semibold">
+              <p>Esta accion generara una entrada</p>
+            </div>
+
             <form onSubmit={handleSaveStock} className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Producto
-                </label>
-                <select
-                  value={selectedProduct}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              {/* Tabs */}
+              <div className="flex gap-2 border-b border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProduct("");
+                    setProductCustomId("");
+                    setProductDescription("");
+                    setProductUnidad("unidad");
+                  }}
+                  className={`pb-2 px-4 font-medium transition-colors ${!selectedProduct.startsWith("new_")
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-600"
+                    }`}
                 >
-                  <option value="" disabled>
-                    — Selecciona un producto —
-                  </option>
-                  {productosDisponibles.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  Producto Existente
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProduct("new_product")}
+                  className={`pb-2 px-4 font-medium transition-colors ${selectedProduct.startsWith("new_")
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-600"
+                    }`}
+                >
+                  Nuevo Producto
+                </button>
               </div>
+
+              {/* Existing Product */}
+              {!selectedProduct.startsWith("new_") && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Producto
+                  </label>
+                  <select
+                    value={selectedProduct}
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                    required={!selectedProduct.startsWith("new_")}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="" disabled>
+                      — Selecciona un producto —
+                    </option>
+                    {productosDisponibles.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* New Product */}
+              {selectedProduct.startsWith("new_") && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ID (Custom) <span className="text-gray-500 text-xs">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={productCustomId}
+                      onChange={(e) => setProductCustomId(e.target.value)}
+                      placeholder="Ej: REF-001"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombre del Producto *
+                    </label>
+                    <input
+                      type="text"
+                      value={selectedProduct === "new_product" ? "" : selectedProduct.split("|")[1] || ""}
+                      onChange={(e) => setSelectedProduct(`new_product|${e.target.value}`)}
+                      placeholder="Ej: Tornillos M8"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Descripción
+                    </label>
+                    <textarea
+                      value={productDescription}
+                      onChange={(e) => setProductDescription(e.target.value)}
+                      placeholder="Descripción del producto (opcional)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows="2"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unidad de Medida
+                    </label>
+                    <input
+                      type="text"
+                      value={productUnidad}
+                      onChange={(e) => setProductUnidad(e.target.value)}
+                      placeholder="Ej: unidad, pieza, litro, kg"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cantidad
+                  Cantidad *
                 </label>
                 <input
                   type="number"

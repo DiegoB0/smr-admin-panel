@@ -119,8 +119,8 @@ const SalidasPage = () => {
               typeof p?.existencias === "number"
                 ? p.existencias
                 : typeof p?.stock === "number"
-                ? p.stock
-                : undefined,
+                  ? p.stock
+                  : undefined,
           })) || [];
         setItemUiPart(idx, { options, loading: false, highlight: 0 });
       } catch {
@@ -218,8 +218,8 @@ const SalidasPage = () => {
 
   const validateForm = () => {
     if (!form.recibidaPor.trim()) return "Campo 'Recibe' requerido";
-    if (!form.equipoId || Number(form.equipoId) <= 0)
-      return "Selecciona un equipo";
+    // if (!form.equipoId || Number(form.equipoId) <= 0)
+    //   return "Selecciona un equipo";
     if (!Array.isArray(form.items) || form.items.length === 0)
       return "Agrega al menos un ítem";
     const bad = form.items.find((it) => {
@@ -239,10 +239,9 @@ const SalidasPage = () => {
       setLoading(true);
       const body = {
         almacenOrigenId: almacenIdNum,
-        recibidaPor: String(form.recibidaPor).trim(),
-        equipoId: Number(form.equipoId),
+        prestadaPara: String(form.recibidaPor).trim(),
         items: form.items.map((it) => ({
-          productoId: String(it.productoId).trim(),
+          productoId: Number(it.productoId),
           cantidad: Number(it.cantidad),
         })),
       };
@@ -280,9 +279,9 @@ const SalidasPage = () => {
     limitOption === "all"
       ? salidas
       : salidas.slice(
-          (pagination.currentPage - 1) * limit,
-          (pagination.currentPage - 1) * limit + limit
-        );
+        (pagination.currentPage - 1) * limit,
+        (pagination.currentPage - 1) * limit + limit
+      );
 
   const openDetail = (s) => {
     setSelected(s);
@@ -400,9 +399,9 @@ const SalidasPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Recibe
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Equipo
-                </th>
+                {/* <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
+                {/*   Equipo */}
+                {/* </th> */}
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Ítems
                 </th>
@@ -452,21 +451,20 @@ const SalidasPage = () => {
                       {s.fecha
                         ? new Date(s.fecha).toLocaleString()
                         : s.createdAt
-                        ? new Date(s.createdAt).toLocaleString()
-                        : "-"}
+                          ? new Date(s.createdAt).toLocaleString()
+                          : "-"}
                     </td>
                     <td className="px-6 py-5 text-sm text-gray-700">
-                      {s.recibidaPor?.name ?? s.recibidaPor ?? "-"}
+                      {s.prestadaPara || "Sin nombre"}
                     </td>
-                    <td className="px-6 py-5 text-sm text-gray-700">
-                      {s.equipoId ?? "-"}
-                    </td>
+                    {/* <td className="px-6 py-5 text-sm text-gray-700"> */}
+                    {/*   {s.equipoId ?? "-"} */}
+                    {/* </td> */}
                     <td className="px-6 py-5 text-sm text-gray-700 truncate max-w-sm">
                       {(s.items || [])
                         .map(
                           (it) =>
-                            `${
-                              it.cantidadRetirada ?? it.cantidad ?? 0
+                            `${it.cantidadRetirada ?? it.cantidad ?? 0
                             } x ${it.producto?.name ?? it.productoId ?? "—"}`
                         )
                         .join(", ")}
@@ -584,31 +582,31 @@ const SalidasPage = () => {
                   Información general
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Equipo *
-                    </label>
-                    <select
-                      value={form.equipoId}
-                      onChange={(e) =>
-                        setForm((p) => ({ ...p, equipoId: e.target.value }))
-                      }
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                      required
-                      disabled={catalogsLoading}
-                    >
-                      <option value="">
-                        {catalogsLoading
-                          ? "Cargando equipos..."
-                          : "Selecciona un equipo"}
-                      </option>
-                      {equipos.map((equipo) => (
-                        <option key={equipo.id} value={equipo.id}>
-                          {equipo.equipo} - {equipo.no_economico}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* <div> */}
+                  {/*   <label className="block text-sm font-medium text-gray-700 mb-1"> */}
+                  {/*     Equipo * */}
+                  {/*   </label> */}
+                  {/*   <select */}
+                  {/*     value={form.equipoId} */}
+                  {/*     onChange={(e) => */}
+                  {/*       setForm((p) => ({ ...p, equipoId: e.target.value })) */}
+                  {/*     } */}
+                  {/*     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm" */}
+                  {/*     required */}
+                  {/*     disabled={catalogsLoading} */}
+                  {/*   > */}
+                  {/*     <option value=""> */}
+                  {/*       {catalogsLoading */}
+                  {/*         ? "Cargando equipos..." */}
+                  {/*         : "Selecciona un equipo"} */}
+                  {/*     </option> */}
+                  {/*     {equipos.map((equipo) => ( */}
+                  {/*       <option key={equipo.id} value={equipo.id}> */}
+                  {/*         {equipo.equipo} - {equipo.no_economico} */}
+                  {/*       </option> */}
+                  {/*     ))} */}
+                  {/*   </select> */}
+                  {/* </div> */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Recibe *
@@ -718,11 +716,10 @@ const SalidasPage = () => {
                                   (itemUi[idx]?.options || []).map((opt, i) => (
                                     <div
                                       key={opt.id}
-                                      className={`px-3 py-2 text-sm cursor-pointer ${
-                                        i === (itemUi[idx]?.highlight || 0)
+                                      className={`px-3 py-2 text-sm cursor-pointer ${i === (itemUi[idx]?.highlight || 0)
                                           ? "bg-green-50"
                                           : ""
-                                      } hover:bg-green-50`}
+                                        } hover:bg-green-50`}
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => handlePickProduct(idx, opt)}
                                       role="button"
@@ -823,8 +820,8 @@ const SalidasPage = () => {
                     {selected.fecha
                       ? new Date(selected.fecha).toLocaleDateString()
                       : selected.createdAt
-                      ? new Date(selected.createdAt).toLocaleDateString()
-                      : "-"}
+                        ? new Date(selected.createdAt).toLocaleDateString()
+                        : "-"}
                   </p>
                 </div>
               </div>
@@ -856,15 +853,8 @@ const SalidasPage = () => {
                 <div className="rounded-lg border border-gray-100 p-3">
                   <p className="text-xs font-medium text-gray-500">Recibe</p>
                   <p className="text-sm text-gray-900">
-                    {selected.recibidaPor?.name ??
-                      selected.recibidaPor ??
-                      "-"}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-gray-100 p-3">
-                  <p className="text-xs font-medium text-gray-500">Equipo</p>
-                  <p className="text-sm text-gray-900">
-                    {selected.equipoId ?? "-"}
+                    {selected.prestadaPara ||
+                      "Sin nombre"}
                   </p>
                 </div>
               </div>
@@ -887,7 +877,7 @@ const SalidasPage = () => {
                         key={idx}
                         className="hover:bg-gray-50 transition-colors duration-200"
                       >
-                        <td className="px-4 py-2 text-sm text-gray-700 text-right">
+                        <td className="px-4 py-2 text-sm text-gray-700">
                           {it.cantidadRetirada ?? it.cantidad ?? "-"}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-700">
@@ -912,10 +902,10 @@ const SalidasPage = () => {
                         {selected.fecha
                           ? new Date(selected.fecha).toLocaleDateString("es-MX")
                           : selected.createdAt
-                          ? new Date(
+                            ? new Date(
                               selected.createdAt
                             ).toLocaleDateString("es-MX")
-                          : "-"}
+                            : "-"}
                       </div>
                       <div className="folio" style={{ textAlign: "right" }}>
                         {displayFolio(selected)}
