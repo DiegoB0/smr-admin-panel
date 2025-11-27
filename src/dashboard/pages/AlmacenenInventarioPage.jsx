@@ -21,12 +21,15 @@ import Swal from "sweetalert2";
 function AlmacenenInventarioPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { listStockProductos, addStock, removeStock } = useStock();
+  const { listStockProductos, addStock, removeStock, uploadExcelStock, getJobStatus } = useStock();
   const { listProductos } = useProductos();
 
   const [stockProductos, setStockProductos] = useState([]);
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
+
+  const [isLoading, setIsLoading] = useState(false);
 
   // Paginación y búsqueda
   const [pagination, setPagination] = useState({
@@ -42,15 +45,28 @@ function AlmacenenInventarioPage() {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
   const limit =
-    limitOption === "all" ? pagination.totalItems || 0 : Number(limitOption);
+    limitOption === "all" ? -1 : Number(limitOption);
 
   // Modal agregar stock
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
+  const [activeTab, setActiveTab] = useState("existing");
   const [cantidad, setCantidad] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [productUnidad, setProductUnidad] = useState("");
   const [productCustomId, setProductCustomId] = useState("");
+
+  // States for the input select/search
+  const [searchInput, setSearchInput] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const filteredProducts = productosDisponibles.filter((p) =>
+    p.name.toLowerCase().includes(searchInput.toLowerCase())
+  );
+
+  const selectedProductName = productosDisponibles.find(
+    (p) => p.id === selectedProduct
+  )?.name;
 
   const fetchStock = async () => {
     setLoading(true);
@@ -166,26 +182,73 @@ function AlmacenenInventarioPage() {
 
   const handleSaveStock = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    if (!cantidad || cantidad <= 0) {
-      Swal.fire("Error", "Ingrese una cantidad válida", "error");
-      return;
-    }
+    try {
+      // Handle Excel upload
+      if (activeTab === "excel") {
+        if (!excelFile) {
+          Swal.fire("Error", "Selecciona un archivo Excel", "error");
+          setIsLoading(false);
+          return;
+        }
 
-    const isNewProduct = selectedProduct.startsWith("new_");
+        const response = await uploadExcelStock(excelFile, id);
+        const jobId = response.data.jobId;
+        const totalItems = response.data.totalItems;
 
-    if (isNewProduct) {
-      const productName = selectedProduct.split("|")[1];
-      if (!productName) {
-        Swal.fire("Error", "Ingrese el nombre del producto", "error");
+        Swal.fire(
+          "Procesando",
+          `${totalItems} productos en proceso de importación...`,
+          "info"
+        );
+
+        // Poll for job completion
+        let completed = false;
+        while (!completed) {
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          try {
+            const jobStatus = await getJobStatus(jobId);
+
+            if (jobStatus.data.state === 'completed') {
+              completed = true;
+              Swal.fire(
+                "Éxito",
+                `${jobStatus.result.imported} productos importados correctamente`,
+                "success"
+              );
+              fetchStock();
+              closeStockModal();
+            } else if (jobStatus.state === 'failed') {
+              throw new Error('Job failed');
+            }
+          } catch (error) {
+            console.error('Error checking job status:', error);
+          }
+        }
         return;
       }
 
-      try {
+      // Handle existing and new products (both need cantidad)
+      if (!cantidad || cantidad <= 0) {
+        Swal.fire("Error", "Ingrese una cantidad válida", "error");
+        setIsLoading(false);
+        return;
+      }
+
+      // New Product
+      if (activeTab === "new") {
+        if (!productDescription) {
+          Swal.fire("Error", "Ingrese el nombre del producto", "error");
+          setIsLoading(false);
+          return;
+        }
+
         const payload = {
           almacenId: id,
           cantidad: Number(cantidad),
-          productName,
+          productName: productDescription,
           productDescription,
           unidad: productUnidad,
           createEntrada: true,
@@ -197,34 +260,36 @@ function AlmacenenInventarioPage() {
 
         await addStock(payload);
         Swal.fire("Éxito", "Producto creado y stock agregado", "success");
-      } catch (error) {
-        Swal.fire(
-          "Error",
-          error.message || "No se pudo crear el producto",
-          "error"
-        );
-      }
-    } else {
-      if (!selectedProduct) {
-        Swal.fire("Error", "Seleccione un producto", "error");
+        fetchStock();
+        closeStockModal();
         return;
       }
 
-      try {
-        await addStock({
-          almacenId: id,
-          productId: selectedProduct,
-          cantidad: Number(cantidad),
-          createEntrada: true,
-        });
-        Swal.fire("Éxito", "Stock agregado correctamente", "success");
-      } catch (error) {
-        Swal.fire("Error", error.message || "No se pudo agregar al stock", "error");
+      // Existing Product
+      if (!selectedProduct) {
+        Swal.fire("Error", "Seleccione un producto", "error");
+        setIsLoading(false);
+        return;
       }
-    }
 
-    fetchStock();
-    closeStockModal();
+      await addStock({
+        almacenId: id,
+        productId: selectedProduct,
+        cantidad: Number(cantidad),
+        createEntrada: true,
+      });
+      Swal.fire("Éxito", "Stock agregado correctamente", "success");
+      fetchStock();
+      closeStockModal();
+    } catch (error) {
+      Swal.fire(
+        "Error",
+        error.response?.data?.message || error.message || "No se pudo procesar la solicitud",
+        "error"
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Estadísticas
@@ -465,7 +530,7 @@ function AlmacenenInventarioPage() {
           onClick={closeStockModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto m-4"
+            className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -492,12 +557,14 @@ function AlmacenenInventarioPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedProduct("");
+                    setActiveTab("existing");
                     setProductCustomId("");
                     setProductDescription("");
                     setProductUnidad("unidad");
+                    setExcelFile(null);
+                    setCantidad("");
                   }}
-                  className={`pb-2 px-4 font-medium transition-colors ${!selectedProduct.startsWith("new_")
+                  className={`pb-2 px-4 font-medium transition-colors ${activeTab === "existing"
                     ? "border-b-2 border-blue-600 text-blue-600"
                     : "text-gray-600"
                     }`}
@@ -506,42 +573,82 @@ function AlmacenenInventarioPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedProduct("new_product")}
-                  className={`pb-2 px-4 font-medium transition-colors ${selectedProduct.startsWith("new_")
+                  onClick={() => {
+                    setActiveTab("new");
+                    setExcelFile(null);
+                    setCantidad("");
+                  }}
+                  className={`pb-2 px-4 font-medium transition-colors ${activeTab === "new"
                     ? "border-b-2 border-blue-600 text-blue-600"
                     : "text-gray-600"
                     }`}
                 >
                   Nuevo Producto
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("excel");
+                    setExcelFile(null);
+                    setCantidad("");
+                  }}
+                  className={`pb-2 px-4 font-medium transition-colors ${activeTab === "excel"
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-600"
+                    }`}
+                >
+                  Cargar Excel
+                </button>
               </div>
 
-              {/* Existing Product */}
-              {!selectedProduct.startsWith("new_") && (
+              {activeTab === "existing" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Producto
                   </label>
-                  <select
-                    value={selectedProduct}
-                    onChange={(e) => setSelectedProduct(e.target.value)}
-                    required={!selectedProduct.startsWith("new_")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="" disabled>
-                      — Selecciona un producto —
-                    </option>
-                    {productosDisponibles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={isDropdownOpen ? searchInput : selectedProductName || ""}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onFocus={() => {
+                        setIsDropdownOpen(true);
+                        setSearchInput("");
+                      }}
+                      onBlur={() => setTimeout(() => setIsDropdownOpen(false), 150)}
+                      placeholder="— Buscar producto —"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    {isDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                        {filteredProducts.length > 0 ? (
+                          filteredProducts.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedProduct(p.id);
+                                setSearchInput("");
+                                setIsDropdownOpen(false);
+                              }}
+                              className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors"
+                            >
+                              {p.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-gray-500 text-sm">
+                            No hay resultados
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* New Product */}
-              {selectedProduct.startsWith("new_") && (
+              {activeTab === "new" && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -562,8 +669,8 @@ function AlmacenenInventarioPage() {
                     </label>
                     <input
                       type="text"
-                      value={selectedProduct === "new_product" ? "" : selectedProduct.split("|")[1] || ""}
-                      onChange={(e) => setSelectedProduct(`new_product|${e.target.value}`)}
+                      value={productDescription}
+                      onChange={(e) => setProductDescription(e.target.value)}
                       placeholder="Ej: Tornillos M8"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -598,20 +705,51 @@ function AlmacenenInventarioPage() {
                 </>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cantidad *
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={cantidad}
-                  onChange={(e) => setCantidad(e.target.value)}
-                  placeholder="Cantidad"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+              {/* Excel Upload */}
+              {activeTab === "excel" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Seleccionar archivo Excel
+                  </label>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setExcelFile(file);
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Las columnas deben ser: CÓDIGO, ARTICULO, UNIDAD, STOCK
+                  </p>
+                  {excelFile && (
+                    <p className="text-sm text-green-600 mt-2">
+                      ✓ Archivo seleccionado: {excelFile.name}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Cantidad - only show for non-Excel tabs */}
+              {activeTab !== "excel" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cantidad *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={cantidad}
+                    onChange={(e) => setCantidad(e.target.value)}
+                    placeholder="Cantidad"
+                    required={activeTab !== "excel"}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
                 <button
@@ -623,16 +761,38 @@ function AlmacenenInventarioPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Guardar
+                  {isLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Procesando...
+                    </>
+                  ) : activeTab === "excel" ? (
+                    "Cargar"
+                  ) : (
+                    "Guardar"
+                  )}
                 </button>
               </div>
             </form>
           </div>
+        </div >
+      )
+      }
+
+      {isLoading && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-xl p-8 flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p className="text-gray-700 font-medium">Procesando...</p>
+            <p className="text-sm text-gray-500">Por favor espera mientras se procesa tu solicitud</p>
+          </div>
         </div>
       )}
-    </div>
+
+    </div >
   );
 }
 

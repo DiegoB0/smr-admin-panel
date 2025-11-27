@@ -18,11 +18,25 @@ export function useStock() {
       params: { almacenId, productId, cantidad, prestadaPara }
     });
 
+  const uploadExcelStock = (file, almacenId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('almacenId', almacenId);
+    return api.post("almacenes/products/upload-excel", formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  };
+
+  const getJobStatus = (jobId) =>
+    api.get(`almacenes/jobs/${jobId}`);
+
   return {
     addStock,
     addMultipleStock,
     listStockProductos,
     findProductoInStock,
     removeStock,
+    uploadExcelStock,
+    getJobStatus,
   };
 }
