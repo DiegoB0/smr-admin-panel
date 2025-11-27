@@ -140,7 +140,7 @@ const RequisicionesPage = () => {
   const { listAlmacenes } = useAlmacenes()
 
   const limit =
-    limitOption === "all" ? pagination.totalItems || 0 : parseInt(limitOption, 10);
+    limitOption === "all" ? -1 : Number(limitOption);
 
   const fetchRequisiciones = () => {
     setLoading(true);

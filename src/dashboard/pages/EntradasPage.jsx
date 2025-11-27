@@ -776,17 +776,30 @@ const EntradasPage = () => {
               </section>
 
               {/* Observaciones */}
-              {selectedEntrada.requisicion?.observaciones && (
-                <section>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">
-                    Observaciones
-                  </h3>
-                  <div className="p-4 rounded-lg border border-gray-100 bg-gray-50">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {selectedEntrada.requisicion.observaciones}
-                    </p>
-                  </div>
-                </section>
+              {selectedEntrada.observacionesAlmacen && (
+                <>
+                  <section>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      Observaciones de almacen
+                    </h3>
+                    <div className="p-4 rounded-lg border border-gray-100 bg-gray-50">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedEntrada.observacionesAlmacen}
+                      </p>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">
+                      Observaciones de compras
+                    </h3>
+                    <div className="p-4 rounded-lg border border-gray-100 bg-gray-50">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {selectedEntrada.observacionesCompras}
+                      </p>
+                    </div>
+                  </section>
+                </>
               )}
 
               {/* Items recibidos */}
@@ -819,10 +832,10 @@ const EntradasPage = () => {
                         const itemName = it.insumoItem?.descripcion ||
                           it.filtroItem?.descripcion ||
                           it.refaccionItem?.descripcion ||
-                          it.descripcion || 
+                          it.descripcion ||
                           "Sin nombre";
 
-                        const itemId = it.filtroItem?.customId || it.refaccionItem?.customId || "No especificado"
+                        const itemId = it.customId || it.filtroItem?.customId || it.refaccionItem?.customId || "No especificado"
 
                         return (
                           <tr
