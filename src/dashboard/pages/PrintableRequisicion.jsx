@@ -4,11 +4,25 @@ import logo from "../../assets/logmine-logo.png";
 const PrintableRequisicion = ({ requisicion, currentUser }) => {
   if (!requisicion) return null;
 
-  const items = requisicion.items || [];
+  // Obtener items según el tipo de requisición
+  const getItems = () => {
+    if (requisicion.requisicionType === "consumibles") {
+      return requisicion.insumos || [];
+    }
+    if (requisicion.requisicionType === "refacciones") {
+      return requisicion.refacciones || [];
+    }
+    if (requisicion.requisicionType === "filtros") {
+      return requisicion.filtros || [];
+    }
+    return [];
+  };
+
+  const items = getItems();
 
   const subtotal = items.reduce((acc, it) => {
-    const q = Number(it.cantidadSolicitada || it.cantidad) || 0;
-    const p = Number(it.precio_unitario || it.producto?.precio) || 0;
+    const q = Number(it.cantidad) || 0;
+    const p = Number(it.precio) || 0;
     return acc + q * p;
   }, 0);
 
@@ -45,19 +59,23 @@ const PrintableRequisicion = ({ requisicion, currentUser }) => {
       <div className="grid grid-cols-2 gap-4 border border-black p-3 mb-6">
         <div className="space-y-1">
           <div>
-            <strong>Proveedor:</strong> N/A
+            <strong>Proveedor:</strong>{" "}
+            {requisicion.proveedor?.name || "N/A"}
           </div>
           <div>
-            <strong>Equipo:</strong> N/A
+            <strong>Equipo:</strong> {requisicion.no_economico || "N/A"}
           </div>
           <div>
-            <strong>No. Económico:</strong> N/A
+            <strong>No. Económico:</strong> {requisicion.no_economico || "N/A"}
           </div>
           <div>
-            <strong>HRM:</strong> N/A
+            <strong>HRM:</strong> {requisicion.hrs || "N/A"}
           </div>
           <div>
-            <strong>Solicita:</strong> {currentUser?.name || "N/A"}
+            <strong>Solicita:</strong>{" "}
+            {requisicion.pedidoPor?.name ||
+              currentUser?.name ||
+              "N/A"}
           </div>
           <div>
             <strong>Concepto:</strong> {requisicion.concepto || "N/A"}
@@ -73,11 +91,11 @@ const PrintableRequisicion = ({ requisicion, currentUser }) => {
             <strong>Prioridad:</strong> {requisicion.prioridad || "N/A"}
           </div>
           <div>
-            <strong>Obra/Ubicación:</strong> N/A
+            <strong>Obra/Ubicación:</strong> {requisicion.titulo || "N/A"}
           </div>
           <div>
             <strong>Con cargo a:</strong>{" "}
-            {requisicion.almacenDestino?.name || "N/A"}
+            {requisicion.almacenCargo?.name || "N/A"}
           </div>
           <div>
             <strong>Status:</strong> {requisicion.status || "N/A"}
@@ -110,47 +128,58 @@ const PrintableRequisicion = ({ requisicion, currentUser }) => {
           </tr>
         </thead>
         <tbody>
-          {items.map((it, idx) => {
-            const q = Number(it.cantidadSolicitada || it.cantidad) || 0;
-            const p = Number(it.precio_unitario || it.producto?.precio) || 0;
-            const sub = q * p;
-            const ivaItem = sub * 0.16;
-            const totItem = sub + ivaItem;
-            return (
-              <tr
-                key={idx}
-                className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+          {items.length > 0 ? (
+            items.map((it, idx) => {
+              const q = Number(it.cantidad) || 0;
+              const p = Number(it.precio) || 0;
+              const sub = q * p;
+              const ivaItem = sub * 0.16;
+              const totItem = sub + ivaItem;
+              return (
+                <tr
+                  key={idx}
+                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                >
+                  <td className="border border-gray-300 text-center px-2 py-2">
+                    {idx + 1}
+                  </td>
+                  <td className="border border-gray-300 text-center px-2 py-2">
+                    {it.customId || "-"}
+                  </td>
+                  <td className="border border-gray-300 text-center px-2 py-2">
+                    {q}
+                  </td>
+                  <td className="border border-gray-300 text-center px-2 py-2">
+                    {it.unidad || ""}
+                  </td>
+                  <td className="border border-gray-300 text-left px-2 py-2">
+                    {it.descripcion || ""}
+                  </td>
+                  <td className="border border-gray-300 text-right px-2 py-2">
+                    ${p.toFixed(2)}
+                  </td>
+                  <td className="border border-gray-300 text-right px-2 py-2">
+                    ${sub.toFixed(2)}
+                  </td>
+                  <td className="border border-gray-300 text-right px-2 py-2">
+                    ${ivaItem.toFixed(2)}
+                  </td>
+                  <td className="border border-gray-300 text-right px-2 py-2">
+                    ${totItem.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td
+                colSpan={9}
+                className="text-center px-2 py-4 text-gray-500"
               >
-                <td className="border border-gray-300 text-center px-2 py-2">
-                  {idx + 1}
-                </td>
-                <td className="border border-gray-300 text-center px-2 py-2">
-                  {it.producto?.id || "-"}
-                </td>
-                <td className="border border-gray-300 text-center px-2 py-2">
-                  {q}
-                </td>
-                <td className="border border-gray-300 text-center px-2 py-2">
-                  {it.unidad || it.producto?.unidad || ""}
-                </td>
-                <td className="border border-gray-300 text-left px-2 py-2">
-                  {it.descripcion || it.producto?.name || ""}
-                </td>
-                <td className="border border-gray-300 text-right px-2 py-2">
-                  ${p.toFixed(2)}
-                </td>
-                <td className="border border-gray-300 text-right px-2 py-2">
-                  ${sub.toFixed(2)}
-                </td>
-                <td className="border border-gray-300 text-right px-2 py-2">
-                  ${ivaItem.toFixed(2)}
-                </td>
-                <td className="border border-gray-300 text-right px-2 py-2">
-                  ${totItem.toFixed(2)}
-                </td>
-              </tr>
-            );
-          })}
+                No hay items en esta requisición
+              </td>
+            </tr>
+          )}
         </tbody>
         <tfoot>
           <tr className="bg-gray-100 font-semibold">
@@ -178,11 +207,15 @@ const PrintableRequisicion = ({ requisicion, currentUser }) => {
       <div className="flex justify-between mt-12 text-center text-[13px]">
         <div>
           <div className="border-t border-black w-40 mx-auto"></div>
-          {currentUser?.name || "Solicita"}
+          {requisicion.pedidoPor?.name ||
+            currentUser?.name ||
+            "Solicita"}
         </div>
         <div>
           <div className="border-t border-black w-40 mx-auto"></div>
-          Ing. Francisco Salazar <br />
+          {requisicion.revisadoPor?.name ||
+            "Ing. Francisco Salazar"}{" "}
+          <br />
           Autoriza
         </div>
         <div>

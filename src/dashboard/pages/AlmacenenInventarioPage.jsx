@@ -52,6 +52,7 @@ function AlmacenenInventarioPage() {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [activeTab, setActiveTab] = useState("existing");
   const [cantidad, setCantidad] = useState("");
+  const [productName, setProductName] = useState("");
   const [productDescription, setProductDescription] = useState("");
   const [productUnidad, setProductUnidad] = useState("");
   const [productCustomId, setProductCustomId] = useState("");
@@ -174,6 +175,7 @@ function AlmacenenInventarioPage() {
   const closeStockModal = () => {
     setSelectedProduct("");
     setCantidad("");
+    setProductName("");
     setProductDescription("");
     setProductUnidad("");
     setProductCustomId("");
@@ -239,7 +241,7 @@ function AlmacenenInventarioPage() {
 
       // New Product
       if (activeTab === "new") {
-        if (!productDescription) {
+        if (!productName) {
           Swal.fire("Error", "Ingrese el nombre del producto", "error");
           setIsLoading(false);
           return;
@@ -248,7 +250,7 @@ function AlmacenenInventarioPage() {
         const payload = {
           almacenId: id,
           cantidad: Number(cantidad),
-          productName: productDescription,
+          productName: productName,
           productDescription,
           unidad: productUnidad,
           createEntrada: true,
@@ -562,6 +564,7 @@ function AlmacenenInventarioPage() {
                     setProductDescription("");
                     setProductUnidad("unidad");
                     setExcelFile(null);
+                    setProductName("");
                     setCantidad("");
                   }}
                   className={`pb-2 px-4 font-medium transition-colors ${activeTab === "existing"
@@ -669,8 +672,8 @@ function AlmacenenInventarioPage() {
                     </label>
                     <input
                       type="text"
-                      value={productDescription}
-                      onChange={(e) => setProductDescription(e.target.value)}
+                      value={productName}
+                      onChange={(e) => setProductName(e.target.value)}
                       placeholder="Ej: Tornillos M8"
                       required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
