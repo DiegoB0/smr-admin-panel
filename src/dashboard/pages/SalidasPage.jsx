@@ -111,19 +111,30 @@ const SalidasPage = () => {
           search: query || undefined,
         });
         const arr = Array.isArray(res.data?.data) ? res.data.data : [];
+
+        // Obtener los IDs ya seleccionados (excepto el actual)
+        const selectedIds = form.items
+          .map((it, i) => (i !== idx ? it.productoId : null))
+          .filter(Boolean);
+
         const options =
-          arr.map((p) => ({
-            id: p?.producto?.id ?? p?.id,
-            name: p?.producto?.name ?? p?.name ?? `Producto ${p?.producto?.id ?? ""}`,
-            stock:
-              typeof p?.existencias === "number"
-                ? p.existencias
-                : typeof p?.stock === "number"
-                  ? p.stock
-                  : undefined,
-          })) || [];
+          arr
+            .map((p) => ({
+              id: p?.producto?.id,
+              customId: p?.producto?.customId ?? p?.customId ?? "",
+              name: p?.producto?.name ?? p?.name ?? "",
+              stock:
+                typeof p?.existencias === "number"
+                  ? p.existencias
+                  : typeof p?.stock === "number"
+                    ? p.stock
+                    : undefined,
+            }))
+            .filter((opt) => !selectedIds.includes(String(opt.id))) || [];
+
         setItemUiPart(idx, { options, loading: false, highlight: 0 });
-      } catch {
+      } catch (err) {
+        console.error("Error en searchProductos:", err);
         setItemUiPart(idx, { options: [], loading: false });
       }
     }, 300);
@@ -218,15 +229,26 @@ const SalidasPage = () => {
 
   const validateForm = () => {
     if (!form.recibidaPor.trim()) return "Campo 'Recibe' requerido";
-    // if (!form.equipoId || Number(form.equipoId) <= 0)
-    //   return "Selecciona un equipo";
     if (!Array.isArray(form.items) || form.items.length === 0)
       return "Agrega al menos un ítem";
+
     const bad = form.items.find((it) => {
       const c = Number(it.cantidad);
-      return !String(it.productoId || "").trim() || Number.isNaN(c) || c <= 0;
+      const s = Number(it.stock);
+      return (
+        !String(it.productoId || "").trim() ||
+        Number.isNaN(c) ||
+        c <= 0 ||
+        (it.stock !== undefined && c > s)
+      );
     });
-    if (bad) return "Cada ítem requiere producto y cantidad (> 0)";
+
+    if (bad) {
+      if (bad.stock !== undefined && Number(bad.cantidad) > Number(bad.stock)) {
+        return `Stock insuficiente para "${bad.productoName}". Disponible: ${bad.stock}`;
+      }
+      return "Cada ítem requiere producto y cantidad (> 0)";
+    }
     return null;
   };
 
@@ -237,10 +259,23 @@ const SalidasPage = () => {
 
     try {
       setLoading(true);
+
+      const itemsValidos = form.items.filter(
+        (it) => String(it.productoId).trim() !== ""
+      );
+
+      if (itemsValidos.length === 0) {
+        return Swal.fire(
+          "Error",
+          "Debe seleccionar al menos un producto",
+          "warning"
+        );
+      }
+
       const body = {
         almacenOrigenId: almacenIdNum,
         prestadaPara: String(form.recibidaPor).trim(),
-        items: form.items.map((it) => ({
+        items: itemsValidos.map((it) => ({
           productoId: Number(it.productoId),
           cantidad: Number(it.cantidad),
         })),
@@ -333,8 +368,15 @@ const SalidasPage = () => {
 
   const handlePickProduct = (idx, opt) => {
     updateItem(idx, "productoId", String(opt.id));
-    updateItem(idx, "productoName", opt.name); // opcional, UX
-    setItemUiPart(idx, { input: opt.name, open: false, options: [] });
+    updateItem(idx, "productoName", opt.name);
+    updateItem(idx, "customId", opt.customId);
+    updateItem(idx, "stock", opt.stock);
+
+    setItemUiPart(idx, {
+      input: `${opt.customId} - ${opt.name}`,
+      open: false,
+      options: [],
+    });
   };
 
   return (
@@ -399,9 +441,6 @@ const SalidasPage = () => {
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Recibe
                 </th>
-                {/* <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
-                {/*   Equipo */}
-                {/* </th> */}
                 <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                   Ítems
                 </th>
@@ -413,7 +452,7 @@ const SalidasPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center py-12">
                       <div className="flex flex-col items-center">
                         <svg
@@ -457,15 +496,11 @@ const SalidasPage = () => {
                     <td className="px-6 py-5 text-sm text-gray-700">
                       {s.prestadaPara || "Sin nombre"}
                     </td>
-                    {/* <td className="px-6 py-5 text-sm text-gray-700"> */}
-                    {/*   {s.equipoId ?? "-"} */}
-                    {/* </td> */}
                     <td className="px-6 py-5 text-sm text-gray-700 truncate max-w-sm">
                       {(s.items || [])
                         .map(
                           (it) =>
-                            `${it.cantidadRetirada ?? it.cantidad ?? 0
-                            } x ${it.producto?.name ?? it.productoId ?? "—"}`
+                            `${it.cantidadRetirada ?? it.cantidad ?? 0} x ${it.producto?.name ?? it.productoId ?? "—"}`
                         )
                         .join(", ")}
                     </td>
@@ -491,7 +526,7 @@ const SalidasPage = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
                       Sin salidas
@@ -582,31 +617,6 @@ const SalidasPage = () => {
                   Información general
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* <div> */}
-                  {/*   <label className="block text-sm font-medium text-gray-700 mb-1"> */}
-                  {/*     Equipo * */}
-                  {/*   </label> */}
-                  {/*   <select */}
-                  {/*     value={form.equipoId} */}
-                  {/*     onChange={(e) => */}
-                  {/*       setForm((p) => ({ ...p, equipoId: e.target.value })) */}
-                  {/*     } */}
-                  {/*     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm" */}
-                  {/*     required */}
-                  {/*     disabled={catalogsLoading} */}
-                  {/*   > */}
-                  {/*     <option value=""> */}
-                  {/*       {catalogsLoading */}
-                  {/*         ? "Cargando equipos..." */}
-                  {/*         : "Selecciona un equipo"} */}
-                  {/*     </option> */}
-                  {/*     {equipos.map((equipo) => ( */}
-                  {/*       <option key={equipo.id} value={equipo.id}> */}
-                  {/*         {equipo.equipo} - {equipo.no_economico} */}
-                  {/*       </option> */}
-                  {/*     ))} */}
-                  {/*   </select> */}
-                  {/* </div> */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Recibe *
@@ -636,7 +646,10 @@ const SalidasPage = () => {
                   {form.items.map((it, idx) => (
                     <div
                       key={idx}
-                      className="relative border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      className={`relative border rounded-lg p-4 ${Number(it.cantidad) > (it.stock ?? 0) && it.stock !== undefined
+                          ? "bg-red-50 border-red-200"
+                          : "bg-gray-50 border-gray-200"
+                        }`}
                     >
                       {form.items.length > 1 && (
                         <button
@@ -647,6 +660,27 @@ const SalidasPage = () => {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
+
+                      {/* Validación de stock */}
+                      {it.stock !== undefined && Number(it.cantidad) > it.stock && (
+                        <div className="mb-4 flex items-start gap-2 p-3 bg-red-100 border border-red-300 rounded-lg">
+                          <svg
+                            className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-sm font-medium text-red-700">
+                            Stock insuficiente: disponible {it.stock}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Autocomplete de Producto */}
                         <div>
@@ -725,8 +759,8 @@ const SalidasPage = () => {
                                       role="button"
                                       tabIndex={-1}
                                     >
-                                      <span className="font-medium">
-                                        ID {opt.id}
+                                      <span className="font-bold text-blue-600">
+                                        {opt.customId}
                                       </span>{" "}
                                       — {opt.name}
                                       {typeof opt.stock === "number" && (
@@ -760,6 +794,13 @@ const SalidasPage = () => {
                           />
                         </div>
                       </div>
+
+                      {/* Mostrar stock disponible */}
+                      {it.stock !== undefined && Number(it.cantidad) <= it.stock && (
+                        <div className="mt-2 text-xs text-gray-600">
+                          ✓ Stock disponible: {it.stock}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -853,8 +894,7 @@ const SalidasPage = () => {
                 <div className="rounded-lg border border-gray-100 p-3">
                   <p className="text-xs font-medium text-gray-500">Recibe</p>
                   <p className="text-sm text-gray-900">
-                    {selected.prestadaPara ||
-                      "Sin nombre"}
+                    {selected.prestadaPara || "Sin nombre"}
                   </p>
                 </div>
               </div>
@@ -865,6 +905,9 @@ const SalidasPage = () => {
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Cant.
+                      </th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                        Ref./ID
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                         Producto
@@ -879,6 +922,9 @@ const SalidasPage = () => {
                       >
                         <td className="px-4 py-2 text-sm text-gray-700">
                           {it.cantidadRetirada ?? it.cantidad ?? "-"}
+                        </td>
+                        <td className="px-4 py-2 text-sm font-medium text-blue-600">
+                          {it.producto?.customId ?? "-"}
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-700">
                           {it.producto?.name ?? it.productoId ?? "-"}
@@ -942,6 +988,7 @@ const SalidasPage = () => {
                     <thead>
                       <tr>
                         <th style={{ width: 80 }}>CANT.</th>
+                        <th style={{ width: 100 }}>REF./ID</th>
                         <th style={{ width: 180 }}>PRODUCTO</th>
                       </tr>
                     </thead>
@@ -949,6 +996,9 @@ const SalidasPage = () => {
                       {(selected.items || []).map((it, idx) => (
                         <tr key={idx}>
                           <td>{it.cantidadRetirada ?? it.cantidad ?? ""}</td>
+                          <td style={{ fontWeight: "bold", color: "#0066cc" }}>
+                            {it.producto?.customId ?? ""}
+                          </td>
                           <td>{it.producto?.name ?? it.productoId ?? ""}</td>
                         </tr>
                       ))}
@@ -960,6 +1010,7 @@ const SalidasPage = () => {
                       }).map((_, i) => (
                         <tr key={`empty-${i}`}>
                           <td style={{ height: 24 }}></td>
+                          <td></td>
                           <td></td>
                         </tr>
                       ))}
