@@ -114,11 +114,19 @@ function ProductosPage() {
       imageUrl: previewImage || imageUrl || undefined,
     };
 
+
+    if (productoId.trim()) {
+      updatePayload.customId = productoId;
+    }
+
+
     try {
       if (isEditing) {
+        console.log("This is the update payload: ", updatePayload)
         await updateProducto(editId, updatePayload);
         Swal.fire("Actualizado", "Producto actualizado con éxito", "success");
       } else {
+        console.log("This is the submit payload: ", payload)
         await createProducto(payload);
         Swal.fire("Registrado", "Producto agregado con éxito", "success");
       }
@@ -131,9 +139,10 @@ function ProductosPage() {
   };
 
   const handleEdit = (producto) => {
+    console.log(producto)
     setIsEditing(true)
     setEditId(producto.id)
-    setProductoId(producto.id)
+    setProductoId(producto.customId)
     setName(producto.name)
     setDescription(producto.description)
     setUnidad(producto.unidad)
@@ -157,6 +166,8 @@ function ProductosPage() {
     if (!result.isConfirmed) return
 
     try {
+
+      console.log('trying to delete')
       await deleteProducto(id)
       Swal.fire("Eliminado", "Producto eliminado con éxito", "success")
       fetchProductos()
@@ -417,20 +428,18 @@ function ProductosPage() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              {!isEditing && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Tag className="w-4 h-4 inline mr-1" />
-                    ID (Refacción) <span className="text-gray-500 text-xs">(opcional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={productoId}
-                    onChange={(e) => setProductoId(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Tag className="w-4 h-4 inline mr-1" />
+                  ID (Refacción) <span className="text-gray-500 text-xs">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={productoId}
+                  onChange={(e) => setProductoId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Package className="w-4 h-4 inline mr-1" />
