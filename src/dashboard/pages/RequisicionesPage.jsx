@@ -439,6 +439,7 @@ const RequisicionesPage = () => {
             precio: Number(item.precio) || 0,
             currency: item.currency || formData.currency,
           };
+          
 
           if (formData.requisicionType === "refacciones") {
             return {

@@ -24,6 +24,7 @@ function AlmacenenInventarioPage() {
   const { getProductosNotInAlmacen, listStockProductos, addStock, removeStock, uploadExcelStock, getJobStatus } = useStock();
   const { listProductos } = useProductos();
 
+    
   const [stockProductos, setStockProductos] = useState([]);
   const [productosDisponibles, setProductosDisponibles] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -62,7 +63,8 @@ function AlmacenenInventarioPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const filteredProducts = productosDisponibles.filter((p) =>
-    p.name.toLowerCase().includes(searchInput.toLowerCase())
+    p.name.toLowerCase().includes(searchInput.toLowerCase()) ||
+    p.customId?.toLowerCase().includes(searchInput.toLowerCase())
   );
 
   const selectedProductName = productosDisponibles.find(
@@ -299,6 +301,12 @@ function AlmacenenInventarioPage() {
   useEffect(() => {
     fetchStock();
   }, [id, page, limit, debouncedSearchTerm]);
+
+   useEffect(() => {
+    if (searchInput && selectedProduct) {
+      setSelectedProduct("");
+    }
+  }, [searchInput]); // Solo se ejecuta cuando searchInput cambia
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -598,7 +606,13 @@ function AlmacenenInventarioPage() {
                   <div className="relative">
                     <input
                       type="text"
-                      value={isDropdownOpen ? searchInput : selectedProductName || ""}
+                      value={
+                        isDropdownOpen 
+                          ? searchInput 
+                          : selectedProduct 
+                           ? `${selectedProductName || ''}${productosDisponibles.find(p => p.id === selectedProduct)?.customId ? ` (${productosDisponibles.find(p => p.id === selectedProduct)?.customId})` : ''}`
+                               : ""
+                      }
                       onChange={(e) => setSearchInput(e.target.value)}
                       onFocus={() => {
                         setIsDropdownOpen(true);
@@ -615,14 +629,19 @@ function AlmacenenInventarioPage() {
                             <button
                               key={p.id}
                               type="button"
-                              onClick={() => {
+                             onMouseDown={(e) => {
+                                e.preventDefault();
                                 setSelectedProduct(p.id);
                                 setSearchInput("");
                                 setIsDropdownOpen(false);
-                              }}
+                             }}
                               className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors"
                             >
-                              {p.name}
+                               <div>
+                                   <span className="font-medium">{p.name}</span>
+                                   <span className="text-gray-500 text-sm ml-2">({p.customId || 'Sin ID'})</span>
+                               </div>
+                               {p.customId && <span className="text-xs bg-gray-100 px-2 py-1 rounded">{p.customId}</span>}
                             </button>
                           ))
                         ) : (

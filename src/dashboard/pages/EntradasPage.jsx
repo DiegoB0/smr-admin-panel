@@ -65,6 +65,13 @@ const EntradasPage = () => {
         status: statusFilter,
       });
       const rawData = response.data.data || [];
+
+       // Agrega esto para ver la estructura
+    console.log("Raw data from backend:", rawData);
+    if (rawData.length > 0) {
+      console.log("Primer elemento:", rawData[0]);
+    }
+      
       const data = rawData.map((r) => {
         const items = r.items || [];
         const totalSolic = items.reduce(
@@ -462,8 +469,6 @@ const EntradasPage = () => {
           <option value="10">10 por página</option>
           <option value="20">20 por página</option>
           <option value="all">Mostrar todos</option>
-
-
         </select>
       </div>
 
@@ -527,6 +532,9 @@ const EntradasPage = () => {
                     Fecha Creación
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                    Fecha Esperada
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
                     Estatus
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide">
@@ -562,6 +570,11 @@ const EntradasPage = () => {
                           <td className="px-6 py-5 text-sm text-gray-500">
                             {r.fechaCreacion
                               ? new Date(r.fechaCreacion).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                          <td className="px-6 py-5 text-sm text-gray-500">
+                            {r.fechaEsperada
+                              ? new Date(r.fechaEsperada + 'T00:00:00').toLocaleDateString()
                               : "N/A"}
                           </td>
                           <td className="px-6 py-5 text-sm">
@@ -1117,134 +1130,6 @@ const EntradasPage = () => {
           </div>
         </div>
       )}
-
-      {/* Modal Historial */}
-      {/* {histModalOpen && ( */}
-      {/*   <div */}
-      {/*     className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md" */}
-      {/*     onClick={() => setHistModalOpen(false)} */}
-      {/*   > */}
-      {/*     <div */}
-      {/*       className="bg-white rounded-xl shadow-2xl w-full sm:max-w-4xl h-full sm:max-h-[92vh] overflow-y-auto transform animate-scale-in" */}
-      {/*       onClick={(e) => e.stopPropagation()} */}
-      {/*     > */}
-      {/*       <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl"> */}
-      {/*         <div className="flex items-center gap-3"> */}
-      {/*           <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-indigo-50 text-indigo-600"> */}
-      {/*             <History className="w-5 h-5" /> */}
-      {/*           </div> */}
-      {/*           <div> */}
-      {/*             <h2 className="text-lg font-semibold text-gray-900"> */}
-      {/*               Historial de entradas */}
-      {/*             </h2> */}
-      {/*             <p className="text-xs text-gray-500"> */}
-      {/*               Registros de esta sesión (no persistente) */}
-      {/*             </p> */}
-      {/*           </div> */}
-      {/*         </div> */}
-      {/*         <button */}
-      {/*           onClick={() => setHistModalOpen(false)} */}
-      {/*           className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors" */}
-      {/*           aria-label="Cerrar modal de historial" */}
-      {/*         > */}
-      {/*           <span className="text-2xl leading-none">&times;</span> */}
-      {/*         </button> */}
-      {/*       </div> */}
-      {/**/}
-      {/*       <div className="px-6 py-5"> */}
-      {/*         {historial.length === 0 ? ( */}
-      {/*           <div className="text-center text-gray-600 py-8"> */}
-      {/*             No hay movimientos registrados aún. */}
-      {/*           </div> */}
-      {/*         ) : ( */}
-      {/*           <div className="rounded-lg border border-gray-100 overflow-hidden"> */}
-      {/*             <div className="overflow-x-auto"> */}
-      {/*               <table className="min-w-full divide-y divide-gray-100"> */}
-      {/*                 <thead className="bg-gray-50 sticky top-0 z-10"> */}
-      {/*                   <tr> */}
-      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
-      {/*                       Fecha */}
-      {/*                     </th> */}
-      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
-      {/*                       RCP */}
-      {/*                     </th> */}
-      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
-      {/*                       Almacén */}
-      {/*                     </th> */}
-      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
-      {/*                       Producto */}
-      {/*                     </th> */}
-      {/*                     <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wide"> */}
-      {/*                       Cantidad */}
-      {/*                     </th> */}
-      {/*                   </tr> */}
-      {/*                 </thead> */}
-      {/*                 <tbody className="divide-y divide-gray-100"> */}
-      {/*                   {historial */}
-      {/*                     .slice() */}
-      {/*                     .sort( */}
-      {/*                       (a, b) => */}
-      {/*                         new Date(b.fecha).getTime() - */}
-      {/*                         new Date(a.fecha).getTime() */}
-      {/*                     ) */}
-      {/*                     .map((h) => ( */}
-      {/*                       <tr */}
-      {/*                         key={h.id} */}
-      {/*                         className="hover:bg-gray-50 transition-colors duration-200" */}
-      {/*                       > */}
-      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
-      {/*                           {new Date(h.fecha).toLocaleString()} */}
-      {/*                         </td> */}
-      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
-      {/*                           {h.rcp} */}
-      {/*                         </td> */}
-      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
-      {/*                           {h.almacen} */}
-      {/*                         </td> */}
-      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
-      {/*                           {h.productoName} */}
-      {/*                         </td> */}
-      {/*                         <td className="px-4 py-2 text-sm text-gray-700"> */}
-      {/*                           {h.cantidadRecibida} */}
-      {/*                         </td> */}
-      {/*                       </tr> */}
-      {/*                     ))} */}
-      {/*                 </tbody> */}
-      {/*               </table> */}
-      {/*             </div> */}
-      {/*           </div> */}
-      {/*         )} */}
-      {/**/}
-      {/*         {historial.length > 0 && ( */}
-      {/*           <div className="mt-4 flex justify-end"> */}
-      {/*             <button */}
-      {/*               onClick={() => { */}
-      {/*                 Swal.fire({ */}
-      {/*                   title: "¿Borrar historial?", */}
-      {/*                   text: "Eliminará los registros de esta sesión.", */}
-      {/*                   icon: "warning", */}
-      {/*                   showCancelButton: true, */}
-      {/*                   confirmButtonText: "Sí, borrar", */}
-      {/*                   cancelButtonText: "Cancelar", */}
-      {/*                 }).then((res) => { */}
-      {/*                   if (res.isConfirmed) { */}
-      {/*                     setHistorial([]); */}
-      {/*                     Swal.fire("Listo", "Historial borrado", "success"); */}
-      {/*                   } */}
-      {/*                 }); */}
-      {/*               }} */}
-      {/*               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors" */}
-      {/*               aria-label="Borrar historial" */}
-      {/*               data-tooltip="Eliminar registros" */}
-      {/*             > */}
-      {/*               Borrar historial */}
-      {/*             </button> */}
-      {/*           </div> */}
-      {/*         )} */}
-      {/*       </div> */}
-      {/*     </div> */}
-      {/*   </div> */}
-      {/* )} */}
     </div>
   );
 };
