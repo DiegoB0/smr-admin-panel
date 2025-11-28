@@ -197,10 +197,17 @@ const SalidasPage = () => {
     setPage(1);
   }, [debouncedSearch, limitOption]);
 
-  // Fetch catalogs cuando abre modal
+  // Fetch catalogs cuando abre modal y limpiar form
   useEffect(() => {
     if (isCreateModalOpen) {
       fetchCatalogs();
+      // Limpiar form
+      setForm({
+        recibidaPor: "",
+        equipoId: "",
+        items: [{ productoId: "", cantidad: "" }],
+      });
+      setItemUi({});
     }
   }, [isCreateModalOpen]);
 
