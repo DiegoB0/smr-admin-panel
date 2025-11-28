@@ -30,7 +30,13 @@ export function useStock() {
   const getJobStatus = (jobId) =>
     api.get(`almacenes/jobs/${jobId}`);
 
+  const getProductosNotInAlmacen = (almacenId) =>
+    api.get("almacenes/products/get_products_not_in_almacen", {
+      params: { almacenId }
+    });
+
   return {
+    getProductosNotInAlmacen,
     addStock,
     addMultipleStock,
     listStockProductos,
