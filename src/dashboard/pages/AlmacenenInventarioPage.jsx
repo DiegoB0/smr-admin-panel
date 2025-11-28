@@ -21,7 +21,7 @@ import Swal from "sweetalert2";
 function AlmacenenInventarioPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { listStockProductos, addStock, removeStock, uploadExcelStock, getJobStatus } = useStock();
+  const { getProductosNotInAlmacen, listStockProductos, addStock, removeStock, uploadExcelStock, getJobStatus } = useStock();
   const { listProductos } = useProductos();
 
   const [stockProductos, setStockProductos] = useState([]);
@@ -95,25 +95,11 @@ function AlmacenenInventarioPage() {
 
   const fetchProductosDisponibles = async () => {
     try {
-      // Traer todos los productos
-      const resAll = await listProductos();
-      const todosLosProductos = resAll.data.data || [];
-
-      // Traer productos que ya están en este almacén
-      const resStock = await listStockProductos({ almacenId: id });
-      const productosEnInventario = resStock.data.data || [];
-
-      // Obtener IDs de productos que ya están en inventario
-      const idsEnInventario = productosEnInventario.map((p) => p.producto.id);
-
-      // Filtrar para que solo aparezcan los que NO están en inventario
-      const filtrados = todosLosProductos.filter(
-        (p) => !idsEnInventario.includes(p.id)
-      );
-
-      setProductosDisponibles(filtrados);
+      const res = await getProductosNotInAlmacen(id);
+      console.log(res)
+      setProductosDisponibles(res.data);
     } catch (error) {
-      console.log(error)
+      console.log(error);
       Swal.fire("Error", "No se pudo obtener la lista de productos", "error");
     }
   };
