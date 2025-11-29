@@ -129,7 +129,8 @@ const RequisicionesPage = () => {
     "material",
     "herramientas",
     "EPP",
-    "higiene"
+    "higiene",
+    "servicio preventivo"
   ];
 
 
@@ -152,6 +153,7 @@ const RequisicionesPage = () => {
       status: statusFilter,
     })
       .then((res) => {
+        console.log(res.data.data)
         setRequisiciones(res.data.data);
         setPagination(res.data.meta);
       })
@@ -551,8 +553,6 @@ const RequisicionesPage = () => {
       })),
     };
 
-    console.log("Payload: ", payload)
-
     try {
 
       await updateItems(
@@ -687,7 +687,6 @@ const RequisicionesPage = () => {
   const lower = (s) => (s || "").toLowerCase();
 
   const updateItem = (index, field, value) => {
-    console.log(`Updating item ${index}, field: ${field}, value:`, value);
     setFormData((prev) => {
       const newItems = [...prev.items];
       newItems[index] = {
