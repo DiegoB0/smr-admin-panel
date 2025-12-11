@@ -4,5 +4,6 @@ export const Roles = Object.freeze({
   ADMIN_WEB: 'admin-web',
   ADMIN_ALMACEN: 'admin-almacen',
   ADMIN_COMPRAS: 'admin-compras',
-  OPERADOR: 'operador'
+  OPERADOR: 'operador',
+  ADMIN_CONTA: 'admin-conta',  // ← Debería estar aquí
 });

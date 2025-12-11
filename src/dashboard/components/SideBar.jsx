@@ -26,7 +26,7 @@ function Sidebar() {
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const { isAdmin, isAdminAlmacen, isAdminCompras, isAdminWeb, isOperador, canReadUsers, canCreatePost } = useAuthFlags();
+  const { isAdmin, isAdminAlmacen, isAdminCompras, isAdminWeb, isOperador, isAdminConta, canReadUsers, canCreatePost } = useAuthFlags();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -119,6 +119,25 @@ function Sidebar() {
                 </>
               )
             }
+
+            {
+  isAdminConta && (
+    <li>
+      <Link
+        to="/dashboard/requisiciones"
+        className={`block py-2 px-4 rounded-md mb-2 hover:border-l-2 border-red-600 flex gap-2 hover:bg-gray-800 ${location.pathname === "/dashboard/requisiciones/conta"
+          ? "border-l-2 text-red-400 font-semibold bg-gray-800"
+          : ""
+          }`}
+      >
+        <span className="mt-1">
+          <FaPaperPlane />
+        </span>
+        Requisiciones
+      </Link>
+    </li>
+  )
+}
 
             {
               isAdmin && (

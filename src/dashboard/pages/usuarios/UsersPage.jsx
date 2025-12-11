@@ -7,6 +7,7 @@ import { useAuthFlags } from "../../../hooks/useAuth"
 import { useUser } from "../../../hooks/useUser"
 import { useDebounce } from "../../../hooks/customHooks"
 import { useObras } from "../../../hooks/useObras"
+import { useAlmacenes } from "../../../hooks/useAlmacenes"
 import Swal from "sweetalert2"
 
 function UsersPage() {
@@ -41,8 +42,12 @@ function UsersPage() {
   const [originalRoles, setOriginalRoles] = useState([])
 
   // Select obras
-  const [obras, setObras] = useState([]);
-  const [selectedObra, setSelectedObra] = useState("");
+  const [obras, setObras] = useState([])
+  const [selectedObra, setSelectedObra] = useState("")
+
+  // Select almacenes
+  const [almacenes, setAlmacenes] = useState([])
+  const [selectedAlmacen, setSelectedAlmacen] = useState("")
 
   // Fields for the form
   const [name, setName] = useState("")
@@ -54,18 +59,29 @@ function UsersPage() {
   const [roleOptions, setRoleOptions] = useState([])
   const [selectedRole, setSelectedRol] = useState("")
 
-  const { listObras } = useObras();
+  const { listObras } = useObras()
+  const { listAlmacenes } = useAlmacenes()
 
   useEffect(() => {
     if (selectedRole) {
-      const roleObj = roleOptions.find(r => r.id === selectedRole);
-      if (roleObj?.name?.toLowerCase() === "operador") {
+      const roleObj = roleOptions.find(r => r.id === selectedRole)
+      console.log("Role Object:", roleObj) // Ver el rol completo
+      console.log("Role Name:", roleObj?.name)
+      const roleNameLower = roleObj?.name?.toLowerCase()
+      console.log("Role Name Lower:", roleNameLower)
+
+      if (roleNameLower === "operador") {
         listObras({ limit: 0 })
           .then(res => setObras(res.data.data))
-          .catch(err => console.error("Error fetching obras", err));
+          console.log("Almacenes response:", res) 
+          .catch(err => console.error("Error fetching obras", err))
+      } else if (roleNameLower === "admin conta") {
+        listAlmacenes({ limit: 0 })
+          .then(res => setAlmacenes(res.data.data))
+          .catch(err => console.error("Error fetching almacenes", err))
       }
     }
-  }, [selectedRole]);
+  }, [selectedRole, roleOptions])
 
   // Fetch roles
   useEffect(() => {
@@ -155,8 +171,9 @@ function UsersPage() {
       return found ? found.name : rid
     })
 
-    const roleObj = roleOptions.find(r => r.id === selectedRole);
-    const isOperador = roleObj?.name?.toLowerCase() === "operador";
+    const roleObj = roleOptions.find(r => r.id === selectedRole)
+    const isOperador = roleObj?.name?.toLowerCase() === "operador"
+    const isContador = roleObj?.name?.toLowerCase() === "admin conta"
 
     const basePayload = {
       name,
@@ -170,7 +187,8 @@ function UsersPage() {
       ...(!isEditing && {
         roles: rolesToSend,
       }),
-      ...(isOperador && { obraId: Number(selectedObra) })
+      ...(isOperador && { obraId: Number(selectedObra) }),
+      ...(isContador && { almacenId: Number(selectedAlmacen) }),
     }
 
     try {
@@ -299,7 +317,10 @@ function UsersPage() {
     setPreviewImage("")
     setIsUserFormOpen(true)
     if (user.obraId) {
-      setSelectedObra(user.obraId);
+      setSelectedObra(user.obraId)
+    }
+    if (user.almacenId) {
+      setSelectedAlmacen(user.almacenId)
     }
   }
 
@@ -320,6 +341,8 @@ function UsersPage() {
     setConfirmPassword("")
     setEmail("")
     setSelectedRol("")
+    setSelectedObra("")
+    setSelectedAlmacen("")
   }
 
   // Componente de estadísticas
@@ -362,11 +385,18 @@ function UsersPage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+          <div
+            key={index}
+            className="bg-white rounded-lg shadow-md border border-gray-200 p-6"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">{stat.title}</p>
-                <p className={`text-2xl font-bold ${stat.textColor}`}>{stat.value}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  {stat.title}
+                </p>
+                <p className={`text-2xl font-bold ${stat.textColor}`}>
+                  {stat.value}
+                </p>
               </div>
               <div className={`p-3 rounded-lg ${stat.color}`}>
                 <stat.icon className="w-6 h-6 text-white" />
@@ -394,8 +424,12 @@ function UsersPage() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Gestión de Usuarios</h1>
-            <p className="text-gray-600 mt-1">Administra usuarios, roles y permisos del sistema</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Gestión de Usuarios
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Administra usuarios, roles y permisos del sistema
+            </p>
           </div>
           {canCreateUsers && (
             <button
@@ -484,8 +518,9 @@ function UsersPage() {
                               )}
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                              {/* <div className="text-sm text-gray-500">ID: {user.id}</div> */}
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.name}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -505,8 +540,11 @@ function UsersPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                              }`}
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                           >
                             {user.isActive ? "Activo" : "Inactivo"}
                           </span>
@@ -539,7 +577,9 @@ function UsersPage() {
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center">
                         <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron usuarios</h3>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                          No se encontraron usuarios
+                        </h3>
                         <p className="text-gray-600">
                           {searchTerm
                             ? "Intenta ajustar los filtros de búsqueda"
@@ -580,18 +620,28 @@ function UsersPage() {
         </>
       )}
 
-      {/* Modal - Mantengo tu modal original con pequeños ajustes visuales */}
+      {/* Modal */}
       {isUserFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={handleCloseModal}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={handleCloseModal}
+        >
           <div
             className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">{isEditing ? "Editar Usuario" : "Nuevo Usuario"}</h2>
-              <button onClick={handleCloseModal} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <span className="text-gray-400 hover:text-gray-600 text-xl">&times;</span>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {isEditing ? "Editar Usuario" : "Nuevo Usuario"}
+              </h2>
+              <button
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <span className="text-gray-400 hover:text-gray-600 text-xl">
+                  &times;
+                </span>
               </button>
             </div>
 
@@ -631,7 +681,9 @@ function UsersPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contraseña *
+                  </label>
                   <input
                     type="password"
                     value={password}
@@ -643,7 +695,9 @@ function UsersPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Contraseña *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirmar Contraseña *
+                  </label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -665,8 +719,9 @@ function UsersPage() {
                   onChange={(e) => setSelectedRol(e.target.value)}
                   disabled={isEditing}
                   required
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isEditing ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    isEditing ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   {!isEditing && (
                     <option value="" disabled>
@@ -683,7 +738,9 @@ function UsersPage() {
               </div>
 
               {(() => {
-                const selectedRoleObj = roleOptions.find(r => r.id === selectedRole);
+                const selectedRoleObj = roleOptions.find(
+                  r => r.id === selectedRole
+                )
                 if (selectedRoleObj?.name?.toLowerCase() === "operador") {
                   return (
                     <div>
@@ -707,13 +764,47 @@ function UsersPage() {
                         ))}
                       </select>
                     </div>
-                  );
+                  )
                 }
-                return null;
+                return null
+              })()}
+
+              {(() => {
+                const selectedRoleObj = roleOptions.find(
+                  r => r.id === selectedRole
+                )
+                if (selectedRoleObj?.name?.toLowerCase() === "admin conta") {
+                  return (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <HardHat className="w-4 h-4 inline mr-1" />
+                        Almacén
+                      </label>
+                      <select
+                        value={selectedAlmacen}
+                        onChange={(e) => setSelectedAlmacen(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="" disabled>
+                          — Selecciona un almacén —
+                        </option>
+                        {almacenes.map((almacen) => (
+                          <option key={almacen.id} value={almacen.id}>
+                            {almacen.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                }
+                return null
               })()}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Imagen de perfil</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Imagen de perfil
+                </label>
                 <input
                   type="file"
                   accept="image/*"
@@ -757,4 +848,3 @@ function UsersPage() {
 }
 
 export default UsersPage
-

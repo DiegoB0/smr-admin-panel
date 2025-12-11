@@ -61,7 +61,6 @@ const RequisicionesPage = () => {
   const debouncedSearch = useDebounce(searchTerm, 500);
 
   const [proveedores, setProveedores] = useState([])
-
   const [almacenes, setAlmacenes] = useState([])
 
   const [stats, setStats] = useState({
@@ -81,6 +80,9 @@ const RequisicionesPage = () => {
     no_economico: ''
   })
 
+  // Admin flags
+  const { isAdmin, isAdminAlmacen, isAdminConta } = useAuthFlags();
+
   // Modal de creación
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -90,7 +92,7 @@ const RequisicionesPage = () => {
     prioridad: "alta",
     hrm: null,
     concepto: "",
-    requisicionType: "refacciones",
+    requisicionType: isAdminConta ? "consumibles" : "refacciones",
     almacenCargoId: "",
     proveedorId: "",
     metodo_pago: "sin_pagar",
@@ -133,10 +135,6 @@ const RequisicionesPage = () => {
     "servicio preventivo"
   ];
 
-
-  // Admin flags
-  const { isAdmin, isAdminAlmacen } = useAuthFlags();
-
   const { listProveedores } = useProveedores()
   const { listAlmacenes } = useAlmacenes()
 
@@ -167,22 +165,19 @@ const RequisicionesPage = () => {
       .finally(() => setLoading(false));
   };
 
-
   const fetchProveedores = () => {
     listProveedores({ page: 1, limit: 100, order: "ASC" })
       .then((res) => {
         setProveedores(res.data)
       })
       .catch((err) => {
-        console.error("Error cargando productos:", err)
+        console.error("Error cargando proveedores:", err)
       })
   }
-
 
   useEffect(() => {
     fetchProveedores()
   }, [])
-
 
   const fetchAlmacenes = () => {
     listAlmacenes({ page: 1, limit: 100, order: "ASC" })
@@ -190,7 +185,7 @@ const RequisicionesPage = () => {
         setAlmacenes(res.data.data)
       })
       .catch((err) => {
-        console.error("Error cargando productos:", err)
+        console.error("Error cargando almacenes:", err)
       })
   }
 
@@ -200,11 +195,9 @@ const RequisicionesPage = () => {
         setStats(res.data)
       })
       .catch((err) => {
-        console.error("Error cargando productos:", err)
+        console.error("Error cargando stats:", err)
       })
-
   }
-
 
   useEffect(() => {
     fetchAlmacenes()
@@ -223,6 +216,7 @@ const RequisicionesPage = () => {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch]);
+
   useEffect(() => {
     setPage(1);
   }, [limitOption]);
@@ -265,7 +259,6 @@ const RequisicionesPage = () => {
   const closeDetailModal = () => {
     setIsDetailModalOpen(false);
     setSelectedRequisicion(null);
-
   };
 
   const closeCreateModal = () => {
@@ -277,7 +270,7 @@ const RequisicionesPage = () => {
       prioridad: "alta",
       hrm: null,
       concepto: "",
-      requisicionType: "refacciones",
+      requisicionType: isAdminConta ? "consumibles" : "refacciones",
       almacenCargoId: "",
       proveedorId: "",
       metodo_pago: "sin_pagar",
@@ -309,7 +302,7 @@ const RequisicionesPage = () => {
       prioridad: "alta",
       hrm: null,
       concepto: "",
-      requisicionType: "refacciones",
+      requisicionType: isAdminConta ? "consumibles" : "refacciones",
       almacenCargoId: "",
       proveedorId: "",
       metodo_pago: "sin_pagar",
@@ -388,7 +381,7 @@ const RequisicionesPage = () => {
       });
       if (!isConfirmed) return;
 
-      await rejectRequisicion(id /*, { motivo } si tu API lo soporta */);
+      await rejectRequisicion(id);
       Swal.fire("Listo", "Requisición rechazada", "success");
       fetchRequisiciones();
     } catch (err) {
@@ -441,7 +434,6 @@ const RequisicionesPage = () => {
             precio: Number(item.precio) || 0,
             currency: item.currency || formData.currency,
           };
-          
 
           if (formData.requisicionType === "refacciones") {
             return {
@@ -474,10 +466,8 @@ const RequisicionesPage = () => {
       // Validate items
       const invalidItem = payload.items.find((it) => {
         const missingBasics = !it.cantidad || it.cantidad <= 0 || !it.unidad;
-
         const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
         return missingBasics || missingDescripcion;
-
       });
 
       if (invalidItem) {
@@ -499,7 +489,7 @@ const RequisicionesPage = () => {
         prioridad: "alta",
         hrm: null,
         concepto: "",
-        requisicionType: "refacciones",
+        requisicionType: isAdminConta ? "consumibles" : "refacciones",
         almacenCargoId: "",
         proveedorId: "",
         observaciones: "",
@@ -523,7 +513,6 @@ const RequisicionesPage = () => {
         hrs: '',
         no_economico: ''
       })
-
 
       fetchRequisiciones();
     } catch (err) {
@@ -554,20 +543,13 @@ const RequisicionesPage = () => {
     };
 
     try {
-
-      await updateItems(
-        selectedRequisicion.id,
-        payload,
-      );
-
+      await updateItems(selectedRequisicion.id, payload);
       fetchRequisiciones();
-
       Swal.fire("Éxito", "Requisición actualizada", "success");
       closeEditModal();
     } catch (error) {
       Swal.fire('Error!', 'Ocurrio un error al actualizar', 'warning');
     }
-
   }
 
   const handleBuscarFiltros = async () => {
@@ -583,16 +565,13 @@ const RequisicionesPage = () => {
         hrs: Number(hrs),
       });
 
-      // If using axios, data is in res.data
       const payload = res.data || res;
-
       const items = Array.isArray(payload.items) ? payload.items : [];
       if (items.length === 0) {
         Swal.fire('Sin resultados', 'No se encontraron filtros', 'info');
         return;
       }
 
-      // Map fetched filtro items into your requisición items
       setFormData((prev) => ({
         ...prev,
         requisicionType: 'filtros',
@@ -640,7 +619,6 @@ const RequisicionesPage = () => {
     </div>
   );
 
-  // Extract stat card into component
   const StatCard = ({ label, count, color, icon: Icon }) => (
     <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6">
       <div className="flex items-center justify-between">
@@ -700,12 +678,12 @@ const RequisicionesPage = () => {
     });
   };
 
-  // Total estimado (UI)
   const totalEstimado = formData.items.reduce((acc, it) => {
     const q = Number(it.cantidad) || 0;
     const p = Number(it.precio) || 0;
     return acc + q * p;
   }, 0);
+
   const Detail = ({ label, value }) => (
     <div className="p-3 rounded-lg border border-gray-200 bg-gray-50">
       <p className="text-xs font-medium text-gray-500">{label}</p>
@@ -732,7 +710,6 @@ const RequisicionesPage = () => {
           </h1>
           <p className="text-gray-600 mt-1">Administra todas las requisiciones</p>
         </div>
-        <div />
       </div>
 
       <StatsSection />
@@ -762,7 +739,7 @@ const RequisicionesPage = () => {
         </select>
       </div>
 
-      {isAdminAlmacen && (
+      {(isAdminAlmacen || isAdminConta) && (
         <div className="flex justify-end mb-4">
           <button
             onClick={() => setIsCreateModalOpen(true)}
@@ -820,6 +797,7 @@ const RequisicionesPage = () => {
           Pagadas
         </button>
       </div>
+
       {/* Tabla */}
       {loading ? (
         <LoadingSpinner />
@@ -863,7 +841,7 @@ const RequisicionesPage = () => {
                   requisiciones.map((r) => (
                     <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {r.rcp || "N/A"}
+                        {r.formattedRcp || "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.fechaSolicitud
@@ -882,11 +860,9 @@ const RequisicionesPage = () => {
                             ? "bg-yellow-100 text-yellow-800"
                             : ["aprobado", "aprobada"].includes(lower(r.status))
                               ? "bg-green-100 text-green-800"
-                              : ["pendiente"].includes(lower(r.status))
-                                ? "bg-yellow-100 text-yellow-800"
-                                : ["pagada"].includes(lower(r.status))
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-red-100 text-red-800"
+                              : ["pagada"].includes(lower(r.status))
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
                             }`}
                         >
                           {r.status || "N/A"}
@@ -909,7 +885,7 @@ const RequisicionesPage = () => {
                       </td>
 
                       <td className="px-6 py-4 text-sm flex space-x-2">
-                        {lower(r.status) === "pagada" ? (
+                        {lower(r.status) === "pagada" || lower(r.status) === "aprobada" ? (
                           <>
                             <button
                               onClick={() => openDetailModal(r)}
@@ -918,32 +894,15 @@ const RequisicionesPage = () => {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <span className="text-blue-800 text-sm bg-blue-200 rounded-xl px-2 py-1 flex items-center gap-2">
+                            <span className={`text-sm px-2 py-1 rounded-xl flex items-center gap-2 ${lower(r.status) === "pagada"
+                              ? "text-blue-800 bg-blue-200"
+                              : "text-green-800 bg-green-200"
+                              }`}>
                               <CheckCircle2 className="w-3 h-3" />
-                              pagada
+                              {r.status}
                             </span>
-
                           </>
-
-                        ) : lower(r.status) === "aprobada" ? (
-                          <>
-                            <button
-                              onClick={() => openDetailModal(r)}
-                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                              title="Ver detalles"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <span className="text-green-800 text-sm bg-green-200 rounded-xl px-2 py-1 flex items-center gap-2">
-                              <CheckCircle2 className="w-3 h-3" />
-                              abrobado
-                            </span>
-
-                          </>
-
                         ) : (
-
-
                           <>
                             <button
                               onClick={() => openDetailModal(r)}
@@ -961,8 +920,7 @@ const RequisicionesPage = () => {
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
-                            )
-                            }
+                            )}
 
                             {isAdmin && lower(r.status) === "pendiente" && (
                               <>
@@ -982,17 +940,14 @@ const RequisicionesPage = () => {
                                 </button>
                               </>
                             )}
-
-
                           </>
                         )}
-
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center">
+                    <td colSpan={9} className="px-6 py-12 text-center">
                       <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
                         No se encontraron requisiciones
@@ -1035,10 +990,11 @@ const RequisicionesPage = () => {
           </button>
         </div>
       )}
+
+      {/* MODAL CREAR */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-
           onClick={() => closeCreateModal()}
         >
           <div
@@ -1075,7 +1031,6 @@ const RequisicionesPage = () => {
               <form onSubmit={handleSubmit} className="px-6 py-5 space-y-8">
                 {/* Sección: Datos generales */}
                 <section>
-
                   <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-green-600" />
                     Datos generales
@@ -1200,7 +1155,6 @@ const RequisicionesPage = () => {
                       </select>
                     </div>
 
-
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Proveedor <span className="text-red-500">*</span>
@@ -1251,7 +1205,8 @@ const RequisicionesPage = () => {
                       />
                     </div>
 
-                    <div className="mb-6">
+                    {/* Tipo de requisición */}
+                    <div className="md:col-span-2 mb-6">
                       <label className="block text-sm font-medium text-gray-700 mb-3">
                         Tipo de requisición <span className="text-red-500">*</span>
                       </label>
@@ -1262,20 +1217,22 @@ const RequisicionesPage = () => {
                             key={tipo}
                             type="button"
                             onClick={() => handleTipoChange(tipo.toLowerCase())}
-                            className={`px-4 py-2 rounded-lg font-medium transition ${formData.requisicionType === tipo.toLowerCase()
-                              ? "bg-green-600 text-white border-2 border-green-600"
-                              : "bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-green-500"
-                              }`}
+                            disabled={isAdminConta && tipo !== "Consumibles"}
+                            className={`px-4 py-2 rounded-lg font-medium transition ${
+                              formData.requisicionType === tipo.toLowerCase()
+                                ? "bg-green-600 text-white border-2 border-green-600"
+                                : "bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-green-500"
+                            } ${isAdminConta && tipo !== "Consumibles" ? "opacity-50 cursor-not-allowed" : ""}`}
                           >
                             {tipo}
                           </button>
                         ))}
                       </div>
                     </div>
-
                   </div>
                 </section>
 
+                {/* Sección busqueda filtros */}
                 <section>
                   {formData.requisicionType === "filtros" && (
                     <>
@@ -1302,8 +1259,6 @@ const RequisicionesPage = () => {
                             <option value="1000">1000</option>
                             <option value="2000">2000</option>
                           </select>
-
-
                         </div>
                         <div className="md:col-span-1">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1314,14 +1269,16 @@ const RequisicionesPage = () => {
                             placeholder="Ej. TD-27"
                             value={filtroQuery.no_economico}
                             onChange={(e) =>
-                              setFiltroQuery((prev) => ({ ...prev, no_economico: e.target.value }))
+                              setFiltroQuery((prev) => ({
+                                ...prev,
+                                no_economico: e.target.value,
+                              }))
                             }
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                           />
                         </div>
 
                         <div>
-
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             * Encuentra los filtros segun el equipo *
                           </label>
@@ -1334,13 +1291,9 @@ const RequisicionesPage = () => {
                             Buscar filtros
                           </button>
                         </div>
-
                       </div>
-
-
                     </>
                   )}
-
                 </section>
 
                 {/* Sección: Items */}
@@ -1366,7 +1319,6 @@ const RequisicionesPage = () => {
                         <Plus className="w-4 h-4" />
                         Agregar item
                       </button>
-
                     </div>
                   </div>
 
@@ -1377,7 +1329,6 @@ const RequisicionesPage = () => {
                   )}
 
                   <div className="space-y-3">
-
                     {formData.items.map((item, index) => (
                       <div
                         key={index}
@@ -1394,8 +1345,8 @@ const RequisicionesPage = () => {
                         </button>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-
-                          {(formData.requisicionType === "refacciones" || formData.requisicionType === "filtros") && (
+                          {(formData.requisicionType === "refacciones" ||
+                            formData.requisicionType === "filtros") && (
                             <>
                               <div className="md:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1429,114 +1380,112 @@ const RequisicionesPage = () => {
                             </>
                           )}
 
-                          <>
+                          <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Cantidad <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={item.cantidad}
+                              onChange={(e) =>
+                                updateItem(index, "cantidad", e.target.value)
+                              }
+                              required
+                              min={1}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            />
+                          </div>
+
+                          <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Unidad <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ej. hr, día, pieza"
+                              value={item.unidad}
+                              onChange={(e) =>
+                                updateItem(index, "unidad", e.target.value)
+                              }
+                              required
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            />
+                          </div>
+
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              {formData.requisicionType === "consumibles" ? (
+                                <span className="text-gray-700 flex items-center gap-1">
+                                  Descripcion <p className="text-red-500">*</p>
+                                </span>
+                              ) : (
+                                <span className="text-gray-700 text-medium flex items-center gap-1">
+                                  Nombre <p className="text-red-500">*</p>
+                                </span>
+                              )}
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Escribe el nombre del item"
+                              value={item.descripcion}
+                              required={formData.requisicionType === "consumibles"}
+                              onChange={(e) =>
+                                updateItem(index, "descripcion", e.target.value)
+                              }
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            />
+                          </div>
+
+                          <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Precio unitario (opcional)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="0.00"
+                              value={item.precio}
+                              onChange={(e) =>
+                                updateItem(index, "precio", e.target.value)
+                              }
+                              min={0}
+                              step="0.01"
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            />
+                          </div>
+
+                          <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Moneda (opcional)
+                            </label>
+                            <select
+                              value={item.currency || "no especificado"}
+                              onChange={(e) =>
+                                updateItem(index, "currency", e.target.value)
+                              }
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
+                            >
+                              <option value="">No especificado</option>
+                              <option value="USD">USD</option>
+                              <option value="MXN">MX Pesos</option>
+                            </select>
+                          </div>
+
+                          {formData.requisicionType === "consumibles" && (
                             <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Cantidad <span className="text-red-500">*</span>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Guardar en inventario
                               </label>
                               <input
-                                type="number"
-                                placeholder="0"
-                                value={item.cantidad}
+                                type="checkbox"
+                                checked={item.is_product || false}
                                 onChange={(e) =>
-                                  updateItem(index, "cantidad", e.target.value)
+                                  updateItem(index, "is_product", e.target.checked)
                                 }
-                                required
-                                min={1}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                                className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                               />
                             </div>
-
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Unidad <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Ej. hr, día, pieza"
-                                value={item.unidad}
-                                onChange={(e) =>
-                                  updateItem(index, "unidad", e.target.value)
-                                }
-                                required
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {formData.requisicionType === 'consumibles' ? (
-                                  <span className="text-gray-700 flex items-center gap-1">
-                                    Descripcion <p className="text-red-500">*</p>
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-700 text-medium flex items-center gap-1">Nombre <p className="text-red-500">*</p></span>
-                                )}
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Escribe el nombre del item"
-                                value={item.descripcion}
-                                required={formData.requisicionType === 'consumibles'}
-                                onChange={(e) =>
-                                  updateItem(index, "descripcion", e.target.value)
-                                }
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Precio unitario (opcional)
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="0.00"
-                                value={item.precio}
-                                onChange={(e) =>
-                                  updateItem(index, "precio", e.target.value)
-                                }
-                                min={0}
-                                step="0.01"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Moneda (opcional)
-                              </label>
-                              <select
-                                value={item.currency || "no especificado"}
-                                onChange={(e) =>
-                                  updateItem(index, "currency", e.target.value)
-                                }
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
-                              >
-                                <option value="">No especificado</option>
-                                <option value="USD">USD</option>
-                                <option value="MXN">MX Pesos</option>
-                              </select>
-                            </div>
-
-
-                            {(formData.requisicionType === "consumibles") && (
-                              <div className="md:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Guardar en inventario
-                                </label>
-                                <input
-                                  type="checkbox"
-                                  checked={item.is_product || false}
-                                  onChange={(e) =>
-                                    updateItem(index, "is_product", e.target.checked)
-                                  }
-                                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                />
-                              </div>
-                            )}
-                          </>
-
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1585,53 +1534,150 @@ const RequisicionesPage = () => {
             </div>
           </div>
         </div>
-      )
-      }
+      )}
 
-      {/* Modal Detalles */}
-      {
-        isDetailModalOpen && selectedRequisicion && (
+      {/* MODAL DETALLES */}
+      {isDetailModalOpen && selectedRequisicion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={closeDetailModal}
+        >
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-            onClick={closeDetailModal}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div
-              className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
-                <div className="flex items-center gap-3">
-                  <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
-                    <Eye className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Detalles de la Requisición
-                    </h2>
-                    <p className="text-xs text-gray-500">
-                      Vista resumen con información clave
-                    </p>
-                  </div>
+            {/* Header */}
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
+                  <Eye className="w-5 h-5" />
                 </div>
-                <button
-                  onClick={closeDetailModal}
-                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                  aria-label="Cerrar"
-                >
-                  <span className="text-2xl leading-none">&times;</span>
-                </button>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Detalles de la Requisición
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Vista resumen con información clave
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={closeDetailModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
 
-              {/* Body */}
-              <div className="px-6 py-5 space-y-8">
-                {/* Encabezado con badges */}
-                <section className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 text-gray-700 border-gray-200">
-                    RCP: {selectedRequisicion.rcp || "N/A"}
-                  </span>
+            {/* Body */}
+            <div className="px-6 py-5 space-y-8">
+              {/* Encabezado con badges */}
+              <section className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 text-gray-700 border-gray-200">
+                  RCP: {selectedRequisicion.formattedRcp || "N/A"}
+                </span>
 
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
+                  {selectedRequisicion.requisicionType === "consumibles"
+                    ? "Consumibles"
+                    : selectedRequisicion.requisicionType === "refacciones"
+                      ? "Refacciones"
+                      : selectedRequisicion.requisicionType === "filtros"
+                        ? "Filtros"
+                        : "Tipo N/A"}
+                </span>
+
+                <span
+                  className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
+                    ["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : lower(selectedRequisicion.status) === "pendiente"
+                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                        : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  {selectedRequisicion.status || "Sin status"}
+                </span>
+              </section>
+
+              {/* Grid datos principales */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-600" />
+                  Información general
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Título" value={selectedRequisicion.titulo} />
+                  <Detail label="HRS" value={selectedRequisicion.hrs} />
+                  <Detail
+                    label="Concepto"
+                    value={selectedRequisicion.concepto || "Sin concepto"}
+                  />
+                  <Detail
+                    label="Método de pago"
+                    value={selectedRequisicion.metodo_pago}
+                  />
+                  <Detail label="Prioridad" value={selectedRequisicion.prioridad} />
+                  <Detail
+                    label="Fecha creación"
+                    value={
+                      selectedRequisicion.fechaSolicitud
+                        ? new Date(
+                          selectedRequisicion.fechaSolicitud
+                        ).toLocaleDateString()
+                        : "N/A"
+                    }
+                  />
+                  <Detail
+                    label="Fecha revisión"
+                    value={
+                      selectedRequisicion.fechaRevision
+                        ? new Date(
+                          selectedRequisicion.fechaRevision
+                        ).toLocaleDateString()
+                        : "N/A"
+                    }
+                  />
+                </div>
+              </section>
+
+              {/* Relacionados */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Relacionados
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Detail label="Pedido por" value={selectedRequisicion.pedidoPor?.name} />
+                  <Detail label="Revisado por" value={selectedRequisicion.revisadoPor?.name} />
+                  <Detail
+                    label="Almacén Destino"
+                    value={selectedRequisicion.almacenDestino?.name}
+                  />
+                  <Detail label="Almacén Cargo" value={selectedRequisicion.almacenCargo?.name} />
+                </div>
+              </section>
+
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-blue-600" />
+                  Observaciones
+                </h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <Detail label="Notas de almacen" value={selectedRequisicion.observaciones} />
+                  <Detail label="Notas de compras" value={selectedRequisicion.observacionesCompras} />
+                </div>
+              </section>
+
+              {/* Items */}
+              <section>
+                <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-blue-600" />
+                  Items
+                </h3>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
                     {selectedRequisicion.requisicionType === "consumibles"
                       ? "Consumibles"
                       : selectedRequisicion.requisicionType === "refacciones"
@@ -1639,502 +1685,372 @@ const RequisicionesPage = () => {
                         : selectedRequisicion.requisicionType === "filtros"
                           ? "Filtros"
                           : "Tipo N/A"}
-                  </span>
-
-                  <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
-                      ? "bg-green-50 text-green-700 border-green-200"
-                      : lower(selectedRequisicion.status) === "pendiente"
-                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                        : "bg-red-50 text-red-700 border-red-200"
-                      }`}
-                  >
-                    {selectedRequisicion.status || "Sin status"}
-                  </span>
-                </section>
-
-                {/* Grid datos principales */}
-                <section>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-blue-600" />
-                    Información general
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Detail label="Título" value={selectedRequisicion.titulo} />
-                    <Detail label="HRS" value={selectedRequisicion.hrs} />
-                    <Detail
-                      label="Concepto"
-                      value={selectedRequisicion.concepto || "Sin concepto"}
-                    />
-                    <Detail
-                      label="Método de pago"
-                      value={selectedRequisicion.metodo_pago}
-                    />
-                    <Detail label="Prioridad" value={selectedRequisicion.prioridad} />
-                    <Detail
-                      label="Fecha creación"
-                      value={
-                        selectedRequisicion.fechaSolicitud
-                          ? new Date(
-                            selectedRequisicion.fechaSolicitud
-                          ).toLocaleDateString()
-                          : "N/A"
-                      }
-                    />
-                    <Detail
-                      label="Fecha revisión"
-                      value={
-                        selectedRequisicion.fechaRevision
-                          ? new Date(
-                            selectedRequisicion.fechaRevision
-                          ).toLocaleDateString()
-                          : "N/A"
-                      }
-                    />
-                  </div>
-                </section>
-
-                {/* Relacionados */}
-                <section>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">
-                    Relacionados
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Detail label="Pedido por" value={selectedRequisicion.pedidoPor?.name} />
-                    <Detail label="Revisado por" value={selectedRequisicion.revisadoPor?.name} />
-                    <Detail
-                      label="Almacén Destino"
-                      value={selectedRequisicion.almacenDestino?.name}
-                    />
-                    <Detail label="Almacén Cargo" value={selectedRequisicion.almacenCargo?.name} />
-                  </div>
-                </section>
-
-
-                <section>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-blue-600" />
-                    Observaciones
-                  </h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    <Detail label="Notas de almacen" value={selectedRequisicion.observaciones} />
-                    <Detail label="Notas de compras" value={selectedRequisicion.observacionesCompras} />
-                  </div>
-                </section>
-
-
-                {/* Items */}
-                <section>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-blue-600" />
-                    Items
-                  </h3>
-
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      {selectedRequisicion.requisicionType === "consumibles"
-                        ? "Consumibles"
-                        : selectedRequisicion.requisicionType === "refacciones"
-                          ? "Refacciones"
-                          : selectedRequisicion.requisicionType === "filtros"
-                            ? "Filtros"
-                            : "Tipo N/A"}
-                    </h3>
-                    {selectedRequisicion.insumos?.length > 0 ? (
-                      <div className="rounded-lg border border-gray-200 overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr key={selectedRequisicion.insumos?.id}>
-                              <Th>Descripción</Th>
-                              <Th>Unidad</Th>
-                              <Th>Cantidad Esperada</Th>
-                              <Th>Cantidad Comprada</Th>
-                              <Th>Precio Unitario</Th>
-                              <Th>Tipo de moneda</Th>
-                              <Th>Pagado</Th>
-
+                  {selectedRequisicion.insumos?.length > 0 ? (
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <Th>Descripción</Th>
+                            <Th>Unidad</Th>
+                            <Th>Cantidad Esperada</Th>
+                            <Th>Cantidad Comprada</Th>
+                            <Th>Precio Unitario</Th>
+                            <Th>Tipo de moneda</Th>
+                            <Th>Pagado</Th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedRequisicion.insumos.map((item, i) => (
+                            <tr key={i}>
+                              <Td>{item.descripcion}</Td>
+                              <Td>{item.unidad}</Td>
+                              <Td>{item.cantidad}</Td>
+                              <Td>{item.cantidadPagada || "N/A"}</Td>
+                              <Td>{item.precio}</Td>
+                              <Td>{item.currency}</Td>
+                              <Td>{item.paid === true ? <Check /> : <X />}</Td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {
-                              selectedRequisicion.insumos.map((item, i) => (
-                                <tr key={i}>
-                                  <Td>{item.descripcion}</Td>
-                                  <Td>{item.unidad}</Td>
-                                  <Td>{item.cantidad}</Td>
-                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
-                                  <Td>{item.precio}</Td>
-                                  <Td>{item.currency}</Td>
-                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
-                                </tr>
-                              ))
-                            }
-
-                          </tbody>
-                        </table>
-                      </div>
-
-                    ) : selectedRequisicion.refacciones?.length > 0 ? (
-                      <div className="rounded-lg border border-gray-200 overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr key={selectedRequisicion.refacciones?.id}>
-                              <Th>ID</Th>
-                              <Th>No. Economico</Th>
-                              <Th>Unidad</Th>
-                              <Th>Cantidad Esperada</Th>
-                              <Th>Cantidad Comprada</Th>
-                              <Th>Precio</Th>
-                              <Th>Moneda</Th>
-                              <Th>Pagado</Th>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : selectedRequisicion.refacciones?.length > 0 ? (
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <Th>ID</Th>
+                            <Th>No. Economico</Th>
+                            <Th>Unidad</Th>
+                            <Th>Cantidad Esperada</Th>
+                            <Th>Cantidad Comprada</Th>
+                            <Th>Precio</Th>
+                            <Th>Moneda</Th>
+                            <Th>Pagado</Th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedRequisicion.refacciones.map((item, i) => (
+                            <tr key={i}>
+                              <Td>{item.customId}</Td>
+                              <Td>{item.no_economico}</Td>
+                              <Td>{item.unidad}</Td>
+                              <Td>{item.cantidad}</Td>
+                              <Td>{item.cantidadPagada || "N/A"}</Td>
+                              <Td>{item.precio}</Td>
+                              <Td>{item.currency}</Td>
+                              <Td>{item.paid === true ? <Check /> : <X />}</Td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {
-                              selectedRequisicion.refacciones.map((item, i) => (
-                                <tr key={i}>
-                                  <Td>{item.customId}</Td>
-                                  <Td>{item.no_economico}</Td>
-                                  <Td>{item.unidad}</Td>
-                                  <Td>{item.cantidad}</Td>
-                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
-                                  <Td>{item.precio}</Td>
-                                  <Td>{item.currency}</Td>
-                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
-                                </tr>
-                              ))
-                            }
-
-                          </tbody>
-                        </table>
-                      </div>
-
-                    ) : selectedRequisicion.filtros?.length > 0 ? (
-                      <div className="rounded-lg border border-gray-200 overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr key={selectedRequisicion.filtros?.id}>
-                              <Th>ID</Th>
-                              <Th>No. Economico</Th>
-                              <Th>Unidad</Th>
-                              <Th>Cantidad Esperada</Th>
-                              <Th>Cantidad Comprada</Th>
-                              <Th>Precio</Th>
-                              <Th>Moneda</Th>
-                              <Th>Pagado</Th>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : selectedRequisicion.filtros?.length > 0 ? (
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <Th>ID</Th>
+                            <Th>No. Economico</Th>
+                            <Th>Unidad</Th>
+                            <Th>Cantidad Esperada</Th>
+                            <Th>Cantidad Comprada</Th>
+                            <Th>Precio</Th>
+                            <Th>Moneda</Th>
+                            <Th>Pagado</Th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedRequisicion.filtros.map((item, i) => (
+                            <tr key={i}>
+                              <Td>{item.customId}</Td>
+                              <Td>{item.no_economico}</Td>
+                              <Td>{item.unidad}</Td>
+                              <Td>{item.cantidad}</Td>
+                              <Td>{item.cantidadPagada || "N/A"}</Td>
+                              <Td>{item.precio}</Td>
+                              <Td>{item.currency}</Td>
+                              <Td>{item.paid === true ? <Check /> : <X />}</Td>
                             </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {
-                              selectedRequisicion.filtros.map((item, i) => (
-                                <tr key={i}>
-                                  <Td>{item.customId}</Td>
-                                  <Td>{item.no_economico}</Td>
-                                  <Td>{item.unidad}</Td>
-                                  <Td>{item.cantidad}</Td>
-                                  <Td>{item.cantidadPagada || 'N/A'}</Td>
-                                  <Td>{item.precio}</Td>
-                                  <Td>{item.currency}</Td>
-                                  <Td>{item.paid === true ? <Check /> : <X />}</Td>
-                                </tr>
-                              ))
-                            }
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">
+                      No hay items registrados en esta requisición
+                    </p>
+                  )}
+                </div>
+              </section>
+            </div>
 
-                          </tbody>
-                        </table>
-                      </div>
+            {/* Contenido oculto para exportar */}
+            <PrintableRequisicion requisicion={selectedRequisicion} />
 
-                    ) : (
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
+              <button
+                onClick={() =>
+                  printRequisicion(
+                    `req-print-${selectedRequisicion.id}`,
+                    `RCP${selectedRequisicion.formattedRcp || selectedRequisicion.id}`
+                  )
+                }
+                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
+              >
+                Imprimir / Guardar PDF
+              </button>
+              <button
+                onClick={closeDetailModal}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-                      <p className="text-gray-600">
-                        No hay items registrados en esta requisición
-                      </p>
-                    )}
-
-                  </div>
-                </section>
+      {/* MODAL EDITAR */}
+      {isEditModalOpen && selectedRequisicion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+          onClick={closeEditModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Editar Requisición
+                  </h2>
+                  <p className="text-xs text-gray-500">
+                    Actualizar precios de los items
+                  </p>
+                </div>
               </div>
-              {/* Contenido oculto para exportar (layout imprimible) */}
-              <PrintableRequisicion requisicion={selectedRequisicion} />
-              {/* Footer */}
+              <button
+                onClick={closeEditModal}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label="Cerrar"
+              >
+                <span className="text-2xl leading-none">&times;</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleEdit} className="px-6 py-5 space-y-8">
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4 text-green-600" />
+                    Items de la requisicion
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={addItem}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Agregar item
+                    </button>
+                  </div>
+                </div>
+
+                {formData.items.length === 0 && (
+                  <p className="text-sm text-gray-500 mb-2">
+                    Agrega al menos un item para crear la requisicion.
+                  </p>
+                )}
+
+                <div className="space-y-3">
+                  {formData.items.map((item, index) => (
+                    <div
+                      key={index}
+                      className="relative border border-gray-200 rounded-lg p-4 bg-gray-50"
+                    >
+                      {/* Botón eliminar item */}
+                      <button
+                        type="button"
+                        onClick={() => removeItem(index)}
+                        className="absolute -top-3 -right-3 p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow"
+                        title="Eliminar item"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        {(formData.requisicionType === "refacciones" ||
+                          formData.requisicionType === "filtros") && (
+                          <>
+                            <div className="md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {getItemLabel()} <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Ej. REF-001"
+                                value={item.customId || ""}
+                                onChange={(e) =>
+                                  updateItem(index, "customId", e.target.value)
+                                }
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                              />
+                            </div>
+
+                            <div className="md:col-span-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                No. Economico <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Ej. Bomba hidráulica"
+                                value={item.no_economico || ""}
+                                onChange={(e) =>
+                                  updateItem(index, "no_economico", e.target.value)
+                                }
+                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Cantidad <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={item.cantidad}
+                            onChange={(e) =>
+                              updateItem(index, "cantidad", e.target.value)
+                            }
+                            required
+                            min={1}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Unidad <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ej. hr, día, pieza"
+                            value={item.unidad}
+                            onChange={(e) =>
+                              updateItem(index, "unidad", e.target.value)
+                            }
+                            required
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Descripción{" "}
+                            {formData.requisicionType === "consumibles" ? (
+                              <span className="text-red-500">*</span>
+                            ) : (
+                              <span className="text-gray-700 text-medium">(opcional)</span>
+                            )}
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Describe el servicio (ej. mantenimiento correctivo)"
+                            value={item.descripcion}
+                            required={formData.requisicionType === "consumibles"}
+                            onChange={(e) =>
+                              updateItem(index, "descripcion", e.target.value)
+                            }
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Precio unitario (opcional)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={item.precio}
+                            onChange={(e) =>
+                              updateItem(index, "precio", e.target.value)
+                            }
+                            min={0}
+                            step="0.01"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Moneda (opcional)
+                          </label>
+                          <select
+                            value={item.currency || "USD"}
+                            onChange={(e) =>
+                              updateItem(index, "currency", e.target.value)
+                            }
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
+                          >
+                            <option value="">No especificado</option>
+                            <option value="USD">USD</option>
+                            <option value="MXN">MX Pesos</option>
+                          </select>
+                        </div>
+
+                        {formData.requisicionType === "consumibles" && (
+                          <div className="md:col-span-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Guardar en inventario
+                            </label>
+                            <input
+                              type="checkbox"
+                              checked={item.is_product || false}
+                              onChange={(e) =>
+                                updateItem(index, "is_product", e.target.checked)
+                              }
+                              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
               <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
                 <button
-                  onClick={() =>
-                    printRequisicion(
-                      `req-print-${selectedRequisicion.id}`,
-                      `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
-                    )
-                  }
+                  type="submit"
                   className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
                 >
-                  Imprimir / Guardar PDF
+                  Actualizar
                 </button>
                 <button
-                  onClick={closeDetailModal}
+                  onClick={closeEditModal}
                   className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Cerrar
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-        )
-      }
-
-      {/* Edit modal */}
-      {
-        isEditModalOpen && selectedRequisicion && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-            onClick={closeEditModal}
-          >
-            <div
-              className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 bg-white/80 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-xl">
-                <div className="flex items-center gap-3">
-                  <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-blue-50 text-blue-600">
-                    <Pencil className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Editar Requisición
-                    </h2>
-                    <p className="text-xs text-gray-500">
-                      Actualizar precios de los items
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={closeEditModal}
-                  className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-                  aria-label="Cerrar"
-                >
-                  <span className="text-2xl leading-none">&times;</span>
-                </button>
-              </div>
-
-              <form onSubmit={handleEdit} className="px-6 py-5 space-y-8">
-
-                <section>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <ClipboardList className="w-4 h-4 text-green-600" />
-                      Items de la requisicion
-                    </h3>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={addItem}
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 transition"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Agregar item
-                      </button>
-
-                    </div>
-                  </div>
-
-                  {formData.items.length === 0 && (
-                    <p className="text-sm text-gray-500 mb-2">
-                      Agrega al menos un item para crear la requisicion.
-                    </p>
-                  )}
-
-                  <div className="space-y-3">
-
-                    {formData.items.map((item, index) => (
-                      <div
-                        key={index}
-                        className="relative border border-gray-200 rounded-lg p-4 bg-gray-50"
-                      >
-                        {/* Botón eliminar item */}
-                        <button
-                          type="button"
-                          onClick={() => removeItem(index)}
-                          className="absolute -top-3 -right-3 p-2 rounded-full bg-red-50 text-red-600 hover:bg-red-100 shadow"
-                          title="Eliminar item"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-
-                          {(formData.requisicionType === "refacciones" || formData.requisicionType === "filtros") && (
-                            <>
-                              <div className="md:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  {getItemLabel()} <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Ej. REF-001"
-                                  value={item.customId || ""}
-                                  onChange={(e) =>
-                                    updateItem(index, "customId", e.target.value)
-                                  }
-                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                                />
-                              </div>
-
-                              <div className="md:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  No. Economico <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Ej. Bomba hidráulica"
-                                  value={item.no_economico || ""}
-                                  onChange={(e) =>
-                                    updateItem(index, "no_economico", e.target.value)
-                                  }
-                                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                                />
-                              </div>
-                            </>
-                          )}
-
-                          <>
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Cantidad <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={item.cantidad}
-                                onChange={(e) =>
-                                  updateItem(index, "cantidad", e.target.value)
-                                }
-                                required
-                                min={1}
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Unidad <span className="text-red-500">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Ej. hr, día, pieza"
-                                value={item.unidad}
-                                onChange={(e) =>
-                                  updateItem(index, "unidad", e.target.value)
-                                }
-                                required
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-2">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Descripción{' '}
-                                {formData.requisicionType === 'consumibles' ? (
-                                  <span className="text-red-500">*</span>
-                                ) : (
-                                  <span className="text-gray-700 text-medium">(opcional)</span>
-                                )}
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Describe el servicio (ej. mantenimiento correctivo)"
-                                value={item.descripcion}
-                                required={formData.requisicionType === 'consumibles'}
-                                onChange={(e) =>
-                                  updateItem(index, "descripcion", e.target.value)
-                                }
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Precio unitario (opcional)
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="0.00"
-                                value={item.precio}
-                                onChange={(e) =>
-                                  updateItem(index, "precio", e.target.value)
-                                }
-                                min={0}
-                                step="0.01"
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
-                              />
-                            </div>
-
-                            <div className="md:col-span-1">
-                              <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Moneda (opcional)
-                              </label>
-                              <select
-                                value={item.currency || "USD"}
-                                onChange={(e) =>
-                                  updateItem(index, "currency", e.target.value)
-                                }
-                                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
-                              >
-                                <option value="">No especificado</option>
-                                <option value="USD">USD</option>
-                                <option value="MXN">MX Pesos</option>
-                              </select>
-                            </div>
-
-
-                            {(formData.requisicionType === "consumibles") && (
-                              <div className="md:col-span-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Guardar en inventario
-                                </label>
-                                <input
-                                  type="checkbox"
-                                  checked={item.is_product || false}
-                                  onChange={(e) =>
-                                    updateItem(index, "is_product", e.target.checked)
-                                  }
-                                  className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                                />
-                              </div>
-                            )}
-                          </>
-
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <div className="sticky bottom-0 bg-white/80 backdrop-blur border-t border-gray-200 px-6 py-4 rounded-b-xl flex flex-wrap gap-2 justify-end">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
-                  >
-                    Actualizar
-                  </button>
-                  <button
-                    onClick={closeEditModal}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cerrar
-                  </button>
-                </div>
-
-              </form>
-
-
-
-
-            </div>
-          </div>
-        )
-      }
-
-
-    </div >
+        </div>
+      )}
+    </div>
   );
 };
 
