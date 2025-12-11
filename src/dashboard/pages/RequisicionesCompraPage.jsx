@@ -533,7 +533,7 @@ const RequisicionesCompraPage = () => {
                         key={r.id}
                         className="hover:bg-gray-50 transition-colors duration-200 odd:bg-gray-50 animate-fade-in"
                       >
-                        <Td>{r.rcp ?? "N/A"}</Td>
+                        <Td>{r.formattedRcp ?? "N/A"}</Td>
                         <Td>
                           {r.fechaSolicitud
                             ? new Date(r.fechaSolicitud).toLocaleDateString()
@@ -670,7 +670,7 @@ const RequisicionesCompraPage = () => {
                 {/* Encabezado con badges */}
                 <section className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-gray-50 text-gray-700 border-gray-200">
-                    RCP: {selectedRequisicion.rcp || "N/A"}
+                    RCP: {selectedRequisicion.formattedRcp || "N/A"}
                   </span>
 
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border bg-indigo-50 text-indigo-700 border-indigo-200">
@@ -903,7 +903,7 @@ const RequisicionesCompraPage = () => {
                   onClick={() =>
                     printRequisicion(
                       `req-print-${selectedRequisicion.id}`,
-                      `RCP${selectedRequisicion.rcp || selectedRequisicion.id}`
+                      `RCP${selectedRequisicion.formattedRcp|| selectedRequisicion.id}`
                     )
                   }
                   className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
@@ -943,7 +943,7 @@ const RequisicionesCompraPage = () => {
                     Marcar como Pagada
                   </h2>
                   <p className="text-xs text-gray-500">
-                    RCP: {selectedRequisicion.rcp || "N/A"}
+                    RCP: {selectedRequisicion.formattedRcp || "N/A"}
                   </p>
                 </div>
               </div>

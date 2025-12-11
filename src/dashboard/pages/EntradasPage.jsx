@@ -562,10 +562,11 @@ const EntradasPage = () => {
                       <React.Fragment key={r.id}>
                         <tr className="hover:bg-gray-50 transition-colors duration-200 odd:bg-gray-50 animate-fade-in">
                           <td className="px-6 py-5 text-sm text-gray-700">
-                            {r.requisicion?.rcp ?? "N/A"}
+                            {r.requisicion?.formattedRcp ?? "N/A"}
                           </td>
                           <td className="px-6 py-5 text-sm text-gray-700">
-                            {r.almacenDestino?.name ?? "N/A"}
+                            {r.almacenDestino?.name 
+                            ?? "N/A"}
                           </td>
                           <td className="px-6 py-5 text-sm text-gray-500">
                             {r.fechaCreacion
@@ -725,7 +726,7 @@ const EntradasPage = () => {
                     Detalles de la Entrada
                   </h2>
                   <p className="text-xs text-gray-500">
-                    RCP: {selectedEntrada.requisicion?.rcp || "N/A"}
+                    RCP: {selectedEntrada.requisicion?.formattedRcp || "N/A"}
                   </p>
                 </div>
               </div>
@@ -749,7 +750,7 @@ const EntradasPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Detail
                     label="RCP"
-                    value={selectedEntrada.requisicion?.rcp || "N/A"}
+                    value={selectedEntrada.requisicion?.formattedRcp || "N/A"}
                   />
                   <Detail
                     label="Almacén destino"
@@ -947,7 +948,7 @@ const EntradasPage = () => {
                   </h2>
                   <p className="text-xs text-gray-500">
                     RCP:{" "}
-                    {selectedRequisicionForCapture.requisicion?.rcp || "N/A"}
+                    {selectedRequisicionForCapture.requisicion?.formattedRcp|| "N/A"}
                   </p>
                 </div>
               </div>

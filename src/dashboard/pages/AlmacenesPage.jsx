@@ -30,6 +30,8 @@ function AlmacenesPage() {
   const [name, setName] = useState("")
   const [location, setLocation] = useState("")
 
+  const [requisicionPrefix, setRequisicionPrefix] = useState("")
+
   const [searchTerm, setSearchTerm] = useState("")
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
 
@@ -118,6 +120,7 @@ function AlmacenesPage() {
     const payload = {
       name,
       location,
+      requisicionPrefix,
       obraId: selectedObra,
       encargadoIds: selectedEncargados,
     }
@@ -167,6 +170,7 @@ function AlmacenesPage() {
     setEditId(almacen.id)
     setName(almacen.name)
     setLocation(almacen.location)
+    setRequisicionPrefix(almacen.requisicionPrefix)
     setSelectedObra(almacen.obraId)
     setSelectedEncargados(
       almacen.encargados?.map((e) => e.user?.id || e.id) || []
@@ -191,6 +195,7 @@ function AlmacenesPage() {
     setEditId(null)
     setName("")
     setLocation("")
+    setRequisicionPrefix("")
     setSelectedEncargados([])
     setSelectedObra("")
     setIsModalOpen(false)
@@ -258,90 +263,117 @@ function AlmacenesPage() {
   }
 
   // Componente de tarjeta de almacén
-  const AlmacenCard = ({ almacen }) => (
-    <div className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">{almacen.name}</h3>
-            <div className="flex items-center text-gray-600 mb-2">
-              <MapPin className="w-4 h-4 mr-2" />
-              <span className="text-sm">{almacen.location}</span>
-            </div>
+ const AlmacenCard = ({ almacen }) => (
+  <div className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow">
+    <div className="p-6 pb-4">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            {almacen.name}
+          </h3>
+          <div className="flex items-center text-gray-600 mb-2">
+            <MapPin className="w-4 h-4 mr-2" />
+            <span className="text-sm">{almacen.location}</span>
           </div>
-          <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Activo</span>
         </div>
+        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Activo
+        </span>
       </div>
 
-      <div className="px-6 pb-4 space-y-2">
+      {/* Info Section */}
+      <div className="space-y-3 mb-4 py-4 border-y border-gray-200">
         <div className="flex items-center text-sm text-gray-600">
-          <User className="w-4 h-4 mr-2" />
-          <span>ID: {almacen.id}</span>
-        </div>
-        <div className="flex items-center text-sm text-gray-600">
-          <Package className="w-4 h-4 mr-2" />
+          <User className="w-4 h-4 mr-2 flex-shrink-0" />
           <span>
-            Encargados: {almacen.encargados?.length > 0
-              ? almacen.encargados.map((e) => e.user?.name || e.name).join(", ")
+            {almacen.encargados?.length > 0
+              ? almacen.encargados
+                  .map((e) => e.user?.name || e.name)
+                  .join(", ")
               : "Sin Encargado"}
           </span>
         </div>
 
-        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
-          onClick={() => navigate(`/dashboard/notificaciones/${almacen.id}`)}
-        >
-          <span className="mt-1"> <IoIosNotifications /> </span>
-          Notificaciones
-        </button>
+        <div className="flex items-center text-sm text-gray-600">
+          <Package className="w-4 h-4 mr-2 flex-shrink-0" />
+          <span>Prefijo: {almacen.requisicionPrefix || "N/A"}</span>
+        </div>
 
-        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
-          onClick={() => navigate(`/dashboard/almacenes/${almacen.id}`)}
-        >
-          <span className="mt-1"> <Eye /> </span>
-          Ver inventario</button>
-
-        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
-          onClick={() => navigate(`/dashboard/entradas/${almacen.id}`)}
-        >
-          <span className="mt-1"> <PackageCheck /> </span>
-          Ver entradas
-        </button>
-        <button className="flex justify-center px-2 py-1 m-2 gap-2 text-center w-full mt-2 text-gray-600 text-lg border-gray-600 border-1 rounded-md hover:bg-gray-200 hover:border-transparent transition-colors duration-200"
-          onClick={() => navigate(`/dashboard/salidas/${almacen.id}`)}
-        >
-          <span className="mt-1"> <Box /> </span>
-          Ver salidas
-        </button>
-
-      </div>
-
-      <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between items-center">
-        <span className="text-xs text-gray-500">Almacén #{almacen.id}</span>
-        <div className="flex space-x-2">
-          {
-            isAdmin && (
-              <>
-                <button
-                  onClick={() => handleEdit(almacen)}
-                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                  title="Editar almacén"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(almacen.id)}
-                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                  title="Eliminar almacén"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
-            )
-          }
+        <div className="flex items-center text-sm text-gray-500 text-xs">
+          <span>ID: {almacen.id}</span>
         </div>
       </div>
     </div>
-  )
+
+    {/* Buttons Section */}
+    <div className="px-6 pb-4 space-y-2">
+      <button
+        className="flex justify-center items-center px-3 py-2 w-full text-gray-600 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-200"
+        onClick={() =>
+          navigate(`/dashboard/notificaciones/${almacen.id}`)
+        }
+      >
+        <IoIosNotifications className="w-4 h-4 mr-2" />
+        Notificaciones
+      </button>
+
+      <button
+        className="flex justify-center items-center px-3 py-2 w-full text-gray-600 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-200"
+        onClick={() =>
+          navigate(`/dashboard/almacenes/${almacen.id}`)
+        }
+      >
+        <Eye className="w-4 h-4 mr-2" />
+        Ver inventario
+      </button>
+
+      <button
+        className="flex justify-center items-center px-3 py-2 w-full text-gray-600 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-200"
+        onClick={() =>
+          navigate(`/dashboard/entradas/${almacen.id}`)
+        }
+      >
+        <PackageCheck className="w-4 h-4 mr-2" />
+        Ver entradas
+      </button>
+
+      <button
+        className="flex justify-center items-center px-3 py-2 w-full text-gray-600 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors duration-200"
+        onClick={() =>
+          navigate(`/dashboard/salidas/${almacen.id}`)
+        }
+      >
+        <Box className="w-4 h-4 mr-2" />
+        Ver salidas
+      </button>
+    </div>
+
+    {/* Footer */}
+    <div className="px-6 py-4 bg-gray-50 rounded-b-lg flex justify-between items-center">
+      <span className="text-xs text-gray-500">Almacén #{almacen.id}</span>
+      <div className="flex space-x-2">
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => handleEdit(almacen)}
+              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+              title="Editar almacén"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => handleDelete(almacen.id)}
+              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+              title="Eliminar almacén"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  </div>
+)
 
   // Componente de loading
   const LoadingSpinner = () => (
@@ -507,6 +539,21 @@ function AlmacenesPage() {
                   required
                 />
               </div>
+
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    <Package className="w-4 h-4 inline mr-1" />
+    Prefijo de Requisición *
+  </label>
+  <input
+    type="text"
+    value={requisicionPrefix}
+    onChange={(e) => setRequisicionPrefix(e.target.value)}
+    placeholder="Ej: ALMACÉN-PEN"
+    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    required
+  />
+</div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
