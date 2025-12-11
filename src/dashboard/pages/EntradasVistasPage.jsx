@@ -66,6 +66,14 @@ const EntradaVistaPage = () => {
 
       const rawEntradas = entradasRes?.data?.data || [];
 
+      console.log("Raw data from backend:", rawEntradas);
+      if (rawEntradas.length > 0) {
+        console.log("Primer elemento:", rawEntradas[0]);
+        if (rawEntradas[0].items && rawEntradas[0].items.length > 0) {
+          console.log("Primer item:", rawEntradas[0].items[0]);
+        }
+      }
+
       const procesedEntradas = rawEntradas.map((r) => {
         const items = r.items || [];
         const totalSolic = items.reduce(
@@ -464,7 +472,7 @@ const EntradaVistaPage = () => {
                             </button>
                           </td>
                           <td className="px-6 py-5 text-sm text-gray-700">
-                            {r.requisicion?.rcp ?? "N/A"}
+                            {r.requisicion?.formattedRcp ?? "N/A"}
                           </td>
                           <td className="px-6 py-5 text-sm text-gray-500">
                             {r.fechaCreacion
@@ -543,6 +551,20 @@ const EntradaVistaPage = () => {
                                       );
                                       const completo =
                                         solic > 0 && recAcum >= solic;
+
+                                      // ESTRUCTURA IGUAL A ENTRADASPAGES
+                                      const itemName =
+                                        it.insumoItem?.descripcion ||
+                                        it.filtroItem?.descripcion ||
+                                        it.refaccionItem?.descripcion ||
+                                        "Sin nombre";
+
+                                      const itemId =
+                                        it.customId ||
+                                        it.filtroItem?.customId ||
+                                        it.refaccionItem?.customId ||
+                                        "No especificado";
+
                                       return (
                                         <tr
                                           key={it.id}
@@ -551,11 +573,11 @@ const EntradaVistaPage = () => {
                                         >
                                           <td className="px-4 py-2 text-sm
                                            text-gray-700">
-                                            {it.producto?.id || "N/A"}
+                                            {itemId}
                                           </td>
                                           <td className="px-4 py-2 text-sm
                                            text-gray-700">
-                                            {it.producto?.name || "Producto"}
+                                            {itemName}
                                           </td>
                                           <td className="px-4 py-2 text-sm
                                            text-gray-700 text-right">

@@ -26,10 +26,9 @@ import Swal from "sweetalert2";
 import { useDebounce } from "../../hooks/customHooks";
 import { printRequisicion } from "../../utils/printPdf";
 import { useAuthFlags } from "../../hooks/useAuth";
-import { useProveedores } from "../../hooks/useProveedores"
+import { useProveedores } from "../../hooks/useProveedores";
 import { useAlmacenes } from "../../hooks/useAlmacenes";
 import PrintableRequisicion from "./PrintableRequisicion";
-
 
 const RequisicionesPage = () => {
   const {
@@ -38,7 +37,7 @@ const RequisicionesPage = () => {
     createRequisicion,
     approveRequisicion,
     rejectRequisicion,
-    updateItems
+    updateItems,
   } = useRequisiciones();
 
   const { getFiltrosByHrs } = useFiltros();
@@ -60,8 +59,8 @@ const RequisicionesPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
 
-  const [proveedores, setProveedores] = useState([])
-  const [almacenes, setAlmacenes] = useState([])
+  const [proveedores, setProveedores] = useState([]);
+  const [almacenes, setAlmacenes] = useState([]);
 
   const [stats, setStats] = useState({
     pagada: 0,
@@ -69,16 +68,16 @@ const RequisicionesPage = () => {
     pendiente: 0,
     rechazada: 0,
     total: 0,
-  })
+  });
 
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState(null);
 
   const [filtroQuery, setFiltroQuery] = useState({
-    hrs: '',
-    no_economico: ''
-  })
+    hrs: "",
+    no_economico: "",
+  });
 
   // Admin flags
   const { isAdmin, isAdminAlmacen, isAdminConta } = useAuthFlags();
@@ -94,6 +93,7 @@ const RequisicionesPage = () => {
     concepto: "",
     requisicionType: isAdminConta ? "consumibles" : "refacciones",
     almacenCargoId: "",
+    almacenDestinoId: "",
     proveedorId: "",
     metodo_pago: "sin_pagar",
     currency: "USD",
@@ -132,14 +132,13 @@ const RequisicionesPage = () => {
     "herramientas",
     "EPP",
     "higiene",
-    "servicio preventivo"
+    "servicio preventivo",
   ];
 
-  const { listProveedores } = useProveedores()
-  const { listAlmacenes } = useAlmacenes()
+  const { listProveedores } = useProveedores();
+  const { listAlmacenes } = useAlmacenes();
 
-  const limit =
-    limitOption === "all" ? -1 : Number(limitOption);
+  const limit = limitOption === "all" ? -1 : Number(limitOption);
 
   const fetchRequisiciones = () => {
     setLoading(true);
@@ -151,7 +150,7 @@ const RequisicionesPage = () => {
       status: statusFilter,
     })
       .then((res) => {
-        console.log(res.data.data)
+        console.log(res.data.data);
         setRequisiciones(res.data.data);
         setPagination(res.data.meta);
       })
@@ -168,41 +167,41 @@ const RequisicionesPage = () => {
   const fetchProveedores = () => {
     listProveedores({ page: 1, limit: 100, order: "ASC" })
       .then((res) => {
-        setProveedores(res.data)
+        setProveedores(res.data);
       })
       .catch((err) => {
-        console.error("Error cargando proveedores:", err)
-      })
-  }
+        console.error("Error cargando proveedores:", err);
+      });
+  };
 
   useEffect(() => {
-    fetchProveedores()
-  }, [])
+    fetchProveedores();
+  }, []);
 
   const fetchAlmacenes = () => {
     listAlmacenes({ page: 1, limit: 100, order: "ASC" })
       .then((res) => {
-        setAlmacenes(res.data.data)
+        setAlmacenes(res.data.data);
       })
       .catch((err) => {
-        console.error("Error cargando almacenes:", err)
-      })
-  }
+        console.error("Error cargando almacenes:", err);
+      });
+  };
 
   const fetchStats = () => {
     getStats()
       .then((res) => {
-        setStats(res.data)
+        setStats(res.data);
       })
       .catch((err) => {
-        console.error("Error cargando stats:", err)
-      })
-  }
+        console.error("Error cargando stats:", err);
+      });
+  };
 
   useEffect(() => {
-    fetchAlmacenes()
-    fetchStats()
-  }, [])
+    fetchAlmacenes();
+    fetchStats();
+  }, []);
 
   const handleStatusChange = (status) => {
     setStatusFilter(status);
@@ -227,7 +226,7 @@ const RequisicionesPage = () => {
   };
 
   const openEditModal = (requisicion) => {
-    setIsEditing(true)
+    setIsEditing(true);
     setSelectedRequisicion(requisicion);
 
     const itemsMap = {
@@ -253,7 +252,7 @@ const RequisicionesPage = () => {
       })),
     });
 
-    setIsEditModalOpen(true)
+    setIsEditModalOpen(true);
   };
 
   const closeDetailModal = () => {
@@ -272,6 +271,7 @@ const RequisicionesPage = () => {
       concepto: "",
       requisicionType: isAdminConta ? "consumibles" : "refacciones",
       almacenCargoId: "",
+      almacenDestinoId: "",
       proveedorId: "",
       metodo_pago: "sin_pagar",
       currency: "USD",
@@ -288,11 +288,11 @@ const RequisicionesPage = () => {
           is_product: false,
         },
       ],
-    })
+    });
   };
 
   const closeEditModal = () => {
-    setIsEditing(false)
+    setIsEditing(false);
     setIsEditModalOpen(false);
     setSelectedRequisicion(null);
     setFormData({
@@ -304,6 +304,7 @@ const RequisicionesPage = () => {
       concepto: "",
       requisicionType: isAdminConta ? "consumibles" : "refacciones",
       almacenCargoId: "",
+      almacenDestinoId: "",
       proveedorId: "",
       metodo_pago: "sin_pagar",
       currency: "USD",
@@ -320,7 +321,7 @@ const RequisicionesPage = () => {
           is_product: false,
         },
       ],
-    })
+    });
   };
 
   const handleTipoChange = (newTipo) => {
@@ -332,15 +333,15 @@ const RequisicionesPage = () => {
           ? []
           : prev.items.length === 0
             ? [
-              {
-                cantidad: "",
-                unidad: "",
-                descripcion: "",
-                precio: "",
-                currency: "",
-                equipo: "",
-              },
-            ]
+                {
+                  cantidad: "",
+                  unidad: "",
+                  descripcion: "",
+                  precio: "",
+                  currency: "",
+                  equipo: "",
+                },
+              ]
             : prev.items,
     }));
   };
@@ -403,6 +404,11 @@ const RequisicionesPage = () => {
         return;
       }
 
+      if (isAdmin && !formData.almacenDestinoId) {
+        Swal.fire("Error", "Selecciona un almacén destino", "error");
+        return;
+      }
+
       if (!formData.proveedorId) {
         Swal.fire("Error", "Selecciona un proveedor", "error");
         return;
@@ -422,6 +428,9 @@ const RequisicionesPage = () => {
         concepto: formData.concepto,
         requisicionType: formData.requisicionType,
         almacenCargoId: Number(formData.almacenCargoId),
+        almacenDestinoId: formData.almacenDestinoId
+          ? Number(formData.almacenDestinoId)
+          : null,
         proveedorId: Number(formData.proveedorId),
         hrs: filtroQuery.hrs ? Number(filtroQuery.hrs) : null,
         metodo_pago: formData.metodo_pago,
@@ -434,6 +443,8 @@ const RequisicionesPage = () => {
             precio: Number(item.precio) || 0,
             currency: item.currency || formData.currency,
           };
+
+        
 
           if (formData.requisicionType === "refacciones") {
             return {
@@ -466,22 +477,29 @@ const RequisicionesPage = () => {
       // Validate items
       const invalidItem = payload.items.find((it) => {
         const missingBasics = !it.cantidad || it.cantidad <= 0 || !it.unidad;
-        const missingDescripcion = !it.descripcion || it.descripcion.trim() === '';
+        const missingDescripcion =
+          !it.descripcion || it.descripcion.trim() === "";
         return missingBasics || missingDescripcion;
       });
 
       if (invalidItem) {
         const msg =
-          formData.requisicionType === 'consumibles'
-            ? 'Todos los items deben tener cantidad > 0, unidad y descripción'
-            : 'Todos los items deben tener cantidad > 0 y unidad y nombre';
-        Swal.fire('Error', msg, 'error');
+          formData.requisicionType === "consumibles"
+            ? "Todos los items deben tener cantidad > 0, unidad y descripción"
+            : "Todos los items deben tener cantidad > 0 y unidad y nombre";
+        Swal.fire("Error", msg, "error");
         return;
       }
 
+      console.log(payload)
+
       await createRequisicion(payload);
 
-      Swal.fire("Éxito", "Requisición creada correctamente", "success");
+      Swal.fire(
+        "Éxito",
+        "Requisición creada correctamente",
+        "success"
+      );
       setIsCreateModalOpen(false);
       setFormData({
         rcp: "",
@@ -491,6 +509,7 @@ const RequisicionesPage = () => {
         concepto: "",
         requisicionType: isAdminConta ? "consumibles" : "refacciones",
         almacenCargoId: "",
+        almacenDestinoId: "",
         proveedorId: "",
         observaciones: "",
         metodo_pago: "sin_pagar",
@@ -510,14 +529,16 @@ const RequisicionesPage = () => {
       });
 
       setFiltroQuery({
-        hrs: '',
-        no_economico: ''
-      })
+        hrs: "",
+        no_economico: "",
+      });
 
       fetchRequisiciones();
     } catch (err) {
       const msg =
-        err?.response?.data?.message || err?.message || "Error al crear requisición";
+        err?.response?.data?.message ||
+        err?.message ||
+        "Error al crear requisición";
       Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
     } finally {
       setIsSubmitting(false);
@@ -548,14 +569,18 @@ const RequisicionesPage = () => {
       Swal.fire("Éxito", "Requisición actualizada", "success");
       closeEditModal();
     } catch (error) {
-      Swal.fire('Error!', 'Ocurrio un error al actualizar', 'warning');
+      Swal.fire("Error!", "Ocurrio un error al actualizar", "warning");
     }
-  }
+  };
 
   const handleBuscarFiltros = async () => {
     const { hrs, no_economico } = filtroQuery;
     if (!hrs || !no_economico) {
-      Swal.fire('Faltan datos', 'Ingresa HRS y No. económico', 'warning');
+      Swal.fire(
+        "Faltan datos",
+        "Ingresa HRS y No. económico",
+        "warning"
+      );
       return;
     }
 
@@ -568,20 +593,20 @@ const RequisicionesPage = () => {
       const payload = res.data || res;
       const items = Array.isArray(payload.items) ? payload.items : [];
       if (items.length === 0) {
-        Swal.fire('Sin resultados', 'No se encontraron filtros', 'info');
+        Swal.fire("Sin resultados", "No se encontraron filtros", "info");
         return;
       }
 
       setFormData((prev) => ({
         ...prev,
-        requisicionType: 'filtros',
+        requisicionType: "filtros",
         items: items.map((it) => ({
           customId: it.numero,
-          descripcion: it.descripcion || '',
+          descripcion: it.descripcion || "",
           cantidad: Number(it.cantidad) || 1,
-          unidad: it.unidad || 'pieza',
-          precio: '',
-          currency: prev.currency || 'USD',
+          unidad: it.unidad || "pieza",
+          precio: "",
+          currency: prev.currency || "USD",
           no_economico: no_economico.trim(),
           hrs: String(hrs),
           is_product: false,
@@ -589,16 +614,16 @@ const RequisicionesPage = () => {
       }));
 
       Swal.fire(
-        'Listo',
+        "Listo",
         `Se cargaron ${items.length} filtros para ${no_economico} (${hrs} HRS)`,
-        'success'
+        "success"
       );
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
         err?.message ||
-        'Error buscando filtros';
-      Swal.fire('Error', Array.isArray(msg) ? msg.join(', ') : msg, 'error');
+        "Error buscando filtros";
+      Swal.fire("Error", Array.isArray(msg) ? msg.join(", ") : msg, "error");
     }
   };
 
@@ -608,14 +633,39 @@ const RequisicionesPage = () => {
       currency: "USD",
     }).format(n || 0);
 
-  // Stats 
+  // Stats
   const StatsSection = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-      <StatCard label="Total" count={stats.total} color="blue" icon={FileText} />
-      <StatCard label="Pagadas" count={stats.pagada} color="blue" icon={CircleDollarSign} />
-      <StatCard label="Aprobadas" count={stats.aprobada} color="green" icon={CheckCheck} />
-      <StatCard label="Pendientes" count={stats.pendiente} color="yellow" icon={Timer} />
-      <StatCard label="Rechazadas" count={stats.rechazada} color="red" icon={AlertTriangle} />
+      <StatCard
+        label="Total"
+        count={stats.total}
+        color="blue"
+        icon={FileText}
+      />
+      <StatCard
+        label="Pagadas"
+        count={stats.pagada}
+        color="blue"
+        icon={CircleDollarSign}
+      />
+      <StatCard
+        label="Aprobadas"
+        count={stats.aprobada}
+        color="green"
+        icon={CheckCheck}
+      />
+      <StatCard
+        label="Pendientes"
+        count={stats.pendiente}
+        color="yellow"
+        icon={Timer}
+      />
+      <StatCard
+        label="Rechazadas"
+        count={stats.rechazada}
+        color="red"
+        icon={AlertTriangle}
+      />
     </div>
   );
 
@@ -739,7 +789,7 @@ const RequisicionesPage = () => {
         </select>
       </div>
 
-      {(isAdminAlmacen || isAdminConta) && (
+      {(isAdminAlmacen || isAdminConta || isAdmin) && (
         <div className="flex justify-end mb-4">
           <button
             onClick={() => setIsCreateModalOpen(true)}
@@ -753,46 +803,51 @@ const RequisicionesPage = () => {
       <div className="mb-4 flex gap-2 flex-wrap">
         <button
           onClick={() => handleStatusChange("ALL")}
-          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "ALL"
-            ? "bg-gray-900 text-white border-gray-900"
-            : "bg-white text-gray-700 border-gray-300"
-            }`}
+          className={`px-3 py-1.5 rounded-lg border ${
+            statusFilter === "ALL"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+          }`}
         >
           Todas
         </button>
         <button
           onClick={() => handleStatusChange("pendiente")}
-          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "pendiente"
-            ? "bg-gray-900 text-white border-gray-900"
-            : "bg-white text-gray-700 border-gray-300"
-            }`}
+          className={`px-3 py-1.5 rounded-lg border ${
+            statusFilter === "pendiente"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+          }`}
         >
           Pendientes
         </button>
         <button
           onClick={() => handleStatusChange("aprobada")}
-          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "aprobada"
-            ? "bg-gray-900 text-white border-gray-900"
-            : "bg-white text-gray-700 border-gray-300"
-            }`}
+          className={`px-3 py-1.5 rounded-lg border ${
+            statusFilter === "aprobada"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+          }`}
         >
           Aprobadas
         </button>
         <button
           onClick={() => handleStatusChange("rechazada")}
-          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "rechazada"
-            ? "bg-gray-900 text-white border-gray-900"
-            : "bg-white text-gray-700 border-gray-300"
-            }`}
+          className={`px-3 py-1.5 rounded-lg border ${
+            statusFilter === "rechazada"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+          }`}
         >
           Rechazadas
         </button>
         <button
           onClick={() => handleStatusChange("pagada")}
-          className={`px-3 py-1.5 rounded-lg border ${statusFilter === "pagada"
-            ? "bg-gray-900 text-white border-gray-900"
-            : "bg-white text-gray-700 border-gray-300"
-            }`}
+          className={`px-3 py-1.5 rounded-lg border ${
+            statusFilter === "pagada"
+              ? "bg-gray-900 text-white border-gray-900"
+              : "bg-white text-gray-700 border-gray-300"
+          }`}
         >
           Pagadas
         </button>
@@ -839,7 +894,10 @@ const RequisicionesPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {requisiciones.length > 0 ? (
                   requisiciones.map((r) => (
-                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={r.id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.formattedRcp || "N/A"}
                       </td>
@@ -856,14 +914,17 @@ const RequisicionesPage = () => {
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold ${lower(r.status) === "pendiente"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : ["aprobado", "aprobada"].includes(lower(r.status))
+                          className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            lower(r.status) === "pendiente"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : ["aprobado", "aprobada"].includes(
+                                  lower(r.status)
+                                )
                               ? "bg-green-100 text-green-800"
                               : ["pagada"].includes(lower(r.status))
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
                         >
                           {r.status || "N/A"}
                         </span>
@@ -872,20 +933,23 @@ const RequisicionesPage = () => {
                         {r.requisicionType === "refacciones"
                           ? "Refacciones"
                           : r.requisicionType === "filtros"
-                            ? "Filtros"
-                            : r.requisicionType === "consumibles"
-                              ? "Consumibles"
-                              : "N/A"}
+                          ? "Filtros"
+                          : r.requisicionType === "consumibles"
+                          ? "Consumibles"
+                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {r.cantidadEstimada ? currency(r.cantidadEstimada) : "N/A"}
+                        {r.cantidadEstimada
+                          ? currency(r.cantidadEstimada)
+                          : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {r.cantidadActual ? currency(r.cantidadActual) : "N/A"}
                       </td>
 
                       <td className="px-6 py-4 text-sm flex space-x-2">
-                        {lower(r.status) === "pagada" || lower(r.status) === "aprobada" ? (
+                        {lower(r.status) === "pagada" ||
+                        lower(r.status) === "aprobada" ? (
                           <>
                             <button
                               onClick={() => openDetailModal(r)}
@@ -894,10 +958,13 @@ const RequisicionesPage = () => {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            <span className={`text-sm px-2 py-1 rounded-xl flex items-center gap-2 ${lower(r.status) === "pagada"
-                              ? "text-blue-800 bg-blue-200"
-                              : "text-green-800 bg-green-200"
-                              }`}>
+                            <span
+                              className={`text-sm px-2 py-1 rounded-xl flex items-center gap-2 ${
+                                lower(r.status) === "pagada"
+                                  ? "text-blue-800 bg-blue-200"
+                                  : "text-green-800 bg-green-200"
+                              }`}
+                            >
                               <CheckCircle2 className="w-3 h-3" />
                               {r.status}
                             </span>
@@ -922,7 +989,8 @@ const RequisicionesPage = () => {
                               </button>
                             )}
 
-                            {isAdmin && lower(r.status) === "pendiente" && (
+                            {isAdmin &&
+                              lower(r.status) === "pendiente" && (
                               <>
                                 <button
                                   onClick={() => handleApprove(r.id)}
@@ -1050,7 +1118,9 @@ const RequisicionesPage = () => {
                           setFormData((prev) => ({
                             ...prev,
                             rcp:
-                              e.target.value === "" ? "" : Number(e.target.value),
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value),
                           }))
                         }
                         min={1}
@@ -1071,7 +1141,10 @@ const RequisicionesPage = () => {
                         placeholder="Ej. Mantenimiento de bomba hidráulica"
                         value={formData.titulo}
                         onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, titulo: e.target.value }))
+                          setFormData((prev) => ({
+                            ...prev,
+                            titulo: e.target.value,
+                          }))
                         }
                         required
                         className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
@@ -1102,7 +1175,8 @@ const RequisicionesPage = () => {
                     {/* Almacén Cargo */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        ID Almacén Cargo <span className="text-red-500">*</span>
+                        ID Almacén Cargo{" "}
+                        <span className="text-red-500">*</span>
                       </label>
                       <select
                         name="almacenCargoId"
@@ -1111,7 +1185,9 @@ const RequisicionesPage = () => {
                           setFormData((prev) => ({
                             ...prev,
                             almacenCargoId:
-                              e.target.value === "" ? "" : Number(e.target.value),
+                              e.target.value === ""
+                                ? ""
+                                : Number(e.target.value),
                           }))
                         }
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1130,6 +1206,43 @@ const RequisicionesPage = () => {
                         Almacén que cubrirá el gasto.
                       </p>
                     </div>
+
+                    {/* Almacén Destino - SOLO PARA ADMIN */}
+                    {isAdmin && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Almacén Destino{" "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          name="almacenDestinoId"
+                          value={formData.almacenDestinoId}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              almacenDestinoId:
+                                e.target.value === ""
+                                  ? ""
+                                  : Number(e.target.value),
+                            }))
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          required
+                        >
+                          <option value="" disabled>
+                            -- Selecciona un almacén --
+                          </option>
+                          {almacenes.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Almacén destino para recibir los materiales.
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1188,7 +1301,8 @@ const RequisicionesPage = () => {
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Observaciones <span className="text-red-500">*</span>
+                        Observaciones{" "}
+                        <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         placeholder="Observaciones de la requisicion"
@@ -1208,25 +1322,37 @@ const RequisicionesPage = () => {
                     {/* Tipo de requisición */}
                     <div className="md:col-span-2 mb-6">
                       <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Tipo de requisición <span className="text-red-500">*</span>
+                        Tipo de requisición{" "}
+                        <span className="text-red-500">*</span>
                       </label>
 
                       <div className="flex gap-3">
-                        {["Refacciones", "Filtros", "Consumibles"].map((tipo) => (
-                          <button
-                            key={tipo}
-                            type="button"
-                            onClick={() => handleTipoChange(tipo.toLowerCase())}
-                            disabled={isAdminConta && tipo !== "Consumibles"}
-                            className={`px-4 py-2 rounded-lg font-medium transition ${
-                              formData.requisicionType === tipo.toLowerCase()
-                                ? "bg-green-600 text-white border-2 border-green-600"
-                                : "bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-green-500"
-                            } ${isAdminConta && tipo !== "Consumibles" ? "opacity-50 cursor-not-allowed" : ""}`}
-                          >
-                            {tipo}
-                          </button>
-                        ))}
+                        {["Refacciones", "Filtros", "Consumibles"].map(
+                          (tipo) => (
+                            <button
+                              key={tipo}
+                              type="button"
+                              onClick={() =>
+                                handleTipoChange(tipo.toLowerCase())
+                              }
+                              disabled={
+                                isAdminConta && tipo !== "Consumibles"
+                              }
+                              className={`px-4 py-2 rounded-lg font-medium transition ${
+                                formData.requisicionType ===
+                                tipo.toLowerCase()
+                                  ? "bg-green-600 text-white border-2 border-green-600"
+                                  : "bg-gray-100 text-gray-700 border-2 border-gray-300 hover:border-green-500"
+                              } ${
+                                isAdminConta && tipo !== "Consumibles"
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : ""
+                              }`}
+                            >
+                              {tipo}
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1249,11 +1375,16 @@ const RequisicionesPage = () => {
                           <select
                             value={filtroQuery.hrs}
                             onChange={(e) =>
-                              setFiltroQuery((prev) => ({ ...prev, hrs: e.target.value }))
+                              setFiltroQuery((prev) => ({
+                                ...prev,
+                                hrs: e.target.value,
+                              }))
                             }
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
                           >
-                            <option value="">-- Selecciona HRS --</option>
+                            <option value="">
+                              -- Selecciona HRS --
+                            </option>
                             <option value="250">250</option>
                             <option value="500">500</option>
                             <option value="1000">1000</option>
@@ -1350,14 +1481,19 @@ const RequisicionesPage = () => {
                             <>
                               <div className="md:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  {getItemLabel()} <span className="text-red-500">*</span>
+                                  {getItemLabel()}{" "}
+                                  <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                   type="text"
                                   placeholder="Ej. REF-001"
                                   value={item.customId || ""}
                                   onChange={(e) =>
-                                    updateItem(index, "customId", e.target.value)
+                                    updateItem(
+                                      index,
+                                      "customId",
+                                      e.target.value
+                                    )
                                   }
                                   className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                                 />
@@ -1365,14 +1501,19 @@ const RequisicionesPage = () => {
 
                               <div className="md:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                  No. Economico <span className="text-red-500">*</span>
+                                  No. Economico{" "}
+                                  <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                   type="text"
                                   placeholder="Ej. Bomba hidráulica"
                                   value={item.no_economico || ""}
                                   onChange={(e) =>
-                                    updateItem(index, "no_economico", e.target.value)
+                                    updateItem(
+                                      index,
+                                      "no_economico",
+                                      e.target.value
+                                    )
                                   }
                                   className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                                 />
@@ -1417,7 +1558,8 @@ const RequisicionesPage = () => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               {formData.requisicionType === "consumibles" ? (
                                 <span className="text-gray-700 flex items-center gap-1">
-                                  Descripcion <p className="text-red-500">*</p>
+                                  Descripcion{" "}
+                                  <p className="text-red-500">*</p>
                                 </span>
                               ) : (
                                 <span className="text-gray-700 text-medium flex items-center gap-1">
@@ -1429,7 +1571,9 @@ const RequisicionesPage = () => {
                               type="text"
                               placeholder="Escribe el nombre del item"
                               value={item.descripcion}
-                              required={formData.requisicionType === "consumibles"}
+                              required={
+                                formData.requisicionType === "consumibles"
+                              }
                               onChange={(e) =>
                                 updateItem(index, "descripcion", e.target.value)
                               }
@@ -1480,7 +1624,11 @@ const RequisicionesPage = () => {
                                 type="checkbox"
                                 checked={item.is_product || false}
                                 onChange={(e) =>
-                                  updateItem(index, "is_product", e.target.checked)
+                                  updateItem(
+                                    index,
+                                    "is_product",
+                                    e.target.checked
+                                  )
                                 }
                                 className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                               />
@@ -1582,19 +1730,23 @@ const RequisicionesPage = () => {
                   {selectedRequisicion.requisicionType === "consumibles"
                     ? "Consumibles"
                     : selectedRequisicion.requisicionType === "refacciones"
-                      ? "Refacciones"
-                      : selectedRequisicion.requisicionType === "filtros"
-                        ? "Filtros"
-                        : "Tipo N/A"}
+                    ? "Refacciones"
+                    : selectedRequisicion.requisicionType === "filtros"
+                    ? "Filtros"
+                    : "Tipo N/A"}
                 </span>
 
                 <span
                   className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                    ["aprobado", "aprobada"].includes(lower(selectedRequisicion.status))
+                    [
+                      "aprobado",
+                      "aprobada",
+                    ].includes(lower(selectedRequisicion.status))
                       ? "bg-green-50 text-green-700 border-green-200"
-                      : lower(selectedRequisicion.status) === "pendiente"
-                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                        : "bg-red-50 text-red-700 border-red-200"
+                      : lower(selectedRequisicion.status) ===
+                        "pendiente"
+                      ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                      : "bg-red-50 text-red-700 border-red-200"
                   }`}
                 >
                   {selectedRequisicion.status || "Sin status"}
@@ -1612,20 +1764,25 @@ const RequisicionesPage = () => {
                   <Detail label="HRS" value={selectedRequisicion.hrs} />
                   <Detail
                     label="Concepto"
-                    value={selectedRequisicion.concepto || "Sin concepto"}
+                    value={
+                      selectedRequisicion.concepto || "Sin concepto"
+                    }
                   />
                   <Detail
                     label="Método de pago"
                     value={selectedRequisicion.metodo_pago}
                   />
-                  <Detail label="Prioridad" value={selectedRequisicion.prioridad} />
+                  <Detail
+                    label="Prioridad"
+                    value={selectedRequisicion.prioridad}
+                  />
                   <Detail
                     label="Fecha creación"
                     value={
                       selectedRequisicion.fechaSolicitud
                         ? new Date(
-                          selectedRequisicion.fechaSolicitud
-                        ).toLocaleDateString()
+                            selectedRequisicion.fechaSolicitud
+                          ).toLocaleDateString()
                         : "N/A"
                     }
                   />
@@ -1634,8 +1791,8 @@ const RequisicionesPage = () => {
                     value={
                       selectedRequisicion.fechaRevision
                         ? new Date(
-                          selectedRequisicion.fechaRevision
-                        ).toLocaleDateString()
+                            selectedRequisicion.fechaRevision
+                          ).toLocaleDateString()
                         : "N/A"
                     }
                   />
@@ -1648,13 +1805,26 @@ const RequisicionesPage = () => {
                   Relacionados
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Detail label="Pedido por" value={selectedRequisicion.pedidoPor?.name} />
-                  <Detail label="Revisado por" value={selectedRequisicion.revisadoPor?.name} />
+                  <Detail
+                    label="Pedido por"
+                    value={selectedRequisicion.pedidoPor?.name}
+                  />
+                  <Detail
+                    label="Revisado por"
+                    value={selectedRequisicion.revisadoPor?.name}
+                  />
                   <Detail
                     label="Almacén Destino"
-                    value={selectedRequisicion.almacenDestino?.name}
+                    value={
+                      selectedRequisicion.almacenDestino?.name
+                    }
                   />
-                  <Detail label="Almacén Cargo" value={selectedRequisicion.almacenCargo?.name} />
+                  <Detail
+                    label="Almacén Cargo"
+                    value={
+                      selectedRequisicion.almacenCargo?.name
+                    }
+                  />
                 </div>
               </section>
 
@@ -1664,8 +1834,16 @@ const RequisicionesPage = () => {
                   Observaciones
                 </h3>
                 <div className="grid grid-cols-1 gap-4">
-                  <Detail label="Notas de almacen" value={selectedRequisicion.observaciones} />
-                  <Detail label="Notas de compras" value={selectedRequisicion.observacionesCompras} />
+                  <Detail
+                    label="Notas de almacen"
+                    value={selectedRequisicion.observaciones}
+                  />
+                  <Detail
+                    label="Notas de compras"
+                    value={
+                      selectedRequisicion.observacionesCompras
+                    }
+                  />
                 </div>
               </section>
 
@@ -1678,13 +1856,16 @@ const RequisicionesPage = () => {
 
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    {selectedRequisicion.requisicionType === "consumibles"
+                    {selectedRequisicion.requisicionType ===
+                    "consumibles"
                       ? "Consumibles"
-                      : selectedRequisicion.requisicionType === "refacciones"
-                        ? "Refacciones"
-                        : selectedRequisicion.requisicionType === "filtros"
-                          ? "Filtros"
-                          : "Tipo N/A"}
+                      : selectedRequisicion.requisicionType ===
+                        "refacciones"
+                      ? "Refacciones"
+                      : selectedRequisicion.requisicionType ===
+                        "filtros"
+                      ? "Filtros"
+                      : "Tipo N/A"}
                   </h3>
                   {selectedRequisicion.insumos?.length > 0 ? (
                     <div className="rounded-lg border border-gray-200 overflow-hidden">
@@ -1706,10 +1887,18 @@ const RequisicionesPage = () => {
                               <Td>{item.descripcion}</Td>
                               <Td>{item.unidad}</Td>
                               <Td>{item.cantidad}</Td>
-                              <Td>{item.cantidadPagada || "N/A"}</Td>
+                              <Td>
+                                {item.cantidadPagada || "N/A"}
+                              </Td>
                               <Td>{item.precio}</Td>
                               <Td>{item.currency}</Td>
-                              <Td>{item.paid === true ? <Check /> : <X />}</Td>
+                              <Td>
+                                {item.paid === true ? (
+                                  <Check />
+                                ) : (
+                                  <X />
+                                )}
+                              </Td>
                             </tr>
                           ))}
                         </tbody>
@@ -1723,30 +1912,48 @@ const RequisicionesPage = () => {
                             <Th>ID</Th>
                             <Th>No. Economico</Th>
                             <Th>Unidad</Th>
-                            <Th>Cantidad Esperada</Th>
-                            <Th>Cantidad Comprada</Th>
+                            <Th>
+                              Cantidad Esperada
+                            </Th>
+                            <Th>
+                              Cantidad Comprada
+                            </Th>
                             <Th>Precio</Th>
                             <Th>Moneda</Th>
                             <Th>Pagado</Th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {selectedRequisicion.refacciones.map((item, i) => (
-                            <tr key={i}>
-                              <Td>{item.customId}</Td>
-                              <Td>{item.no_economico}</Td>
-                              <Td>{item.unidad}</Td>
-                              <Td>{item.cantidad}</Td>
-                              <Td>{item.cantidadPagada || "N/A"}</Td>
-                              <Td>{item.precio}</Td>
-                              <Td>{item.currency}</Td>
-                              <Td>{item.paid === true ? <Check /> : <X />}</Td>
-                            </tr>
-                          ))}
+                          {selectedRequisicion.refacciones.map(
+                            (item, i) => (
+                              <tr key={i}>
+                                <Td>{item.customId}</Td>
+                                <Td>
+                                  {item.no_economico}
+                                </Td>
+                                <Td>{item.unidad}</Td>
+                                <Td>{item.cantidad}</Td>
+                                <Td>
+                                  {item.cantidadPagada ||
+                                    "N/A"}
+                                </Td>
+                                <Td>{item.precio}</Td>
+                                <Td>{item.currency}</Td>
+                                <Td>
+                                  {item.paid === true ? (
+                                    <Check />
+                                  ) : (
+                                    <X />
+                                  )}
+                                </Td>
+                              </tr>
+                            )
+                          )}
                         </tbody>
                       </table>
                     </div>
-                  ) : selectedRequisicion.filtros?.length > 0 ? (
+                  ) : selectedRequisicion.filtros?.length >
+                    0 ? (
                     <div className="rounded-lg border border-gray-200 overflow-hidden">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
@@ -1754,32 +1961,50 @@ const RequisicionesPage = () => {
                             <Th>ID</Th>
                             <Th>No. Economico</Th>
                             <Th>Unidad</Th>
-                            <Th>Cantidad Esperada</Th>
-                            <Th>Cantidad Comprada</Th>
+                            <Th>
+                              Cantidad Esperada
+                            </Th>
+                            <Th>
+                              Cantidad Comprada
+                            </Th>
                             <Th>Precio</Th>
                             <Th>Moneda</Th>
                             <Th>Pagado</Th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {selectedRequisicion.filtros.map((item, i) => (
-                            <tr key={i}>
-                              <Td>{item.customId}</Td>
-                              <Td>{item.no_economico}</Td>
-                              <Td>{item.unidad}</Td>
-                              <Td>{item.cantidad}</Td>
-                              <Td>{item.cantidadPagada || "N/A"}</Td>
-                              <Td>{item.precio}</Td>
-                              <Td>{item.currency}</Td>
-                              <Td>{item.paid === true ? <Check /> : <X />}</Td>
-                            </tr>
-                          ))}
+                          {selectedRequisicion.filtros.map(
+                            (item, i) => (
+                              <tr key={i}>
+                                <Td>{item.customId}</Td>
+                                <Td>
+                                  {item.no_economico}
+                                </Td>
+                                <Td>{item.unidad}</Td>
+                                <Td>{item.cantidad}</Td>
+                                <Td>
+                                  {item.cantidadPagada ||
+                                    "N/A"}
+                                </Td>
+                                <Td>{item.precio}</Td>
+                                <Td>{item.currency}</Td>
+                                <Td>
+                                  {item.paid === true ? (
+                                    <Check />
+                                  ) : (
+                                    <X />
+                                  )}
+                                </Td>
+                              </tr>
+                            )
+                          )}
                         </tbody>
                       </table>
                     </div>
                   ) : (
                     <p className="text-gray-600">
-                      No hay items registrados en esta requisición
+                      No hay items registrados en esta
+                      requisición
                     </p>
                   )}
                 </div>
@@ -1795,7 +2020,10 @@ const RequisicionesPage = () => {
                 onClick={() =>
                   printRequisicion(
                     `req-print-${selectedRequisicion.id}`,
-                    `RCP${selectedRequisicion.formattedRcp || selectedRequisicion.id}`
+                    `RCP${
+                      selectedRequisicion.formattedRcp ||
+                      selectedRequisicion.id
+                    }`
                   )
                 }
                 className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors"
@@ -1867,7 +2095,8 @@ const RequisicionesPage = () => {
 
                 {formData.items.length === 0 && (
                   <p className="text-sm text-gray-500 mb-2">
-                    Agrega al menos un item para crear la requisicion.
+                    Agrega al menos un item para crear
+                    la requisicion.
                   </p>
                 )}
 
@@ -1888,19 +2117,28 @@ const RequisicionesPage = () => {
                       </button>
 
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        {(formData.requisicionType === "refacciones" ||
-                          formData.requisicionType === "filtros") && (
+                        {(formData.requisicionType ===
+                          "refacciones" ||
+                          formData.requisicionType ===
+                            "filtros") && (
                           <>
                             <div className="md:col-span-1">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                {getItemLabel()} <span className="text-red-500">*</span>
+                                {getItemLabel()}{" "}
+                                <span className="text-red-500">
+                                  *
+                                </span>
                               </label>
                               <input
                                 type="text"
                                 placeholder="Ej. REF-001"
                                 value={item.customId || ""}
                                 onChange={(e) =>
-                                  updateItem(index, "customId", e.target.value)
+                                  updateItem(
+                                    index,
+                                    "customId",
+                                    e.target.value
+                                  )
                                 }
                                 className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                               />
@@ -1908,14 +2146,23 @@ const RequisicionesPage = () => {
 
                             <div className="md:col-span-1">
                               <label className="block text-sm font-medium text-gray-700 mb-1">
-                                No. Economico <span className="text-red-500">*</span>
+                                No. Economico{" "}
+                                <span className="text-red-500">
+                                  *
+                                </span>
                               </label>
                               <input
                                 type="text"
                                 placeholder="Ej. Bomba hidráulica"
-                                value={item.no_economico || ""}
+                                value={
+                                  item.no_economico || ""
+                                }
                                 onChange={(e) =>
-                                  updateItem(index, "no_economico", e.target.value)
+                                  updateItem(
+                                    index,
+                                    "no_economico",
+                                    e.target.value
+                                  )
                                 }
                                 className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                               />
@@ -1925,14 +2172,19 @@ const RequisicionesPage = () => {
 
                         <div className="md:col-span-1">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Cantidad <span className="text-red-500">*</span>
+                            Cantidad{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="number"
                             placeholder="0"
                             value={item.cantidad}
                             onChange={(e) =>
-                              updateItem(index, "cantidad", e.target.value)
+                              updateItem(
+                                index,
+                                "cantidad",
+                                e.target.value
+                              )
                             }
                             required
                             min={1}
@@ -1942,14 +2194,19 @@ const RequisicionesPage = () => {
 
                         <div className="md:col-span-1">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Unidad <span className="text-red-500">*</span>
+                            Unidad{" "}
+                            <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
                             placeholder="Ej. hr, día, pieza"
                             value={item.unidad}
                             onChange={(e) =>
-                              updateItem(index, "unidad", e.target.value)
+                              updateItem(
+                                index,
+                                "unidad",
+                                e.target.value
+                              )
                             }
                             required
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
@@ -1959,19 +2216,31 @@ const RequisicionesPage = () => {
                         <div className="md:col-span-2">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Descripción{" "}
-                            {formData.requisicionType === "consumibles" ? (
-                              <span className="text-red-500">*</span>
+                            {formData.requisicionType ===
+                            "consumibles" ? (
+                              <span className="text-red-500">
+                                *
+                              </span>
                             ) : (
-                              <span className="text-gray-700 text-medium">(opcional)</span>
+                              <span className="text-gray-700 text-medium">
+                                (opcional)
+                              </span>
                             )}
                           </label>
                           <input
                             type="text"
                             placeholder="Describe el servicio (ej. mantenimiento correctivo)"
                             value={item.descripcion}
-                            required={formData.requisicionType === "consumibles"}
+                            required={
+                              formData.requisicionType ===
+                              "consumibles"
+                            }
                             onChange={(e) =>
-                              updateItem(index, "descripcion", e.target.value)
+                              updateItem(
+                                index,
+                                "descripcion",
+                                e.target.value
+                              )
                             }
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
                           />
@@ -1986,7 +2255,11 @@ const RequisicionesPage = () => {
                             placeholder="0.00"
                             value={item.precio}
                             onChange={(e) =>
-                              updateItem(index, "precio", e.target.value)
+                              updateItem(
+                                index,
+                                "precio",
+                                e.target.value
+                              )
                             }
                             min={0}
                             step="0.01"
@@ -2001,26 +2274,41 @@ const RequisicionesPage = () => {
                           <select
                             value={item.currency || "USD"}
                             onChange={(e) =>
-                              updateItem(index, "currency", e.target.value)
+                              updateItem(
+                                index,
+                                "currency",
+                                e.target.value
+                              )
                             }
                             className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-green-500 transition bg-white"
                           >
-                            <option value="">No especificado</option>
+                            <option value="">
+                              No especificado
+                            </option>
                             <option value="USD">USD</option>
-                            <option value="MXN">MX Pesos</option>
+                            <option value="MXN">
+                              MX Pesos
+                            </option>
                           </select>
                         </div>
 
-                        {formData.requisicionType === "consumibles" && (
+                        {formData.requisicionType ===
+                          "consumibles" && (
                           <div className="md:col-span-1">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Guardar en inventario
                             </label>
                             <input
                               type="checkbox"
-                              checked={item.is_product || false}
+                              checked={
+                                item.is_product || false
+                              }
                               onChange={(e) =>
-                                updateItem(index, "is_product", e.target.checked)
+                                updateItem(
+                                  index,
+                                  "is_product",
+                                  e.target.checked
+                                )
                               }
                               className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
                             />
